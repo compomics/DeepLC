@@ -90,7 +90,7 @@ def get_params_combinations(params):
     combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
     return(combinations)
 
-def main(tot_select_cal=2500,config_file = "config.ini"):
+def main(config_file = "config.ini"):
     df = pd.read_csv("datasets/seqs_exp.csv",sep=",")
 
     df.index = ["Pep_"+str(dfi) for dfi in df.index]
@@ -107,10 +107,11 @@ def main(tot_select_cal=2500,config_file = "config.ini"):
 
     pepper.calibrate_preds(seq_df=df)
 
-    print("Predictions: ",pepper.make_preds(seq_df=df))
+    print("Predictions (calibrated): ",pepper.make_preds(seq_df=df))
+    print("Predictions (uncalibrated): ",pepper.make_preds(seq_df=df,calibrate=False))
 
     plt.scatter(df["tr"],pepper.make_preds(seq_df=df),label="Calibrated",s=1)
-    plt.scatter(df["tr"],pepper.make_preds(seq_df=df,calibrate=False),label="Non-Calibrated",s=1)
+    plt.scatter(df["tr"],pepper.make_preds(seq_df=df,calibrate=False),label="Uncalibrated",s=1)
     abline(1.0,0.0)
     plt.legend()
     plt.show()
