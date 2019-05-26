@@ -1,0 +1,17 @@
+|SMILES
+Malonyl|C(=O)CC(=O)O
+Methyl|C
+Propionyl|CCC(=O)
+Biotin|C1[C@H]2[C@@H]([C@@H](S1)CCCCC(=O)O)NC(=O)N2
+Nitro|[N+](=O)[O-]
+Formyl|C=O
+Phospho|OP(=O)([O-])[O-]
+Oxidation|O
+Crotonyl|C/C=C/C(=O)
+Succinyl|C(=O)CCC(=O)O
+Dimethyl|CC
+Acetyl|C[C]=O
+Deamidated|C(=O)O
+GG|C(C(=O)O)NC(C(=O)O)N
+Trimethyl|CCC
+Butyryl|CCCC(=O)

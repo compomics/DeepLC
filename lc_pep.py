@@ -18,8 +18,8 @@ import time
 import pickle
 from operator import itemgetter
 import sys
-from multiprocessing import Pool
 from configparser import ConfigParser
+import time
 
 # Pandas
 import pandas as pd
@@ -33,42 +33,25 @@ import xgboost as xgb
 # Feature extraction
 from feat_extractor import FeatExtractor
 
-# Matplotlib
-from matplotlib import pyplot as plt
-import pandas as pd
-import time
+# Multiproc
+from multiprocessing import Pool
 
 def warn(*args, **kwargs):
     pass
 import warnings
 warnings.warn = warn
 
-import sklearn
-import xgboost as xgb
-import time
-from matplotlib import pyplot as plt
-import numpy
-import numpy as np
-
-# Machine learning imports
-from sklearn.model_selection import cross_val_predict
-from sklearn.metrics import mean_absolute_error
-from sklearn.model_selection import KFold
-from sklearn.preprocessing import maxabs_scale
-from sklearn.base import clone
-from sklearn.model_selection import RandomizedSearchCV
-import xgboost as xgb
-
 class LCPep():
     def __init__(self,
                 main_path=os.getcwd(),
-                path_model=os.path.join(os.getcwd(),"xgb_production2.pickle"),
+                path_model=None,
                 verbose=True,
                 bin_dist=1,
                 dict_cal_divider = 100,
                 split_cal = 25,
                 n_jobs=32,
-                config_file=None):
+                config_file=None,
+                f_extractor=None):
         
         # if a config file is defined overwrite standard parameters
         if config_file:
@@ -89,10 +72,14 @@ class LCPep():
         self.split_cal = split_cal
         self.n_jobs = n_jobs
 
-        with open(path_model, "rb") as handle:
-            self.model = pickle.load(handle)
+        if path_model:
+            with open(path_model, "rb") as handle:
+                self.model = pickle.load(handle)
 
-        self.f_extractor = FeatExtractor()
+        if f_extractor:
+            self.f_extractor = f_extractor
+        else:
+            self.f_extractor = FeatExtractor()
     
     def __str__(self):
         return("""
@@ -199,15 +186,17 @@ class LCPep():
             predictions
         """
         # TODO make feature extraction run in paralel
-        if seq_df:
-            X = self.f_extractor.do_f_extraction_pd_parallel(seq_df)
+        try: 
+            seq_df.index
+            X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
-        else:
+        except KeyError:
             X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
             X = X.loc[identifiers]
 
         if calibrate:
             cal_preds = []
+            X = xgb.DMatrix(X)
 
             # first get uncalibrated prediction
             uncal_preds = self.model.predict(X)
@@ -225,15 +214,17 @@ class LCPep():
                         slope,intercept,x_correction = self.calibrate_dict[str(round(self.calibrate_max,self.bin_dist))]
                         cal_preds.append(slope * (uncal_pred-x_correction) + intercept)
             return np.array(cal_preds)
-        else:            
+        else:
+            X = xgb.DMatrix(X)            
             return self.model.predict(X)
 
     def calibrate_preds(self,
-                        seqs,
-                        mods,
-                        identifiers,
-                        measured_tr,
-                        seq_df=None):
+                        seqs=[],
+                        mods=[],
+                        identifiers=[],
+                        measured_tr=[],
+                        seq_df=None,
+                        use_median=True):
         """
         Make calibration curve for predictions TODO make similar function for pd.DataFrame
 
@@ -253,12 +244,15 @@ class LCPep():
         
         """
         # TODO there is already a prediction function... use that.
-        if seq_df:
-            X = self.f_extractor.do_f_extraction_pd_parallel(seq_df)
+        try: 
+            seq_df.index
+            X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
-        else:
+            measured_tr = seq_df["tr"]
+        except KeyError:
             X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
             X = X.loc[identifiers]
+        X = xgb.DMatrix(X)
 
         predicted_tr = self.model.predict(X)
 
@@ -274,8 +268,12 @@ class LCPep():
 
         # smooth between observed and predicted
         for mtr,ptr in zip(self.split_seq(measured_tr,self.split_cal),self.split_seq(predicted_tr,self.split_cal)):
-            mtr_mean.append(sum(mtr)/len(mtr))
-            ptr_mean.append(sum(ptr)/len(ptr))
+            if use_median:
+                mtr_mean.append(sum(mtr)/len(mtr))
+                ptr_mean.append(sum(ptr)/len(ptr))
+            else:
+                mtr_mean.append(np.median(mtr))
+                ptr_mean.append(np.median(ptr))
 
         # calculate calibration curves
         for i in range(0,len(ptr_mean)):

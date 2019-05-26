@@ -29,6 +29,32 @@ from sklearn.model_selection import cross_val_predict
 # XGBoost
 import xgboost as xgb
 
+
+def fit_xgb_leaf(X,
+                y,
+                X_test,
+                y_test,
+                cv=10,
+                param_dist =  {}):
+
+    dtrain = xgb.DMatrix(X,
+                         label = y)
+    dtest = xgb.DMatrix(X_test,
+                        label = y_test)
+
+    watchlist = [(dtrain, 'train'), (dtest, 'test')]
+    
+    bst = xgb.train(param_dist,
+                    dtrain, 
+                    num_boost_round=2000, 
+                    evals=watchlist, 
+                    early_stopping_rounds=10,
+                    verbose_eval=False)
+
+    pred = bst.predict(dtest)
+
+    return bst.predict(dtrain),bst.predict(dtest),bst.best_score,bst
+
 def fit_xgb(X_train,y_train,X_test,y_test,config_file="config.ini"):
     """
     Extract all features we can extract; without parallelization; use if you want to run feature extraction
