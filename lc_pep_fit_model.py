@@ -25,10 +25,109 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import cross_val_predict
+from sklearn.linear_model import ElasticNet
+from sklearn.linear_model import Lasso
 
 # XGBoost
 import xgboost as xgb
 
+from sklearn.svm import SVR
+
+# Data analysis imports
+from scipy.stats import randint
+from scipy.stats import uniform
+from scipy.stats import expon
+from numpy import logspace
+import numpy as np
+
+
+def fit_lasso(X_train,
+            y_train,
+            X_test,
+            y_test,
+            nfolds=10,
+            n_jobs=7):
+    model = Lasso()
+    params = {
+        'alpha' : [0.005,0.01,0.1,1.0,5.0,10.0,100.0,500.0,750.0,1000.0],
+        'copy_X' : [True],
+        'fit_intercept' : [True,False],
+        'normalize' : [True,False],
+        'precompute' : [False]
+    }
+
+
+    cv = KFold(n_splits=nfolds, shuffle=True, random_state=42)
+    n_iter_search = 40
+    random_search = RandomizedSearchCV(model,
+                                        param_distributions=params,
+                                        n_iter=n_iter_search,
+                                        verbose=10,
+                                        scoring="neg_mean_absolute_error",
+                                        n_jobs=n_jobs,
+                                        cv=cv)
+
+    random_search = random_search.fit(X_train, y_train)
+
+    xgb_model = random_search.best_estimator_
+
+    test_preds = xgb_model.predict(X_test)
+
+    train_preds = xgb_model.predict(X_train)
+
+    model = Lasso(**random_search.best_params_)
+    train_cross_preds = cross_val_predict(model,
+                                            X_train,
+                                            y_train,
+                                            cv=cv)
+
+    random_search.feats = X_train.columns
+
+    return train_preds, train_cross_preds, test_preds
+
+def fit_svr(X_train,
+            y_train,
+            X_test,
+            y_test,
+            nfolds=10):
+
+    model = SVR()
+    params = {
+        'alpha' : [0.0005,0.001,0.005,0.01,0.1,1.0,5.0,10.0,100.0,500.0,750.0,1000.0],
+        'copy_X' : [True],
+        'fit_intercept' : [True,False],
+        'normalize' : [True,False],
+        'precompute' : [True,False]
+    }
+
+
+    cv = KFold(n_splits=nfolds, shuffle=True, random_state=42)
+    n_iter_search = 50
+    random_search = RandomizedSearchCV(model,
+                                       param_distributions=params,
+                                       n_iter=n_iter_search,
+                                       verbose=1,
+                                       scoring="neg_mean_absolute_error",
+                                       n_jobs=32,
+                                       cv=cv)
+
+    random_search = random_search.fit(X_train, y_train)
+
+    xgb_model = random_search.best_estimator_
+    
+    test_preds = xgb_model.predict(X_test)
+    
+    train_preds = xgb_model.predict(X_train)
+    
+    model = SVR(**random_search.best_params_)
+    train_cross_preds = cross_val_predict(model,
+                                          X_train,
+                                          y_train,
+                                          cv=cv)
+
+    random_search.feats = X_train.columns
+
+    return train_preds, train_cross_preds, test_preds
 
 def fit_xgb_leaf(X,
                 y,
