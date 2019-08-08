@@ -634,6 +634,8 @@ class FeatExtractor():
             feature matrix
         """
         if self.verbose: t0 = time.time()
+        
+        X = self.get_comp_change_mods(seqs,mods,identifiers)
 
         if self.standard_feat:
             X = self.get_feats(seqs,identifiers,split_size=self.split_size)
