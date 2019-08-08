@@ -254,7 +254,7 @@ class LCPep():
         
         X = X.loc[seq_df.index]
         measured_tr = seq_df["tr"]
-        #X = X[self.model.feature_names]
+        X = X[self.model.feature_names]
         #except KeyError:
         #    print(seqs,mods,identifiers)
         #    X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
