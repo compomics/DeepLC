@@ -75,7 +75,7 @@ class LCPep():
         if path_model:
             with open(path_model, "rb") as handle:
                 self.model = pickle.load(handle)
-
+        
         if f_extractor:
             self.f_extractor = f_extractor
         else:
@@ -192,11 +192,13 @@ class LCPep():
             X = X.loc[seq_df.index]
         except KeyError:
             X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
-            X = X.loc[identifiers]
+            X = X.loc[identifiers]        
 
+        X = X[self.model.feature_names]
+        
         if calibrate:
             cal_preds = []
-            X = xgb.DMatrix(X)
+            #X = xgb.DMatrix(X)
 
             # first get uncalibrated prediction
             uncal_preds = self.model.predict(X)
@@ -213,9 +215,12 @@ class LCPep():
                     elif uncal_pred >= self.calibrate_max:
                         slope,intercept,x_correction = self.calibrate_dict[str(round(self.calibrate_max,self.bin_dist))]
                         cal_preds.append(slope * (uncal_pred-x_correction) + intercept)
+                    else:
+                        slope,intercept,x_correction = self.calibrate_dict[str(round(self.calibrate_max,self.bin_dist))]
+                        cal_preds.append(slope * (uncal_pred-x_correction) + intercept)
             return np.array(cal_preds)
         else:
-            X = xgb.DMatrix(X)            
+            #X = xgb.DMatrix(X)            
             return self.model.predict(X)
 
     def calibrate_preds(self,
@@ -244,18 +249,21 @@ class LCPep():
         
         """
         # TODO there is already a prediction function... use that.
-        try: 
-            seq_df.index
-            X = self.do_f_extraction_pd_parallel(seq_df)
-            X = X.loc[seq_df.index]
-            measured_tr = seq_df["tr"]
-        except KeyError:
-            X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
-            X = X.loc[identifiers]
-        X = xgb.DMatrix(X)
-
+        #try: 
+        X = self.do_f_extraction_pd_parallel(seq_df)
+        
+        X = X.loc[seq_df.index]
+        measured_tr = seq_df["tr"]
+        #X = X[self.model.feature_names]
+        #except KeyError:
+        #    print(seqs,mods,identifiers)
+        #    X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
+        #    print(X)
+        #    X = X.loc[identifiers]
+        
+        #X = xgb.DMatrix(X)
+        
         predicted_tr = self.model.predict(X)
-
         if self.verbose: t0 = time.time()
         
         # sort two lists, predicted and observed based on measured tr

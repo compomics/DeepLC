@@ -18,6 +18,7 @@ import math
 import time
 from configparser import ConfigParser
 import ast
+from re import sub
 
 # Pandas
 import pandas as pd
@@ -50,16 +51,19 @@ class FeatExtractor():
                 main_path=os.getcwd(),
                 lib_path_mod=os.path.join(os.getcwd(),"unimod/"),
                 lib_path_prot_scale=os.path.join(os.getcwd(),"expasy/"),
+                lib_aa_composition=os.path.join(os.getcwd(),"aa_comp_rel.csv"),
                 lib_path_smiles=os.path.join(os.getcwd(),"mod_to_smiles/"),
                 split_size=7,
                 verbose=True,
                 include_specific_posses=[0,1,2,3,4,5,6,-1,-2,-3,-4,-5,-6,-7],
+                standard_feat=True,
                 add_sum_feat=True,
                 ptm_add_feat=True,
                 chem_descr_feat=True,
                 ptm_subtract_feat=True,
                 add_rolling_feat=False,
                 include_unnormalized=True,
+                add_comp_feat=True,
                 config_file=None):
 
         # if a config file is defined overwrite standard parameters
@@ -74,17 +78,22 @@ class FeatExtractor():
             add_sum_feat = cparser.getboolean("featExtractor","add_sum_feat")
             ptm_add_feat = cparser.getboolean("featExtractor","ptm_add_feat")
             ptm_subtract_feat = cparser.getboolean("featExtractor","ptm_subtract_feat")
+            chem_descr_feat = cparser.getboolean("featExtractor","chem_descr_feat")
             add_rolling_feat = cparser.getboolean("featExtractor","add_rolling_feat")
             include_unnormalized = cparser.getboolean("featExtractor","include_unnormalized")
             include_specific_posses = ast.literal_eval(cparser.get("featExtractor","include_specific_posses"))
+
             
         self.main_path = main_path
         self.lib_struct = self.get_chem_descr(lib_path_smiles)
         self.lib_add,self.lib_subtract = self.get_libs_mods(lib_path_mod)
+        # TODO Add to config file and parser
+        self.lib_aa_composition = self.get_aa_composition(lib_aa_composition)
         self.split_size = split_size
         self.libs_prop = self.get_libs_aa(lib_path_prot_scale)
         self.verbose = verbose
 
+        self.standard_feat = standard_feat
         self.chem_descr_feat = chem_descr_feat
         self.add_sum_feat = add_sum_feat
         self.ptm_add_feat = ptm_add_feat
@@ -92,6 +101,7 @@ class FeatExtractor():
         self.add_rolling_feat = add_rolling_feat
         self.include_unnormalized = include_unnormalized
         self.include_specific_posses = include_specific_posses
+        self.add_comp_feat = add_comp_feat
 
     def __str__(self):
         return("""
@@ -102,6 +112,10 @@ class FeatExtractor():
  |_____\____| | .__/ \___| .__/          |_|  \___|\__,_|\__|  \___/_/\_\\__|_|  \__,_|\___|\__\___/|_|   
               |_|        |_|                                                                              
               """)
+
+    def get_aa_composition(self,file_loc):
+        # TODO document function
+        return(pd.read_csv(file_loc,index_col=0).T.to_dict())
 
     def count_aa(self,
                 seq,
@@ -247,6 +261,7 @@ class FeatExtractor():
         aa_order = set(three_to_one.values())
         
         for name,seq in zip(idents,seqs):
+            
             # main dictionary holding identifier to feature values
             feat_dict[name] = {}
             feat_dict[name]["seq_len"] = len(seq)
@@ -254,7 +269,12 @@ class FeatExtractor():
 
             # iterate over selected features from the feature library
             for f in feats:
-                feature_seqs = [self.libs_prop[f][aa] for aa in seq]
+                try:
+                    feature_seqs = [self.libs_prop[f][aa] for aa in seq]
+                except:
+                    seq = seq.replace("O","")
+                    seq = sub("\d", "", seq)
+                    feature_seqs = [self.libs_prop[f][aa] for aa in seq]
 
                 # TODO remove hard coded feature retreival
                 if self.add_rolling_feat:
@@ -412,6 +432,7 @@ class FeatExtractor():
         len_init = len([ao+str(spl_s) for spl_s in range(split_size) for ao in atoms_order])
         for index_name,mod,seq in zip(identifiers,mods,seqs):
             mod_dict[index_name] = dict(zip([ao+str(spl_s)+add_str for spl_s in range(split_size) for ao in atoms_order],[0]*len_init))
+
             if not mod: 
                 continue
             if len(str(mod)) == 0:
@@ -425,8 +446,12 @@ class FeatExtractor():
                 if subtract_mods: fill_mods,num = self.calc_feats_mods(self.lib_subtract[split_mod[i].rstrip()])
                 else: fill_mods,num = self.calc_feats_mods(self.lib_add[split_mod[i].rstrip()])
 
-                loc = split_mod[i-1]
-                relative_loc = int(math.ceil((int(loc)/len(seq))*split_size))-1
+                loc = int(split_mod[i-1])
+                
+                if loc > len(seq):
+                    loc = len(seq)
+
+                relative_loc = int(math.ceil((loc/len(seq))*split_size))-1
                 for fm,n in zip(fill_mods,num):
                     if fm not in atoms_order: continue
                     mod_dict[index_name]["%s%s%s" % (fm,relative_loc,add_str)] += n
@@ -495,6 +520,98 @@ class FeatExtractor():
         if self.verbose: print("Time to calculate mod features: %s seconds" % (time.time() - t0))
         return pd.DataFrame(mod_dict).T
 
+    def get_comp_change_mods(self,
+                            seqs,
+                            mods,
+                            identifiers,
+                            positions=[0,1,2,3,4,-1,-2,-3,-4,-5],
+                            atom_count=["C","H","N","O","S","P"]):
+        # TODO split up function into multiple functions 
+        # TODO add documentation for this function
+        composition_dict = {}
+        feat_dict = {}
+        for ident,mod,seq in zip(identifiers,mods,seqs):
+            # TODO to speed up maybe use specific lexicon to determine location C0, H0 ... C7 H7
+            peptide_comp = [dict(zip(atom_count,[0]*len(atom_count))) for aa in seq]
+            mod_comp = [dict(zip(atom_count,[0]*len(atom_count))) for aa in seq]
+            pos_atoms = list(mod_comp[0].keys())
+
+            for i,aa in enumerate(seq):
+                if aa not in self.lib_aa_composition.keys(): 
+                    continue
+                peptide_comp_temp = self.lib_aa_composition[aa]
+                for k,v in peptide_comp_temp.items():
+                    try: peptide_comp[i][k] = v
+                    except KeyError: continue
+            # TODO too many errors to catch? Just test some differnt ones and see what the outcome is
+            try:
+                split_mod = mod.split("|")
+            except:
+                split_mod = []
+
+            # TODO below very slow with modification
+            for i in range(1,len(split_mod),2):
+                split_mod[i-1] = int(split_mod[i-1])
+                # TODO make this a dictionary call function
+                fill_mods,fill_num = self.calc_feats_mods(self.lib_add[split_mod[i].rstrip()])
+                subtract_mods,subtract_num = self.calc_feats_mods(self.lib_subtract[split_mod[i].rstrip()])
+                
+                 # TODO move to function, isnt there already a function for this?
+                for atom,atom_change in zip(fill_mods,fill_num):
+                    try:
+                        mod_comp[split_mod[i-1]-1][atom] += atom_change
+                    except KeyError:
+                        print("Going to skip the following atom in modification: %s" % (split_mod[i]))
+                    except IndexError:
+                        print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
+
+                for atom,atom_change in zip(subtract_mods,subtract_num):
+                    try:
+                        mod_comp[split_mod[i-1]-1][atom] -= atom_change
+                    except KeyError:
+                        print("Going to skip the following atom in modification: %s" % (split_mod[i]))
+                    except IndexError:
+                        print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
+            
+            peptide_comp_df = pd.DataFrame(peptide_comp)
+            mod_comp_df = pd.DataFrame(mod_comp)
+            # TODO is this adding step slow? See specific lexicon comment 
+            combined_comp_df = peptide_comp_df+mod_comp_df
+            summed_comp = dict(combined_comp_df.sum())
+            sum_comp = sum(summed_comp.values())
+            
+            feat_dict[ident] = {}
+
+            feat_dict[ident].update(dict([[k+"_tot",v]for k,v in summed_comp.items()]))
+            feat_dict[ident].update(dict([[k+"_tot_norm",v/sum_comp]for k,v in summed_comp.items()]))
+
+            for p in positions:
+                feat_dict[ident].update(dict([[k+"_"+str(p),v] for k,v in dict(combined_comp_df.iloc[p]).items()]))
+
+            index_splits = self.split_seq(combined_comp_df.index,self.split_size)
+            
+            for i_part,split_part in enumerate(index_splits):
+                split_part_df = combined_comp_df.loc[split_part]
+                split_part_df_sum = split_part_df.sum().sum()
+                split_part_df_norm = split_part_df/split_part_df_sum
+                for atom in split_part_df.columns:
+                    feat_dict[ident]["part_%s_atom_%s" % (i_part,atom)] = split_part_df[atom].sum()
+                    feat_dict[ident]["part_%s_atom_%s_norm" % (i_part,atom)] = split_part_df_norm[atom].sum()
+            
+            for pa in pos_atoms:
+                feat_dict[ident]["rolling_2_atom_%s_max" % (pa)] = pd.Series([v[pa] for v in peptide_comp]).rolling(2).sum().max()
+                feat_dict[ident]["rolling_2_atom_%s_min" % (pa)] = pd.Series([v[pa] for v in peptide_comp]).rolling(2).sum().min()
+                feat_dict[ident]["rolling_3_atom_%s_max" % (pa)] = pd.Series([v[pa] for v in peptide_comp]).rolling(3).sum().max()
+                feat_dict[ident]["rolling_3_atom_%s_min" % (pa)] = pd.Series([v[pa] for v in peptide_comp]).rolling(3).sum().min()
+
+            #print(mod_comp)
+            #print(peptide_comp)
+            #print(t2-t1,t3-t2,t4-t3,t5-t4,t6-t5)
+            #input()
+        
+        return(pd.DataFrame(feat_dict).T)
+        
+
     def full_feat_extract(self,
                         seqs,
                         mods,
@@ -518,8 +635,10 @@ class FeatExtractor():
         """
         if self.verbose: t0 = time.time()
 
-        X = self.get_feats(seqs,identifiers,split_size=self.split_size)
-
+        if self.standard_feat:
+            X = self.get_feats(seqs,identifiers,split_size=self.split_size)
+        if self.add_comp_feat:
+            X_comp = self.get_comp_change_mods(seqs,mods,identifiers)
         if self.add_sum_feat:
             X_feats_sum = self.get_feats_mods(seqs,mods,identifiers,split_size=1,add_str="_sum")
         if self.ptm_add_feat:
@@ -528,16 +647,23 @@ class FeatExtractor():
             X_feats_neg = self.get_feats_mods(seqs,mods,identifiers,split_size=self.split_size,add_str="_subtract",subtract_mods=True)
         if self.chem_descr_feat:
             X_feats_chem_descr = self.get_feats_chem_descr(seqs,mods,identifiers,split_size=3,add_str="_chem_desc")
-            
 
+        if self.add_comp_feat:
+            try: X = pd.concat([X,X_comp],axis=1)
+            except: X = X_comp
         if self.add_sum_feat:
-            X = pd.concat([X,X_feats_sum],axis=1)
+            try: X = pd.concat([X,X_feats_sum],axis=1)
+            except: X = X_feats_sum
         if self.ptm_add_feat:
-            X = pd.concat([X,X_feats_add],axis=1)
+            try: X = pd.concat([X,X_feats_add],axis=1)
+            except: X = X_feats_add
         if self.ptm_subtract_feat:
-            X = pd.concat([X,X_feats_neg],axis=1)
+            try: X = pd.concat([X,X_feats_neg],axis=1)
+            except: X = X_feats_neg
         if self.chem_descr_feat:
-            X = pd.concat([X,X_feats_chem_descr],axis=1)
+            try: X = pd.concat([X,X_feats_chem_descr],axis=1)
+            except: X = X_feats_chem_descr
+
         if self.verbose: print("Time to calculate all features: %s seconds" % (time.time() - t0))
         return X
 
