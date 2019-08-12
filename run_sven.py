@@ -46,15 +46,14 @@ def main():
                                 ptm_subtract_feat=False,
                                 standard_feat = True,
                                 chem_descr_feat = False,
-                                add_comp_feat = True,
-                                verbose = False)
+                                add_comp_feat = False,
+                                verbose = True)
     
     # Make the pep_lc object that will handle making predictions and calibration
     pepper = LCPep(config_file = "config.ini",
-                path_model=os.path.join(os.getcwd(),"mods/synth.pickle"),
+                path_model=os.path.join(os.getcwd(),"mods/dia_no_mod.pickle"),
                 f_extractor=f_extractor,
-                verbose=False,
-                n_jobs=7)
+                verbose=False)
 
     # Calibrate the original model based on the new retention times
     pepper.calibrate_preds(seq_df=df_cal)

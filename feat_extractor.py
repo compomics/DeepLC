@@ -634,20 +634,24 @@ class FeatExtractor():
             feature matrix
         """
         if self.verbose: t0 = time.time()
-        
-        X = self.get_comp_change_mods(seqs,mods,identifiers)
 
         if self.standard_feat:
+            if self.verbose: print("Extracting standard features")
             X = self.get_feats(seqs,identifiers,split_size=self.split_size)
         if self.add_comp_feat:
+            if self.verbose: print("Extracting compositional features")
             X_comp = self.get_comp_change_mods(seqs,mods,identifiers)
         if self.add_sum_feat:
+            if self.verbose: print("Extracting compositional sum features for modifications")
             X_feats_sum = self.get_feats_mods(seqs,mods,identifiers,split_size=1,add_str="_sum")
         if self.ptm_add_feat:
+            if self.verbose: print("Extracting compositional add features for modifications")
             X_feats_add = self.get_feats_mods(seqs,mods,identifiers,split_size=self.split_size,add_str="_add")
         if self.ptm_subtract_feat:
+            if self.verbose: print("Extracting compositional subtract features for modifications")
             X_feats_neg = self.get_feats_mods(seqs,mods,identifiers,split_size=self.split_size,add_str="_subtract",subtract_mods=True)
         if self.chem_descr_feat:
+            if self.verbose: print("Extracting chemical descriptors features for modifications")
             X_feats_chem_descr = self.get_feats_chem_descr(seqs,mods,identifiers,split_size=3,add_str="_chem_desc")
 
         if self.add_comp_feat:
