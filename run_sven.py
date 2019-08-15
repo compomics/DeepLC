@@ -32,8 +32,8 @@ def main():
     df.rename(columns={'matched_peptide':'seq',
                        'rt':'tr'}, 
                        inplace=True)
-    df = df[df["q_value"] < 0.01]
-    df = df[df["DB"] != "D"]
+    #df = df[df["q_value"] < 0.01]
+    #df = df[df["DB"] != "D"]
 
     train_ids = [k for k,v in Counter(df["scan_id"]).items() if v == 1]
     df_cal = df[df['scan_id'].isin(train_ids)]
@@ -44,15 +44,17 @@ def main():
     f_extractor = FeatExtractor(add_sum_feat=False,
                                 ptm_add_feat=False,
                                 ptm_subtract_feat=False,
-                                standard_feat = True,
+                                standard_feat = False,
                                 chem_descr_feat = False,
                                 add_comp_feat = False,
+                                cnn_feats = True,
                                 verbose = True)
     
     # Make the pep_lc object that will handle making predictions and calibration
     pepper = LCPep(config_file = "config.ini",
-                path_model=os.path.join(os.getcwd(),"mods/dia_no_mod.pickle"),
+                path_model=os.path.join(os.getcwd(),"mods/cnn_dia.hdf5"), #"mods/dia_no_mod.pickle"
                 f_extractor=f_extractor,
+                cnn_model=True,
                 verbose=False)
 
     # Calibrate the original model based on the new retention times

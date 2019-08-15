@@ -21,6 +21,8 @@ import sys
 from configparser import ConfigParser
 import time
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 # Pandas
 import pandas as pd
 
@@ -29,6 +31,9 @@ import numpy as np
 
 # XGBoost
 import xgboost as xgb
+
+# Keras
+from tensorflow.keras.models import load_model
 
 # Feature extraction
 from feat_extractor import FeatExtractor
@@ -51,7 +56,8 @@ class LCPep():
                 split_cal = 25,
                 n_jobs=32,
                 config_file=None,
-                f_extractor=None):
+                f_extractor=None,
+                cnn_model=False):
         
         # if a config file is defined overwrite standard parameters
         if config_file:
@@ -67,14 +73,18 @@ class LCPep():
         self.calibrate_dict = {}
         self.calibrate_min = float('inf')
         self.calibrate_max = 0
+        self.cnn_model = cnn_model
 
         self.dict_cal_divider = dict_cal_divider
         self.split_cal = split_cal
         self.n_jobs = n_jobs
 
         if path_model:
-            with open(path_model, "rb") as handle:
-                self.model = pickle.load(handle)
+            if self.cnn_model:
+                self.model = path_model
+            else:
+                with open(path_model, "rb") as handle:
+                    self.model = pickle.load(handle)
         
         if f_extractor:
             self.f_extractor = f_extractor
@@ -185,23 +195,39 @@ class LCPep():
         np.array
             predictions
         """
-        # TODO make feature extraction run in paralel
-        try: 
-            seq_df.index
-            X = self.do_f_extraction_pd_parallel(seq_df)
-            X = X.loc[seq_df.index]
-        except KeyError:
-            X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
-            X = X.loc[identifiers]        
+        if self.cnn_model:
+            
+            try: 
+                seq_df.index
+                X = self.do_f_extraction_pd_parallel(seq_df)
+                X = X.loc[seq_df.index]
+                X_pos = np.stack(X["pos_matrix"])
+                X = np.stack(X["matrix"])
+            except KeyError:
+                X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
+                X = X.loc[identifiers]
+                X_pos = np.stack(X["pos_matrix"])
+                X = np.stack(X["matrix"])
+        else:
+            try: 
+                seq_df.index
+                X = self.do_f_extraction_pd_parallel(seq_df)
+                X = X.loc[seq_df.index]
+            except KeyError:
+                X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
+                X = X.loc[identifiers]        
 
-        X = X[self.model.feature_names]
+            X = X[self.model.feature_names]
         
         if calibrate:
             cal_preds = []
-            #X = xgb.DMatrix(X)
-
-            # first get uncalibrated prediction
-            uncal_preds = self.model.predict(X)
+            
+            if self.cnn_model:
+                mod = load_model(self.model)
+                uncal_preds = mod.predict([X,X_pos]).flatten()
+            else:
+                # first get uncalibrated prediction
+                uncal_preds = self.model.predict(X)
 
             for uncal_pred in uncal_preds:
                 try:
@@ -220,8 +246,11 @@ class LCPep():
                         cal_preds.append(slope * (uncal_pred-x_correction) + intercept)
             return np.array(cal_preds)
         else:
-            #X = xgb.DMatrix(X)            
-            return self.model.predict(X)
+            if self.cnn_model:
+                mod = load_model(self.model)
+                return mod.predict([X,X_pos]).flatten()
+            else:
+                return self.model.predict(X)
 
     def calibrate_preds(self,
                         seqs=[],
@@ -249,12 +278,18 @@ class LCPep():
         
         """
         # TODO there is already a prediction function... use that.
-        #try: 
-        X = self.do_f_extraction_pd_parallel(seq_df)
-        
-        X = X.loc[seq_df.index]
+        if self.cnn_model:
+            X = self.do_f_extraction_pd_parallel(seq_df)
+            X = X.loc[seq_df.index]
+            X_pos = np.stack(X["pos_matrix"])
+            X = np.stack(X["matrix"])
+        else:
+            X = self.do_f_extraction_pd_parallel(seq_df)
+            X = X.loc[seq_df.index]
+            X = X[self.model.feature_names]
+
         measured_tr = seq_df["tr"]
-        X = X[self.model.feature_names]
+        
         #except KeyError:
         #    print(seqs,mods,identifiers)
         #    X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
@@ -262,8 +297,11 @@ class LCPep():
         #    X = X.loc[identifiers]
         
         #X = xgb.DMatrix(X)
-        
-        predicted_tr = self.model.predict(X)
+        if self.cnn_model:
+            mod = load_model(self.model)
+            predicted_tr = mod.predict([X,X_pos]).flatten()
+        else:
+            predicted_tr = self.model.predict(X)
         if self.verbose: t0 = time.time()
         
         # sort two lists, predicted and observed based on measured tr
