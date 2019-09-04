@@ -162,7 +162,8 @@ class LCPep():
         """
         df_instances_split = np.array_split(df_instances, self.n_jobs)
         pool = Pool(self.n_jobs)
-        df = pd.concat(pool.map(self.do_f_extraction_pd, df_instances_split))
+        if self.n_jobs == 1: self.do_f_extraction_pd(df_instances)
+        else: df = pd.concat(pool.map(self.do_f_extraction_pd, df_instances_split))
         pool.close()
         pool.join()
         return df
@@ -224,7 +225,7 @@ class LCPep():
             
             if self.cnn_model:
                 mod = load_model(self.model)
-                uncal_preds = mod.predict([X,X_pos]).flatten()
+                uncal_preds = mod.predict([X,X_pos],batch_size=10240).flatten()
             else:
                 # first get uncalibrated prediction
                 uncal_preds = self.model.predict(X)
@@ -281,6 +282,7 @@ class LCPep():
         if self.cnn_model:
             X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
+
             X_pos = np.stack(X["pos_matrix"])
             X = np.stack(X["matrix"])
         else:

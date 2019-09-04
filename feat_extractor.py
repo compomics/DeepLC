@@ -613,6 +613,120 @@ class FeatExtractor():
         return(pd.DataFrame(feat_dict).T)
 
     def encode_atoms(self,
+                 seqs,
+                 mods_all,
+                 indexes,
+                 padding_length=60,
+                 positions=set([0,1,2,3,-1,-2,-3,-4]), 
+                 dict_index_pos={'C' : 0,
+                            'H' : 1,
+                            'N' : 2,
+                            'O' : 3,
+                            'S' : 4,
+                            'P' : 5},
+                 dict_index_all={'C' : 0,
+                            'H' : 1,
+                            'N' : 2,
+                            'O' : 3,
+                            'S' : 4,
+                            'P' : 5},
+                 dict_index={'C' : 0,
+                            'H' : 1,
+                            'N' : 2,
+                            'O' : 3,
+                            'S' : 4,
+                            'P' : 5}):
+    
+        ret_list = {}
+        ret_list_all = {}
+        ret_list_pos = {}
+        """
+        print(seqs_df)
+        
+        seqs = seqs_df["seq"]
+        indexes = seqs_df.index
+        mods_all = seqs_df["modifications"]
+        """ 
+        for row_index,seq,mods in zip(indexes,seqs,mods_all):
+
+            seq_len = len(seq)
+            if seq_len > padding_length: continue
+            
+            padding = "".join(["X"]*(padding_length-len(seq)))
+            seq = seq+padding
+            
+            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.int16)
+            matrix_all = np.zeros(len(dict_index.keys()),dtype=np.int16)
+            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.int16)
+            
+            for index,aa in enumerate(seq):
+                if aa == "X": break
+                for atom,val in self.lib_aa_composition[aa].items():
+                    matrix[index,dict_index[atom]] = val
+                    #matrix_all[dict_index_all[atom]] += val
+                    
+                    
+                    if index in positions:
+                        matrix_pos[index,dict_index_pos[atom]] = val
+                    elif index-seq_len in positions:
+                        matrix_pos[index-seq_len,dict_index_pos[atom]] = val
+                    
+                    
+            if len(mods) == 0:
+                ret_list[row_index] = {"index_name":row_index,"matrix":matrix}
+                ret_list_all[row_index] = {"index_name":row_index,"matrix_all":matrix_all}
+                ret_list_pos[row_index] = {"index_name":row_index,"pos_matrix":matrix_pos.flatten()}
+                continue
+                
+            mods = mods.split("|")
+            for i in range(1,len(mods),2):
+                mod = mods[i]
+                fill_mods,fill_num = self.calc_feats_mods(self.lib_add[mod])
+                subtract_mods,subtract_num = self.calc_feats_mods(self.lib_subtract[mod])
+                
+                loc = int(mods[i-1])-1
+                if loc > len(seq):
+                    # TODO display error
+                    loc = len(seq)-1
+                    
+                for atom,atom_change in zip(fill_mods,fill_num):
+                    try:
+                        
+                        matrix[loc,dict_index[atom]] += atom_change
+                        matrix_all[dict_index_all[atom]] += val
+                        if loc in positions:
+                            matrix_pos[loc,dict_index_pos[atom]] += val
+                        elif loc-len(seq) in positions:
+                            matrix_pos[loc-len(seq),dict_index_pos[atom]] += val
+                            
+                    except KeyError:
+                        print("Going to skip the following atom in modification: %s" % (split_mod[i]))
+                    except IndexError:
+                        print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
+                
+                for atom,atom_change in zip(subtract_mods,subtract_num):
+                    try:
+                        
+                        matrix[loc,dict_index[atom]] -= atom_change
+                        matrix_all[dict_index_all[atom]] -= val
+                        if loc in positions:
+                            matrix_pos[loc,dict_index_pos[atom]] -= val
+                        elif loc-len(seq) in positions:
+                            matrix_pos[loc-len(seq),dict_index_pos[atom]] -= val
+                            
+                    except KeyError:
+                        print("Going to skip the following atom in modification: %s" % (split_mod[i]))
+                    except IndexError:
+                        print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
+                            
+                ret_list[row_index] = {"index_name":row_index,"matrix":matrix}
+                ret_list_all[row_index] = {"index_name":row_index,"matrix_all":matrix_all}
+                ret_list_pos[row_index] = {"index_name":row_index,"pos_matrix":matrix_pos.flatten()}
+            
+        return pd.DataFrame.from_dict(ret_list).T, pd.DataFrame.from_dict(ret_list_pos).T, pd.DataFrame.from_dict(ret_list_all).T
+
+
+    def encode_atoms_only(self,
                     seqs,
                     mods,
                     identifiers,
@@ -774,9 +888,8 @@ class FeatExtractor():
             X_feats_chem_descr = self.get_feats_chem_descr(seqs,mods,identifiers,split_size=3,add_str="_chem_desc")
         if self.cnn_feats:
             if self.verbose: print("Extracting CNN features")
-            X_cnn = self.encode_atoms(seqs,mods,identifiers)
-            X_cnn_pos = self.encode_atoms_positions(seqs,mods,identifiers)
-            X_cnn = pd.concat([X_cnn,X_cnn_pos],axis=1)
+            X_cnn,X_cnn_pos,X_cnn_count = self.encode_atoms(seqs,mods,identifiers)
+            X_cnn = pd.concat([X_cnn,X_cnn_pos,X_cnn_count],axis=1)
 
         if self.cnn_feats:
             try: X = pd.concat([X,X_cnn],axis=1)
