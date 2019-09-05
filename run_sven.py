@@ -52,7 +52,7 @@ def main():
     
     # Make the pep_lc object that will handle making predictions and calibration
     pepper = LCPep(config_file = "config.ini",
-                path_model=os.path.join(os.getcwd(),"mods/cnn_dia.hdf5"), #"mods/dia_no_mod.pickle"
+                path_model=os.path.join(os.getcwd(),"mods/full_dia.hdf5"), #"mods/dia_no_mod.pickle"
                 f_extractor=f_extractor,
                 cnn_model=True,
                 verbose=False)

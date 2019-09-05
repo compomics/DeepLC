@@ -202,12 +202,20 @@ class LCPep():
                 seq_df.index
                 X = self.do_f_extraction_pd_parallel(seq_df)
                 X = X.loc[seq_df.index]
-                X_pos = np.stack(X["pos_matrix"])
+                X_sum = np.stack(X["matrix_sum"])
+                X_global = np.concatenate((np.stack(X["matrix_all"]),
+                                      np.stack(X["pos_matrix"])),
+                                      axis=1)
+
                 X = np.stack(X["matrix"])
             except KeyError:
                 X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
                 X = X.loc[identifiers]
-                X_pos = np.stack(X["pos_matrix"])
+                X_sum = np.stack(X["matrix_sum"])
+                X_global = np.concatenate((np.stack(X["matrix_all"]),
+                                        np.stack(X["pos_matrix"])),
+                                        axis=1)
+
                 X = np.stack(X["matrix"])
         else:
             try: 
@@ -225,7 +233,7 @@ class LCPep():
             
             if self.cnn_model:
                 mod = load_model(self.model)
-                uncal_preds = mod.predict([X,X_pos],batch_size=10240).flatten()
+                uncal_preds = mod.predict([X,X_sum,X_global],batch_size=10240).flatten()
             else:
                 # first get uncalibrated prediction
                 uncal_preds = self.model.predict(X)
@@ -249,7 +257,7 @@ class LCPep():
         else:
             if self.cnn_model:
                 mod = load_model(self.model)
-                return mod.predict([X,X_pos]).flatten()
+                return mod.predict([X,X_sum,X_global]).flatten()
             else:
                 return self.model.predict(X)
 
@@ -283,7 +291,11 @@ class LCPep():
             X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
 
-            X_pos = np.stack(X["pos_matrix"])
+            X_sum = np.stack(X["matrix_sum"])
+            X_global = np.concatenate((np.stack(X["matrix_all"]),
+                                      np.stack(X["pos_matrix"])),
+                                      axis=1)
+
             X = np.stack(X["matrix"])
         else:
             X = self.do_f_extraction_pd_parallel(seq_df)
@@ -301,7 +313,7 @@ class LCPep():
         #X = xgb.DMatrix(X)
         if self.cnn_model:
             mod = load_model(self.model)
-            predicted_tr = mod.predict([X,X_pos]).flatten()
+            predicted_tr = mod.predict([X,X_sum,X_global]).flatten()
         else:
             predicted_tr = self.model.predict(X)
         if self.verbose: t0 = time.time()
