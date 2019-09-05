@@ -686,8 +686,11 @@ class FeatExtractor():
             mods = mods.split("|")
             for i in range(1,len(mods),2):
                 mod = mods[i]
-                fill_mods,fill_num = self.calc_feats_mods(self.lib_add[mod])
-                subtract_mods,subtract_num = self.calc_feats_mods(self.lib_subtract[mod])
+                try:
+                    fill_mods,fill_num = self.calc_feats_mods(self.lib_add[mod])
+                    subtract_mods,subtract_num = self.calc_feats_mods(self.lib_subtract[mod])
+                except KeyError:
+                    print("Going to skip the following atom in modification: %s" % (split_mod[i]))
                 
                 loc = int(mods[i-1])-1
                 if loc > len(seq):
