@@ -90,8 +90,9 @@ class FeatExtractor():
             
         self.main_path = main_path
         self.lib_struct = self.get_chem_descr(lib_path_smiles)
-        self.lib_add,self.lib_subtract = self.get_libs_mods(lib_path_mod)
-        # TODO Add to config file and parser
+        self.lib_add, self.lib_subtract = self.get_libs_mods(lib_path_mod)
+        self.lib_add = dict([(k.lower(),v) for k,v in self.lib_add.items()])
+        self.lib_subtract = dict([(k.lower(),v) for k,v in self.lib_subtract.items()])
         self.lib_aa_composition = self.get_aa_composition(lib_aa_composition)
         self.lib_aa_composition["X"] = {'C': 0}
         self.split_size = split_size
@@ -553,6 +554,7 @@ class FeatExtractor():
             try:
                 split_mod = mod.split("|")
             except:
+                print("Not able to split the following mod properly: %s" % (mod))
                 split_mod = []
 
             # TODO below very slow with modification
@@ -642,10 +644,6 @@ class FeatExtractor():
         ret_list_sum = {}
         ret_list_all = {}
         ret_list_pos = {}
-
-        #seqs = seqs_df["seq"]
-        #indexes = seqs_df.index
-        #mods_all = seqs_df["modifications"]
         
         for row_index,seq,mods in zip(indexes,seqs,mods_all):
             seq_len = len(seq)
@@ -685,12 +683,12 @@ class FeatExtractor():
 
             mods = mods.split("|")
             for i in range(1,len(mods),2):
-                mod = mods[i]
+                mod = mods[i].lower()
                 try:
                     fill_mods,fill_num = self.calc_feats_mods(self.lib_add[mod])
                     subtract_mods,subtract_num = self.calc_feats_mods(self.lib_subtract[mod])
                 except KeyError:
-                    print("Going to skip the following atom in modification: %s" % (split_mod[i]))
+                    print("Going to skip the following modification due to it not being present in the library: %s" % (mod))
                     continue
                 
                 loc = int(mods[i-1])-1
@@ -709,7 +707,7 @@ class FeatExtractor():
                             matrix_pos[loc-len(seq),dict_index_pos[atom]] += val
                             
                     except KeyError:
-                        print("Going to skip the following atom in modification: %s" % (split_mod[i]))
+                        print("Going to skip the following atom in modification: %s" % (mod))
                     except IndexError:
                         print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
                 
@@ -724,7 +722,7 @@ class FeatExtractor():
                             matrix_pos[loc-len(seq),dict_index_pos[atom]] -= val
                             
                     except KeyError:
-                        print("Going to skip the following atom in modification: %s" % (split_mod[i]))
+                        print("Going to skip the following atom in modification: %s" % (mod))
                     except IndexError:
                         print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
                         

@@ -63,7 +63,7 @@ def main():
     # Make predictions; calibrated and uncalibrated
     calib_train_preds = pepper.make_preds(seq_df=df_cal)
     uncalib_train_preds = pepper.make_preds(seq_df=df_cal,calibrate=False)
-    print("Predictions (calibrated): ",calib_train_preds)
+    print("Predictions (calibrated): ",calib_train_preds[0:5])
     print("Predictions (uncalibrated): ",uncalib_train_preds)
 
     plt.figure(figsize=(11.5,9))

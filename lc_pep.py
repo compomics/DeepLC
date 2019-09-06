@@ -181,7 +181,7 @@ class LCPep():
         ----------
         seq_df : pd.DataFrame
             dataframe containing the sequences (column:seq), modifications (column:modifications) and naming (column:index);
-            will use parallel by default! TODO if n_jobs is set to 1 even with pd df use single thread
+            will use parallel by default!
         seqs : list
             peptide sequence list; should correspond to mods and identifiers
         mods : list
@@ -196,38 +196,50 @@ class LCPep():
         np.array
             predictions
         """
+
+        try:
+            seq_df.index
+        except:
+            seq_df = pd.DataFrame([seqs,mods]).T
+            seq_df.columns = ["seq","modifications"]
+            seq_df.index = identifiers
+        
+        seq_df["idents"] = seq_df["seq"]+"|"+seq_df["modifications"]
+        identifiers_to_seqmod = dict(zip(seq_df.index,seq_df["idents"]))
+        
+        seq_df.drop_duplicates(subset=["idents"],inplace=True)            
+
         if self.cnn_model:
-            
-            try: 
-                seq_df.index
-                X = self.do_f_extraction_pd_parallel(seq_df)
-                X = X.loc[seq_df.index]
-                X_sum = np.stack(X["matrix_sum"])
-                X_global = np.concatenate((np.stack(X["matrix_all"]),
-                                      np.stack(X["pos_matrix"])),
-                                      axis=1)
+            X = self.do_f_extraction_pd_parallel(seq_df)
+            X = X.loc[seq_df.index]
+            X_sum = np.stack(X["matrix_sum"])
+            X_global = np.concatenate((np.stack(X["matrix_all"]),
+                                    np.stack(X["pos_matrix"])),
+                                    axis=1)
 
-                X = np.stack(X["matrix"])
-            except KeyError:
-                X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
-                X = X.loc[identifiers]
-                X_sum = np.stack(X["matrix_sum"])
-                X_global = np.concatenate((np.stack(X["matrix_all"]),
-                                        np.stack(X["pos_matrix"])),
-                                        axis=1)
-
-                X = np.stack(X["matrix"])
+            X = np.stack(X["matrix"])
+            #except KeyError:
+            #    X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
+            #    X = X.loc[identifiers]
+            #    X_sum = np.stack(X["matrix_sum"])
+            #    X_global = np.concatenate((np.stack(X["matrix_all"]),
+            #                            np.stack(X["pos_matrix"])),
+            #                            axis=1)
+            #
+            #    X = np.stack(X["matrix"])
         else:
-            try: 
-                seq_df.index
-                X = self.do_f_extraction_pd_parallel(seq_df)
-                X = X.loc[seq_df.index]
-            except KeyError:
-                X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
-                X = X.loc[identifiers]        
+            #try: 
+            seq_df.index
+            X = self.do_f_extraction_pd_parallel(seq_df)
+            X = X.loc[seq_df.index]
+            #except KeyError:
+            #    X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
+            #    X = X.loc[identifiers]        
 
             X = X[self.model.feature_names]
         
+        ret_preds = []
+
         if calibrate:
             cal_preds = []
             
@@ -253,13 +265,21 @@ class LCPep():
                     else:
                         slope,intercept,x_correction = self.calibrate_dict[str(round(self.calibrate_max,self.bin_dist))]
                         cal_preds.append(slope * (uncal_pred-x_correction) + intercept)
-            return np.array(cal_preds)
+            ret_preds = np.array(cal_preds)
         else:
             if self.cnn_model:
                 mod = load_model(self.model)
-                return mod.predict([X,X_sum,X_global]).flatten()
+                ret_preds = mod.predict([X,X_sum,X_global]).flatten()
             else:
-                return self.model.predict(X)
+                ret_preds = self.model.predict(X)
+        
+        pred_dict = dict(zip(seq_df["idents"],ret_preds))
+
+        ret_preds_shape = []
+        for ident in seq_df.index:
+            ret_preds_shape.append(pred_dict[identifiers_to_seqmod[ident]])
+
+        return ret_preds_shape
 
     def calibrate_preds(self,
                         seqs=[],
@@ -286,37 +306,12 @@ class LCPep():
         -------
         
         """
-        # TODO there is already a prediction function... use that.
-        if self.cnn_model:
-            X = self.do_f_extraction_pd_parallel(seq_df)
-            X = X.loc[seq_df.index]
-
-            X_sum = np.stack(X["matrix_sum"])
-            X_global = np.concatenate((np.stack(X["matrix_all"]),
-                                      np.stack(X["pos_matrix"])),
-                                      axis=1)
-
-            X = np.stack(X["matrix"])
-        else:
-            X = self.do_f_extraction_pd_parallel(seq_df)
-            X = X.loc[seq_df.index]
-            X = X[self.model.feature_names]
-
-        measured_tr = seq_df["tr"]
-        
-        #except KeyError:
-        #    print(seqs,mods,identifiers)
-        #    X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
-        #    print(X)
-        #    X = X.loc[identifiers]
-        
-        #X = xgb.DMatrix(X)
-        if self.cnn_model:
-            mod = load_model(self.model)
-            predicted_tr = mod.predict([X,X_sum,X_global]).flatten()
-        else:
-            predicted_tr = self.model.predict(X)
-        if self.verbose: t0 = time.time()
+        try:
+            seq_df.index
+            predicted_tr = self.make_preds(seq_df=seq_df,calibrate=False)
+            measured_tr = seq_df["tr"]
+        except:
+            predicted_tr = self.make_preds(seqs=seqs,mods=mods,identifiers=identifiers,calibrate=False)
         
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [(mtr,ptr) for mtr,ptr in sorted(zip(measured_tr,predicted_tr), key=lambda pair: pair[0])]
