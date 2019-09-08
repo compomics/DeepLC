@@ -21,7 +21,7 @@ import sys
 from configparser import ConfigParser
 import time
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 # Pandas
 import pandas as pd
@@ -34,6 +34,10 @@ import xgboost as xgb
 
 # Keras
 from tensorflow.keras.models import load_model
+import tensorflow as tf
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+session = tf.Session(config=config)
 
 # Feature extraction
 from feat_extractor import FeatExtractor
@@ -162,7 +166,7 @@ class LCPep():
         """
         df_instances_split = np.array_split(df_instances, self.n_jobs)
         pool = Pool(self.n_jobs)
-        if self.n_jobs == 1: self.do_f_extraction_pd(df_instances)
+        if self.n_jobs == 1: df = self.do_f_extraction_pd(df_instances)
         else: df = pd.concat(pool.map(self.do_f_extraction_pd, df_instances_split))
         pool.close()
         pool.join()
@@ -173,7 +177,8 @@ class LCPep():
                 mods=[],
                 identifiers=[],
                 calibrate=True,
-                seq_df=None):
+                seq_df=None,
+                correction_factor=1.0):
         """
         Make predictions for sequences
 
@@ -197,14 +202,15 @@ class LCPep():
             predictions
         """
 
-        try:
-            seq_df.index
-        except:
+        if len(seqs) == 0:
+            seq_df = seq_df.copy()
+        else:
             seq_df = pd.DataFrame([seqs,mods]).T
             seq_df.columns = ["seq","modifications"]
             seq_df.index = identifiers
         
         seq_df["idents"] = seq_df["seq"]+"|"+seq_df["modifications"]
+        identifiers = list(seq_df.index)
         identifiers_to_seqmod = dict(zip(seq_df.index,seq_df["idents"]))
         
         seq_df.drop_duplicates(subset=["idents"],inplace=True)            
@@ -212,29 +218,17 @@ class LCPep():
         if self.cnn_model:
             X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
+            
             X_sum = np.stack(X["matrix_sum"])
             X_global = np.concatenate((np.stack(X["matrix_all"]),
                                     np.stack(X["pos_matrix"])),
                                     axis=1)
 
             X = np.stack(X["matrix"])
-            #except KeyError:
-            #    X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
-            #    X = X.loc[identifiers]
-            #    X_sum = np.stack(X["matrix_sum"])
-            #    X_global = np.concatenate((np.stack(X["matrix_all"]),
-            #                            np.stack(X["pos_matrix"])),
-            #                            axis=1)
-            #
-            #    X = np.stack(X["matrix"])
         else:
-            #try: 
             seq_df.index
             X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
-            #except KeyError:
-            #    X = self.f_extractor.full_feat_extract(seqs,mods,identifiers)
-            #    X = X.loc[identifiers]        
 
             X = X[self.model.feature_names]
         
@@ -245,10 +239,10 @@ class LCPep():
             
             if self.cnn_model:
                 mod = load_model(self.model)
-                uncal_preds = mod.predict([X,X_sum,X_global],batch_size=10240).flatten()
+                uncal_preds = mod.predict([X,X_sum,X_global],batch_size=1024).flatten()/correction_factor
             else:
                 # first get uncalibrated prediction
-                uncal_preds = self.model.predict(X)
+                uncal_preds = self.model.predict(X)/correction_factor
 
             for uncal_pred in uncal_preds:
                 try:
@@ -269,14 +263,14 @@ class LCPep():
         else:
             if self.cnn_model:
                 mod = load_model(self.model)
-                ret_preds = mod.predict([X,X_sum,X_global]).flatten()
+                ret_preds = mod.predict([X,X_sum,X_global],batch_size=1024).flatten()/correction_factor
             else:
-                ret_preds = self.model.predict(X)
+                ret_preds = self.model.predict(X)/correction_factor
         
         pred_dict = dict(zip(seq_df["idents"],ret_preds))
 
         ret_preds_shape = []
-        for ident in seq_df.index:
+        for ident in identifiers:
             ret_preds_shape.append(pred_dict[identifiers_to_seqmod[ident]])
 
         return ret_preds_shape
@@ -286,6 +280,7 @@ class LCPep():
                         mods=[],
                         identifiers=[],
                         measured_tr=[],
+                        correction_factor=1.0,
                         seq_df=None,
                         use_median=True):
         """
@@ -306,12 +301,13 @@ class LCPep():
         -------
         
         """
-        try:
+        #try:
+        if len(seqs) == 0:
             seq_df.index
-            predicted_tr = self.make_preds(seq_df=seq_df,calibrate=False)
+            predicted_tr = self.make_preds(seq_df=seq_df,calibrate=False,correction_factor=correction_factor)
             measured_tr = seq_df["tr"]
-        except:
-            predicted_tr = self.make_preds(seqs=seqs,mods=mods,identifiers=identifiers,calibrate=False)
+        else:
+            predicted_tr = self.make_preds(seqs=seqs,mods=mods,identifiers=identifiers,calibrate=False,correction_factor=correction_factor)
         
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [(mtr,ptr) for mtr,ptr in sorted(zip(measured_tr,predicted_tr), key=lambda pair: pair[0])]
@@ -324,11 +320,12 @@ class LCPep():
         # smooth between observed and predicted
         for mtr,ptr in zip(self.split_seq(measured_tr,self.split_cal),self.split_seq(predicted_tr,self.split_cal)):
             if use_median:
-                mtr_mean.append(sum(mtr)/len(mtr))
-                ptr_mean.append(sum(ptr)/len(ptr))
-            else:
                 mtr_mean.append(np.median(mtr))
                 ptr_mean.append(np.median(ptr))
+            else:
+                mtr_mean.append(sum(mtr)/len(mtr))
+                ptr_mean.append(sum(ptr)/len(ptr))
+                
 
         # calculate calibration curves
         for i in range(0,len(ptr_mean)):

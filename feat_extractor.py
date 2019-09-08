@@ -647,7 +647,8 @@ class FeatExtractor():
         
         for row_index,seq,mods in zip(indexes,seqs,mods_all):
             seq_len = len(seq)
-            if seq_len > padding_length: continue
+            if seq_len > padding_length: 
+                seq = seq[0:padding_length]
             
             padding = "".join(["X"]*(padding_length-len(seq)))
             seq = seq+padding
