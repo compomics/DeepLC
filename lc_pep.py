@@ -21,7 +21,7 @@ import sys
 from configparser import ConfigParser
 import time
 
-#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 # Pandas
 import pandas as pd
@@ -35,9 +35,9 @@ import xgboost as xgb
 # Keras
 from tensorflow.keras.models import load_model
 import tensorflow as tf
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
-session = tf.Session(config=config)
+#config = tf.ConfigProto()
+#config.gpu_options.allow_growth = True
+#session = tf.Session(config=config)
 
 # Feature extraction
 from feat_extractor import FeatExtractor

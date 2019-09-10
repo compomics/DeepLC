@@ -90,6 +90,87 @@ def get_params_combinations(params):
     combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
     return(combinations)
 
+def rem_code():
+    pepper = LCPep(config_file=config_file)
+ 
+    #df = pd.read_csv("datasets/unmod.csv",sep=",")
+    df = pd.read_csv("datasets/dia.csv",sep=",")
+    #df = pd.read_csv("datasets/SCX.csv",sep=",")
+    #df = pd.read_csv("datasets/Xbridge.csv",sep=",")
+    #df = pd.read_csv("datasets/LUNA_SILICA.csv",sep=",")
+    #df = pd.read_csv("datasets/LUNA_SILICA.csv",sep=",")
+     
+    df = filter_df(df)
+ 
+    X = pepper.do_f_extraction_pd_parallel(df)
+    X = pd.concat([X,df["tr"]],axis=1)
+ 
+    y = X.pop("tr")
+ 
+    param_dist =   {
+            #'objective' : 'gpu:reg:linear',
+            'tree_method':['gpu_hist'],
+            "grow_policy" : ["lossguide"],
+            #'learning_rate': [0.02], 
+            'gamma' : [4,10], #0.1,0.25,0.5,1,2,
+            "reg_alpha" : [4,10], #0.1,0.25,0.5,1,2,
+            "reg_lambda" : [4,10], #0.1,0.25,0.5,1,2,
+            #'min_child_weight' : [3],
+            'nthread' : [8],
+            'max_depth' : [25],
+            'subsample' : [0.9], 
+            'colsample_bytree' : [0.8], 
+            'seed': [2100], 
+            'eval_metric' : ["rmse"],
+            #'num_boost_round' : [300],
+            #'n_estimators': [999],
+            'max_leaves': [4,8,12,24,48]
+        }
+ 
+    print(len(get_params_combinations(param_dist)))
+    train_indices,test_indices = make_cv(df,X,y)
+    highest_cor = 0.0
+    for params in get_params_combinations(param_dist):
+        train_preds,train_cross_preds,test_preds,xgb_model = fit_xgb_leaf(X.loc[train_indices,:],
+                                                                      y.loc[train_indices],
+                                                                      X.loc[test_indices,:],
+                                                                      y.loc[test_indices],
+                                                                      param_dist =  params)
+        print(params,test_preds,scipy.stats.pearsonr(y.loc[test_indices],train_cross_preds),highest_cor,np.mean([abs(y-y_hat) for y,y_hat in zip(y.loc[test_indices],train_cross_preds)]),np.percentile([abs(y-y_hat) for y,y_hat in zip(y.loc[test_indices],train_cross_preds)],95))
+        if scipy.stats.pearsonr(y.loc[test_indices],train_cross_preds)[0] > highest_cor:
+            highest_cor = scipy.stats.pearsonr(y.loc[test_indices],train_cross_preds)[0]
+            opt_params = params
+            xgb_model_best = xgb_model
+ 
+    print("The 95th percentile error:")
+    print(np.percentile([abs(a-b) for a,b in zip(y,train_cross_preds)],95))
+    print("The pearson correlation:")
+    print(scipy.stats.pearsonr(y.loc[test_indices],train_cross_preds))
+ 
+    plt.scatter(y.loc[test_indices],train_cross_preds)
+    plt.show()
+ 
+    df = pd.read_csv("datasets/seqs_exp.csv",sep=",")
+    df.index = ["Pep_"+str(dfi) for dfi in df.index]
+     
+    pepper = LCPep(config_file=config_file,path_model=os.path.join(os.getcwd(),"mods/lcpep_synt.pickle"))
+ 
+     
+    random_picks = list(set(np.random.choice(len(df.index), tot_select_cal)))
+     
+    df["tr"] = df["tr"]/60
+     
+    pepper.calibrate_preds(df["seq"].iloc[random_picks],df["modifications"].iloc[random_picks],df.index,df["tr"].iloc[random_picks])
+ 
+ 
+    plt.scatter(df["tr"],pepper.make_preds(seq_df=df))
+    plt.scatter(df["tr"],pepper.make_preds(seq_df=df,calibrate=False))
+    abline(1.0,0.0)
+    plt.show()
+ 
+    print(scipy.stats.pearsonr(df["tr"],pepper.make_preds(seq_df=df))[0])
+    print(scipy.stats.pearsonr(df["tr"],pepper.make_preds(seq_df=df,calibrate=False))[0])
+
 def main(config_file = "config.ini"):
     df = pd.read_csv("datasets/seqs_exp.csv",sep=",")
 
