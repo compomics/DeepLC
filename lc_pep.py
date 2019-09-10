@@ -1,5 +1,5 @@
 """
-This code is used to test run lc_pep
+Main code used to generate LC retention time predictions. This provides the main interface.
 
 For the library versions see the .yml file
 """
@@ -10,7 +10,7 @@ __credits__ = ["Robbin Bouwmeester","Prof. Lennart Martens","Sven Degroeve"]
 __license__ = "Apache License, Version 2.0"
 __version__ = "1.0"
 __maintainer__ = "Robbin Bouwmeester"
-__email__ = "Robbin.bouwmeester@ugent.be"
+__email__ = "Robbin.Bouwmeester@ugent.be"
 
 # Native imports
 import os
@@ -20,8 +20,6 @@ from operator import itemgetter
 import sys
 from configparser import ConfigParser
 import time
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 # Pandas
 import pandas as pd
@@ -35,9 +33,19 @@ import xgboost as xgb
 # Keras
 from tensorflow.keras.models import load_model
 import tensorflow as tf
+
+# Set to force CPU calculations
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
+# Set for TF V1.0 (counters some memory problems of nvidia 20 series GPUs)
 #config = tf.ConfigProto()
 #config.gpu_options.allow_growth = True
 #session = tf.Session(config=config)
+
+# Set for TF V2.0 (counters some memory problems of nvidia 20 series GPUs)
+#config = tf.compat.v1.ConfigProto()
+#config.gpu_options.allow_growth = True
+#session = tf.compat.v1.Session(config=config)
 
 # Feature extraction
 from feat_extractor import FeatExtractor
