@@ -1,5 +1,5 @@
 """
-This code is used to test run lc_pep
+This code is used to train an XGBoost model. This code is no longer used and substituted for a deep learning alternative.
 
 For the library versions see the .yml file
 """
@@ -10,7 +10,7 @@ __credits__ = ["Robbin Bouwmeester","Prof. Lennart Martens","Sven Degroeve"]
 __license__ = "Apache License, Version 2.0"
 __version__ = "1.0"
 __maintainer__ = "Robbin Bouwmeester"
-__email__ = "Robbin.bouwmeester@ugent.be"
+__email__ = "Robbin.Bouwmeester@ugent.be"
 
 # Native imports
 from configparser import ConfigParser
