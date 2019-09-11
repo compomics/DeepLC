@@ -60,7 +60,7 @@ def parse_arguments():
     return results
 
 def main():
-    argu = parse_argument()
+    argu = parse_arguments()
 
     run(file_pred=argu.file_pred,
         file_cal=argu.file_cal,
