@@ -83,7 +83,7 @@ def run(file_pred="",
 
     if len(file_cal) > 1:
         df_cal = pd.read_csv(file_cal)
-        df_cal = df.fillna("")
+        df_cal = df_cal.fillna("")
 
     # Make a feature extraction object; you can skip this if you do not want to use the default settings
     # for pep_lc. Here we want to use a model that does not use RDKit features so we skip the chemical
