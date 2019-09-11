@@ -60,7 +60,7 @@ def parse_arguments():
     return results
 
 def main():
-    argu = parse_argument()
+    argu = parse_arguments()
 
     run(file_pred=argu.file_pred,
         file_cal=argu.file_cal,
@@ -79,7 +79,7 @@ def run(file_pred="",
         dict_divider=50):
 
     df_pred = pd.read_csv(file_pred)
-    df_pred = df.fillna("")
+    df_pred = df_pred.fillna("")
 
     if len(file_cal) > 1:
         df_cal = pd.read_csv(file_cal)
@@ -109,11 +109,12 @@ def run(file_pred="",
     
     # Make predictions; calibrated and uncalibrated
     if len(file_cal) > 1:
-        preds = pepper.make_preds(seq_df=df_cal)
+        preds = pepper.make_preds(seq_df=df_pred)
     else:
-        preds = pepper.make_preds(seq_df=df_cal,calibrate=False)
+        preds = pepper.make_preds(seq_df=df_pred,calibrate=False)
 
     df_pred["Predicted tR"] = preds
+    df_pred.to_csv(file_pred_out)
 
     if len(file_cal) > 1:
         plt.figure(figsize=(11.5,9))
