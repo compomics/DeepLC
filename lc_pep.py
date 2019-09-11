@@ -35,7 +35,7 @@ from tensorflow.keras.models import load_model
 import tensorflow as tf
 
 # Set to force CPU calculations
-#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 # Set for TF V1.0 (counters some memory problems of nvidia 20 series GPUs)
 #config = tf.ConfigProto()

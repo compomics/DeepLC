@@ -118,7 +118,7 @@ def run(file_pred="",
 
     if len(file_cal) > 1:
         plt.figure(figsize=(11.5,9))
-        plt.scatter(df_cal["tr"],preds,s=3)
+        plt.scatter(df_pred["tr"],df_pred["Predicted tR"],s=3)
         plt.title("Predicted retention times")
         plt.xlabel("Observed tr")
         plt.ylabel("Predicted tr")
