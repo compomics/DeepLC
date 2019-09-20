@@ -333,7 +333,6 @@ class LCPep():
         """
         if len(seqs) == 0:
             seq_df.index
-            print(mod_name)
             predicted_tr = self.make_preds(seq_df=seq_df,calibrate=False,correction_factor=correction_factor,mod_name=mod_name)
             measured_tr = seq_df["tr"]
         else:
@@ -429,7 +428,11 @@ class LCPep():
                 best_calibrate_min = copy.deepcopy(self.calibrate_min)
                 best_calibrate_max = copy.deepcopy(self.calibrate_max)
                 best_model = copy.deepcopy(m)
+
+                if self.verbose: print("New best perf (old -> new):  %s -> %s" (best_perf,perf))
                 best_perf = perf
+
+                
         
         self.calibrate_dict = best_calibrate_dict
         self.calibrate_min = best_calibrate_min
