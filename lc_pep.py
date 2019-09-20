@@ -412,13 +412,13 @@ class LCPep():
 
             self.calibrate_min, self.calibrate_max, self.calibrate_dict = calibrate_output
 
-            preds = make_preds(seqs=seqs,
-                               mods=mods,
-                               identifiers=identifiers,
-                               calibrate=True,
-                               seq_df=seq_df,
-                               correction_factor=correction_factor,
-                               mod_name=m)
+            preds = self.make_preds(seqs=seqs,
+                                    mods=mods,
+                                    identifiers=identifiers,
+                                    calibrate=True,
+                                    seq_df=seq_df,
+                                    correction_factor=correction_factor,
+                                    mod_name=m)
 
             if len(measured_tr) == 0:
                 perf = sum(abs(seq_df["tr"]-preds))
