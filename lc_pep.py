@@ -53,6 +53,8 @@ from feat_extractor import FeatExtractor
 # Multiproc
 from multiprocessing import Pool
 
+import copy
+
 def warn(*args, **kwargs):
     pass
 import warnings
@@ -295,14 +297,14 @@ class LCPep():
 
         return ret_preds_shape
 
-    def calibrate_preds(self,
-                        seqs=[],
-                        mods=[],
-                        identifiers=[],
-                        measured_tr=[],
-                        correction_factor=1.0,
-                        seq_df=None,
-                        use_median=True):
+    def calibrate_preds_func(self,
+                             seqs=[],
+                             mods=[],
+                             identifiers=[],
+                             measured_tr=[],
+                             correction_factor=1.0,
+                             seq_df=None,
+                             use_median=True):
         """
         Make calibration curve for predictions TODO make similar function for pd.DataFrame
 
@@ -365,6 +367,59 @@ class LCPep():
                 self.calibrate_dict[str(round(v,1))] = [slope,intercept,x_correction]
 
         if self.verbose: print("Time to calibrate: %s seconds" % (time.time() - t0))
+
+        return calibrate_min, calibrate_max, calibrate_dict
+
+    def calibrate_preds(self,
+                        seqs=[],
+                        mods=[],
+                        identifiers=[],
+                        measured_tr=[],
+                        correction_factor=1.0,
+                        seq_df=None,
+                        use_median=True):
+        if type(self.path_model) == str:
+            self.path_model = [self.path_model]
+        
+        best_perf = float("inf")
+        best_calibrate_min = 0.0
+        best_calibrate_max = 0.0
+        best_calibrate_dict = {}
+        best_model = ""
+        
+        for m in self.path_model:
+            calibrate_output = self.calibrate_preds_func(seqs=seqs,
+                                                        mods=mods,
+                                                        identifiers=identifiers,
+                                                        measured_tr=measured_tr,
+                                                        correction_factor=correction_factor,
+                                                        seq_df=seq_df,
+                                                        use_median=use_median)
+
+            self.calibrate_min, self.calibrate_max, self.calibrate_dict = calibrate_output
+
+            preds = make_preds(seqs=seqs,
+                               mods=mods,
+                               identifiers=identifiers,
+                               calibrate=True,
+                               seq_df=seq_df,
+                               correction_factor=correction_factor)
+
+            if len(measured_tr) == 0:
+                perf = sum(abs(seq_df["tr"]-preds))
+
+            if perf < best_perf:
+                # Is deepcopy really required?
+                best_calibrate_dict = copy.deepcopy(self.calibrate_dict)
+                best_calibrate_min = copy.deepcopy(self.calibrate_min)
+                best_calibrate_max = copy.deepcopy(self.calibrate_max)
+                best_model = copy.deepcopy(m)
+                best_perf = perf
+        
+        self.calibrate_dict = best_calibrate_dict
+        self.calibrate_min = best_calibrate_min
+        self.calibrate_max = best_calibrate_max
+        self.path_model = best_model
 
     def split_seq(self,
                 a,
