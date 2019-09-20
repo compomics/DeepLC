@@ -378,8 +378,8 @@ class LCPep():
                         correction_factor=1.0,
                         seq_df=None,
                         use_median=True):
-        if type(self.path_model) == str:
-            self.path_model = [self.path_model]
+        if type(self.model) == str:
+            self.model = [self.model]
         
         best_perf = float("inf")
         best_calibrate_min = 0.0
@@ -387,7 +387,7 @@ class LCPep():
         best_calibrate_dict = {}
         best_model = ""
         
-        for m in self.path_model:
+        for m in self.model:
             calibrate_output = self.calibrate_preds_func(seqs=seqs,
                                                         mods=mods,
                                                         identifiers=identifiers,
@@ -419,7 +419,7 @@ class LCPep():
         self.calibrate_dict = best_calibrate_dict
         self.calibrate_min = best_calibrate_min
         self.calibrate_max = best_calibrate_max
-        self.path_model = best_model
+        self.model = best_model
 
     def split_seq(self,
                 a,
