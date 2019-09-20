@@ -270,6 +270,7 @@ class LCPep():
                 uncal_preds = self.model.predict(X)/correction_factor
 
             for uncal_pred in uncal_preds:
+                print(uncal_pred)
                 try:
                     slope,intercept,x_correction = self.calibrate_dict[str(round(uncal_pred,self.bin_dist))]
                     cal_preds.append(slope * (uncal_pred-x_correction) + intercept)
