@@ -399,7 +399,8 @@ class LCPep():
                                                         measured_tr=measured_tr,
                                                         correction_factor=correction_factor,
                                                         seq_df=seq_df,
-                                                        use_median=use_median)
+                                                        use_median=use_median,
+                                                        mod_name=m)
 
             self.calibrate_min, self.calibrate_max, self.calibrate_dict = calibrate_output
 
