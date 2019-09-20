@@ -190,7 +190,8 @@ class LCPep():
                 identifiers=[],
                 calibrate=True,
                 seq_df=None,
-                correction_factor=1.0):
+                correction_factor=1.0,
+                mod_name=False):
         """
         Make predictions for sequences
 
@@ -259,7 +260,10 @@ class LCPep():
             cal_preds = []
             
             if self.cnn_model:
-                mod = load_model(self.model)
+                if mod_name == False:
+                    mod = load_model(self.model)
+                else:
+                    mod = load_model(mod_name)
                 uncal_preds = mod.predict([X,X_sum,X_global],batch_size=1024).flatten()/correction_factor
             else:
                 # first get uncalibrated prediction
@@ -304,7 +308,8 @@ class LCPep():
                              measured_tr=[],
                              correction_factor=1.0,
                              seq_df=None,
-                             use_median=True):
+                             use_median=True,
+                             mod_name=False):
         """
         Make calibration curve for predictions TODO make similar function for pd.DataFrame
 
@@ -325,10 +330,10 @@ class LCPep():
         """
         if len(seqs) == 0:
             seq_df.index
-            predicted_tr = self.make_preds(seq_df=seq_df,calibrate=False,correction_factor=correction_factor)
+            predicted_tr = self.make_preds(seq_df=seq_df,calibrate=False,correction_factor=correction_factor,mod_name=mod_name)
             measured_tr = seq_df["tr"]
         else:
-            predicted_tr = self.make_preds(seqs=seqs,mods=mods,identifiers=identifiers,calibrate=False,correction_factor=correction_factor)
+            predicted_tr = self.make_preds(seqs=seqs,mods=mods,identifiers=identifiers,calibrate=False,correction_factor=correction_factor,mod_name=mod_name)
         
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [(mtr,ptr) for mtr,ptr in sorted(zip(measured_tr,predicted_tr), key=lambda pair: pair[0])]
@@ -403,7 +408,8 @@ class LCPep():
                                identifiers=identifiers,
                                calibrate=True,
                                seq_df=seq_df,
-                               correction_factor=correction_factor)
+                               correction_factor=correction_factor,
+                               mod_name=m)
 
             if len(measured_tr) == 0:
                 perf = sum(abs(seq_df["tr"]-preds))
