@@ -347,6 +347,10 @@ class LCPep():
         mtr_mean = []
         ptr_mean = []
 
+        calibrate_dict = {}
+        calibrate_min = float('inf')
+        calibrate_max = 0
+
         # smooth between observed and predicted
         for mtr,ptr in zip(self.split_seq(measured_tr,self.split_cal),self.split_seq(predicted_tr,self.split_cal)):
             if use_median:
@@ -369,11 +373,11 @@ class LCPep():
 
             # optimized predictions using a dict to find calibration curve very fast
             for v in np.arange(round(ptr_mean[i],self.bin_dist),round(ptr_mean[i+1],self.bin_dist),1/((self.bin_dist)*self.dict_cal_divider)):
-                if v < self.calibrate_min:
-                    self.calibrate_min = v
-                if v > self.calibrate_max:
-                    self.calibrate_max = v
-                self.calibrate_dict[str(round(v,1))] = [slope,intercept,x_correction]
+                if v < calibrate_min:
+                    calibrate_min = v
+                if v > calibrate_max:
+                    calibrate_max = v
+                calibrate_dict[str(round(v,1))] = [slope,intercept,x_correction]
 
         if self.verbose: print("Time to calibrate: %s seconds" % (time.time() - t0))
 
