@@ -33,7 +33,7 @@ class FeatExtractor():
                 lib_path_prot_scale=os.path.join(os.getcwd(),"expasy/"),
                 lib_aa_composition=os.path.join(os.getcwd(),"aa_comp_rel.csv"),
                 lib_path_smiles=os.path.join(os.getcwd(),"mod_to_smiles/"),
-                lib_three_to_one=os.path.join(os.getcwd(),"expasy/three_to_one.csv")
+                lib_three_to_one=os.path.join(os.getcwd(),"expasy/three_to_one.csv"),
                 split_size=7,
                 verbose=True,
                 include_specific_posses=[0,1,2,3,4,5,6,-1,-2,-3,-4,-5,-6,-7],
@@ -604,17 +604,17 @@ class FeatExtractor():
                     try:
                         mod_comp[split_mod[i-1]-1][atom] += atom_change
                     except KeyError:
-                        print("Going to skip the following atom in modification: %s" % (split_mod[i]))
+                        print("Going to skip the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
                     except IndexError:
-                        print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
+                        print("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
 
                 for atom,atom_change in zip(subtract_mods,subtract_num):
                     try:
                         mod_comp[split_mod[i-1]-1][atom] -= atom_change
                     except KeyError:
-                        print("Going to skip the following atom in modification: %s" % (split_mod[i]))
+                        print("Going to skip the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
                     except IndexError:
-                        print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
+                        print("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
             
             # Make the native peptide compositional feature matrix a pd.DataFrame
             peptide_comp_df = pd.DataFrame(peptide_comp)
