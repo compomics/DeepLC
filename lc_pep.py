@@ -433,7 +433,7 @@ class LCPep():
                 best_calibrate_max = copy.deepcopy(self.calibrate_max)
                 
                 print("\n\n\n++++++\n",perf,"\n+++++\n\n\n\n")
-                print("New best perf (old -> new):  %s -> %s (%s -> %s)" (best_perf,perf,best_model,m))
+                print(best_perf,perf,best_model,m)
                 print("\n\n\n++++++\n",perf,"\n+++++\n\n\n\n")
 
                 best_model = copy.deepcopy(m)                
