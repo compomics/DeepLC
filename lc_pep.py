@@ -105,12 +105,14 @@ class LCPep():
     
     def __str__(self):
         return("""
-  _     ____                    
- | |   / ___|  _ __   ___ _ __  
- | |  | |     | '_ \ / _ \ '_ \ 
- | |__| |___  | |_) |  __/ |_) |
- |_____\____| | .__/ \___| .__/ 
-              |_|        |_|    
+  _____                  _      _____ 
+ |  __ \                | |    / ____|
+ | |  | | ___  ___ _ __ | |   | |     
+ | |  | |/ _ \/ _ \ '_ \| |   | |     
+ | |__| |  __/  __/ |_) | |___| |____ 
+ |_____/ \___|\___| .__/|______\_____|
+                  | |                 
+                  |_|                   
               """)
         
 
@@ -210,19 +212,28 @@ class LCPep():
             predictions
         """
 
+        # See if we got a list; if not assume we got a df
         if len(seqs) == 0:
+            # Make a copy, because we do not want to change to original df
             seq_df = seq_df.copy()
         else:
+            # Make a df out of provided lists
             seq_df = pd.DataFrame([seqs,mods]).T
             seq_df.columns = ["seq","modifications"]
             seq_df.index = identifiers
         
+        # Only run on unique peptides, defined by seq+mod
+        # TODO sort the mods in the peprec on both position and alphabet mod; to not let duplicates through!
         seq_df["idents"] = seq_df["seq"]+"|"+seq_df["modifications"]
         identifiers = list(seq_df.index)
+
+        # Save a row identifier to seq+mod mapper so output has expected return shapes
         identifiers_to_seqmod = dict(zip(seq_df.index,seq_df["idents"]))
         
+        # Drop duplicated seq+mod
         seq_df.drop_duplicates(subset=["idents"],inplace=True)            
 
+        # If we need to apply deep NN
         if self.cnn_model:
             X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
@@ -277,6 +288,7 @@ class LCPep():
         
         pred_dict = dict(zip(seq_df["idents"],ret_preds))
 
+        # Map from unique peptide identifiers to the original dataframe
         ret_preds_shape = []
         for ident in identifiers:
             ret_preds_shape.append(pred_dict[identifiers_to_seqmod[ident]])
@@ -309,7 +321,6 @@ class LCPep():
         -------
         
         """
-        #try:
         if len(seqs) == 0:
             seq_df.index
             predicted_tr = self.make_preds(seq_df=seq_df,calibrate=False,correction_factor=correction_factor)

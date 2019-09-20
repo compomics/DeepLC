@@ -26,29 +26,6 @@ import numpy as np
 # Pandas
 import pandas as pd
 
-# TODO add file instead of hardcoded; probably in the unimod folder
-three_to_one = {
-        "ala" : "A",
-        "arg" : "R",
-        "asn" : "N",
-        "asp" : "D",
-        "cys" : "C",
-        "glu" : "E",
-        "gln" : "Q",
-        "gly" : "G",
-        "his" : "H",
-        "ile" : "I",
-        "leu" : "L",
-        "lys" : "K",
-        "met" : "M",
-        "phe" : "F",
-        "pro" : "P",
-        "ser" : "S",
-        "thr" : "T",
-        "trp" : "W",
-        "tyr" : "Y",
-        "val" : "V"}
-
 class FeatExtractor():
     def __init__(self,
                 main_path=os.getcwd(),
@@ -56,6 +33,7 @@ class FeatExtractor():
                 lib_path_prot_scale=os.path.join(os.getcwd(),"expasy/"),
                 lib_aa_composition=os.path.join(os.getcwd(),"aa_comp_rel.csv"),
                 lib_path_smiles=os.path.join(os.getcwd(),"mod_to_smiles/"),
+                lib_three_to_one=os.path.join(os.getcwd(),"expasy/three_to_one.csv")
                 split_size=7,
                 verbose=True,
                 include_specific_posses=[0,1,2,3,4,5,6,-1,-2,-3,-4,-5,-6,-7],
@@ -92,6 +70,7 @@ class FeatExtractor():
         self.lib_add, self.lib_subtract = self.get_libs_mods(lib_path_mod)
         self.lib_add = dict([(k.lower(),v) for k,v in self.lib_add.items()])
         self.lib_subtract = dict([(k.lower(),v) for k,v in self.lib_subtract.items()])
+        self.three_to_one = dict([l.strip().split(",") for l in open(lib_three_to_one)])
 
         # Get the atomic composition of AAs
         self.lib_aa_composition = self.get_aa_composition(lib_aa_composition)
@@ -191,7 +170,7 @@ class FeatExtractor():
             if len(line) == 0: continue
             aa_three,val = line.lower().split(": ")
             val = float(val)
-            prop_dict[three_to_one[aa_three]] = val
+            prop_dict[self.three_to_one[aa_three]] = val
         return(prop_dict)
 
     def split_seq(self,
@@ -274,7 +253,7 @@ class FeatExtractor():
         
         if self.verbose: t0 = time.time()
         
-        aa_order = set(three_to_one.values())
+        aa_order = set(self.three_to_one.values())
         
         for name,seq in zip(idents,seqs):
             
