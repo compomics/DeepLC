@@ -330,6 +330,7 @@ class LCPep():
         """
         if len(seqs) == 0:
             seq_df.index
+            print(mod_name)
             predicted_tr = self.make_preds(seq_df=seq_df,calibrate=False,correction_factor=correction_factor,mod_name=mod_name)
             measured_tr = seq_df["tr"]
         else:
