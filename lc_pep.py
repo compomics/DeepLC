@@ -287,7 +287,10 @@ class LCPep():
             ret_preds = np.array(cal_preds)
         else:
             if self.cnn_model:
-                mod = load_model(self.model)
+                if mod_name == False:
+                    mod = load_model(self.model)
+                else:
+                    mod = load_model(mod_name)
                 ret_preds = mod.predict([X,X_sum,X_global],batch_size=1024).flatten()/correction_factor
             else:
                 ret_preds = self.model.predict(X)/correction_factor
