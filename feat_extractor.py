@@ -604,17 +604,21 @@ class FeatExtractor():
                     try:
                         mod_comp[split_mod[i-1]-1][atom] += atom_change
                     except KeyError:
-                        print("Going to skip the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
+                        pass
+                        #print("Going to skip the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
                     except IndexError:
-                        print("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
+                        pass
+                        #print("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
 
                 for atom,atom_change in zip(subtract_mods,subtract_num):
                     try:
                         mod_comp[split_mod[i-1]-1][atom] -= atom_change
                     except KeyError:
-                        print("Going to skip the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
+                        pass
+                        #print("Going to skip the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
                     except IndexError:
-                        print("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
+                        pass
+                        #print("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
             
             # Make the native peptide compositional feature matrix a pd.DataFrame
             peptide_comp_df = pd.DataFrame(peptide_comp)
