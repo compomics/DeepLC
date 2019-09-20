@@ -421,6 +421,10 @@ class LCPep():
 
             if len(measured_tr) == 0:
                 perf = sum(abs(seq_df["tr"]-preds))
+            else:
+                perf = sum(abs(measured_tr-preds))
+
+            print("\n\n\n=====\n",perf,"=====\n\n\n\n")
 
             if perf < best_perf:
                 # Is deepcopy really required?
