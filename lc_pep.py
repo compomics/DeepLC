@@ -427,9 +427,10 @@ class LCPep():
                 best_calibrate_dict = copy.deepcopy(self.calibrate_dict)
                 best_calibrate_min = copy.deepcopy(self.calibrate_min)
                 best_calibrate_max = copy.deepcopy(self.calibrate_max)
-                best_model = copy.deepcopy(m)
+                
+                if self.verbose: print("New best perf (old -> new):  %s -> %s (%s -> %s)" (best_perf,perf,best_model,m))
 
-                if self.verbose: print("New best perf (old -> new):  %s -> %s" (best_perf,perf))
+                best_model = copy.deepcopy(m)                
                 best_perf = perf
 
                 
