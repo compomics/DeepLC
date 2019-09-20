@@ -270,7 +270,6 @@ class LCPep():
                 uncal_preds = self.model.predict(X)/correction_factor
 
             for uncal_pred in uncal_preds:
-                print(uncal_pred)
                 try:
                     slope,intercept,x_correction = self.calibrate_dict[str(round(uncal_pred,self.bin_dist))]
                     cal_preds.append(slope * (uncal_pred-x_correction) + intercept)
@@ -412,6 +411,8 @@ class LCPep():
 
             self.calibrate_min, self.calibrate_max, self.calibrate_dict = calibrate_output
 
+            if len(self.calibrate_dict.keys()) == 0: continue
+
             preds = self.make_preds(seqs=seqs,
                                     mods=mods,
                                     identifiers=identifiers,
@@ -425,26 +426,14 @@ class LCPep():
             else:
                 perf = sum(abs(measured_tr-preds))
 
-            print("\n\n\n=====\n",perf,"=====\n\n\n\n")
-
             if perf < best_perf:
                 # Is deepcopy really required?
                 best_calibrate_dict = copy.deepcopy(self.calibrate_dict)
                 best_calibrate_min = copy.deepcopy(self.calibrate_min)
                 best_calibrate_max = copy.deepcopy(self.calibrate_max)
-                
-                print("\n\n\n++++++\n",perf,"\n+++++\n\n\n\n")
-                print(best_perf,perf,best_model,m)
-                print("\n\n\n++++++\n",perf,"\n+++++\n\n\n\n")
 
                 best_model = copy.deepcopy(m)                
                 best_perf = perf
-
-        print(best_calibrate_dict)
-        print(best_calibrate_min)
-        print(best_calibrate_max)
-        print(best_model)
-        input()
         
         self.calibrate_dict = best_calibrate_dict
         self.calibrate_min = best_calibrate_min
