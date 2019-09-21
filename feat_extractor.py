@@ -474,7 +474,9 @@ class FeatExtractor():
                     if fm not in atoms_order: continue
                     mod_dict[index_name]["%s%s%s" % (fm,relative_loc,add_str)] += n
         if self.verbose: print("Time to calculate mod features: %s seconds" % (time.time() - t0))
-        return pd.DataFrame(mod_dict,dtype=int).T
+        df_ret = pd.DataFrame(mod_dict,dtype=int).T
+        del mod_dict
+        return df_ret
 
 
     def get_feats_chem_descr(self,
@@ -835,8 +837,13 @@ class FeatExtractor():
             ret_list_sum[row_index] = {"index_name":row_index,"matrix_sum":matrix_sum}
             ret_list_all[row_index] = {"index_name":row_index,"matrix_all":matrix_all}
             ret_list_pos[row_index] = {"index_name":row_index,"pos_matrix":matrix_pos.flatten()}
+
+        ret_list = pd.DataFrame.from_dict(ret_list).T
+        ret_list_sum = pd.DataFrame.from_dict(ret_list_sum).T
+        ret_list_pos = pd.DataFrame.from_dict(ret_list_pos).T
+        ret_list_all = pd.DataFrame.from_dict(ret_list_all).T
         
-        return pd.DataFrame.from_dict(ret_list).T, pd.DataFrame.from_dict(ret_list_sum).T, pd.DataFrame.from_dict(ret_list_pos).T, pd.DataFrame.from_dict(ret_list_all).T        
+        return ret_list, ret_list_sum, ret_list_pos, ret_list_all
 
     def full_feat_extract(self,
                         seqs,
@@ -883,6 +890,10 @@ class FeatExtractor():
             if self.verbose: print("Extracting CNN features")
             X_cnn,X_sum,X_cnn_pos,X_cnn_count = self.encode_atoms(seqs,mods,identifiers)
             X_cnn = pd.concat([X_cnn,X_sum,X_cnn_pos,X_cnn_count],axis=1)
+            
+            del X_sum
+            del X_cnn_pos
+            del X_cnn_count
 
         if self.cnn_feats:
             try: X = pd.concat([X,X_cnn],axis=1)

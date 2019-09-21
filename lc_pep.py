@@ -294,13 +294,21 @@ class LCPep():
                 ret_preds = mod.predict([X,X_sum,X_global],batch_size=1024).flatten()/correction_factor
             else:
                 ret_preds = self.model.predict(X)/correction_factor
-        
+
         pred_dict = dict(zip(seq_df["idents"],ret_preds))
 
         # Map from unique peptide identifiers to the original dataframe
         ret_preds_shape = []
         for ident in identifiers:
             ret_preds_shape.append(pred_dict[identifiers_to_seqmod[ident]])
+
+        tf.keras.backend.clear_session()
+
+        del X
+        del X_sum
+        del X_global
+        del ret_preds
+        del mod
 
         return ret_preds_shape
 
@@ -427,7 +435,7 @@ class LCPep():
                 perf = sum(abs(measured_tr-preds))
 
             if perf < best_perf:
-                # Is deepcopy really required?
+                # TODO is deepcopy really required?
                 best_calibrate_dict = copy.deepcopy(self.calibrate_dict)
                 best_calibrate_min = copy.deepcopy(self.calibrate_min)
                 best_calibrate_max = copy.deepcopy(self.calibrate_max)

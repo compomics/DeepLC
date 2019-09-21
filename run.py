@@ -89,6 +89,16 @@ def run(file_pred="",
         n_threads=32,
         split_cal=50,
         dict_divider=50):
+    
+    file_model = ["mods/full_dia_fixed_mods.hdf5",
+                "mods/full_integrated_dataset_v3.hdf5",
+                "mods/full_seqs_21_ptm_alltype_fixed_mods.hdf5"]#,
+                #"mods/full_prosit_table3_gluc_fixed_mods.hdf5",
+                #"mods/full_prosit_table3_chymotrypsin_fixed_mods.hdf5",
+                #"mods/full_prosit_table1_fixed_mods.hdf5",
+                #"mods/full_SCX_fixed_mods.hdf5",
+                #"mods/full_LUNA_HILIC_fixed_mods.hdf5",
+                #"mods/full_LUNA_SILICA_fixed_mods.hdf5"]
 
     df_pred = pd.read_csv(file_pred)
     df_pred = df_pred.fillna("")
@@ -111,9 +121,9 @@ def run(file_pred="",
     
     # Make the pep_lc object that will handle making predictions and calibration
     pepper = LCPep(path_model=file_model,
-                   f_extractor=f_extractor,
-                   cnn_model=True,
-                   verbose=False)
+                f_extractor=f_extractor,
+                cnn_model=True,
+                verbose=False)
 
     # Calibrate the original model based on the new retention times
     if len(file_cal) > 1:
@@ -134,7 +144,7 @@ def run(file_pred="",
         plt.title("Predicted retention times")
         plt.xlabel("Observed tr")
         plt.ylabel("Predicted tr")
-        plt.savefig("preds_%s.png" % (file_pred), dpi=150)
+        plt.savefig("preds_%s.png" % (os.path.basename(file_pred).split(".")[0]), dpi=150)
 
 if __name__ == "__main__":
     main()
