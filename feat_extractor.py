@@ -813,7 +813,8 @@ class FeatExtractor():
                             matrix_pos[loc-len(seq),dict_index_pos[atom]] += val
                             
                     except KeyError:
-                        print("Going to skip the following atom in modification: %s" % (mod))
+                        pass
+                        #print("Going to skip the following atom in modification: %s" % (mod))
                     except IndexError:
                         print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
                 
@@ -829,7 +830,8 @@ class FeatExtractor():
                             matrix_pos[loc-len(seq),dict_index_pos[atom]] -= val
                             
                     except KeyError:
-                        print("Going to skip the following atom in modification: %s" % (mod))
+                        pass
+                        #print("Going to skip the following atom in modification: %s" % (mod))
                     except IndexError:
                         print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
 
