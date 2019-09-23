@@ -607,7 +607,7 @@ class FeatExtractor():
                         mod_comp[split_mod[i-1]-1][atom] += atom_change
                     except KeyError:
                         pass
-                        #print("Going to skip the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
+                        #print("Skipping the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
                     except IndexError:
                         pass
                         #print("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
@@ -617,7 +617,7 @@ class FeatExtractor():
                         mod_comp[split_mod[i-1]-1][atom] -= atom_change
                     except KeyError:
                         pass
-                        #print("Going to skip the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
+                        #print("Skipping the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
                     except IndexError:
                         pass
                         #print("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
@@ -792,7 +792,7 @@ class FeatExtractor():
                     fill_mods,fill_num = self.calc_feats_mods(self.lib_add[mod])
                     subtract_mods,subtract_num = self.calc_feats_mods(self.lib_subtract[mod])
                 except KeyError:
-                    print("Going to skip the following modification due to it not being present in the library: %s" % (mod))
+                    print("Skipping the following modification due to it not being present in the library: %s" % (mod))
                     continue
                 
                 # What is the location? If bigger than sequence... Put it on C-terminus...
@@ -814,7 +814,7 @@ class FeatExtractor():
                             
                     except KeyError:
                         pass
-                        #print("Going to skip the following atom in modification: %s" % (mod))
+                        #print("Skipping the following atom in modification: %s" % (mod))
                     except IndexError:
                         print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
                 
@@ -831,7 +831,7 @@ class FeatExtractor():
                             
                     except KeyError:
                         pass
-                        #print("Going to skip the following atom in modification: %s" % (mod))
+                        #print("Skipping the following atom in modification: %s" % (mod))
                     except IndexError:
                         print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
 

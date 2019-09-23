@@ -243,7 +243,7 @@ class LCPep():
 
         # If we need to apply deep NN
         if self.cnn_model:
-            if self.verbose: print("Going to extract feature for the CNN model ...")
+            if self.verbose: print("Extracting features for the CNN model ...")
             X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
             
@@ -254,7 +254,7 @@ class LCPep():
 
             X = np.stack(X["matrix"])
         else:
-            if self.verbose: print("Going to extract feature for the predictive model ...")
+            if self.verbose: print("Extracting features for the predictive model ...")
             seq_df.index
             X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
@@ -264,7 +264,7 @@ class LCPep():
         ret_preds = []
 
         if calibrate:
-            if self.verbose: print("Going to make predictions with calibration ...")
+            if self.verbose: print("Predicting with calibration ...")
 
             cal_preds = []
 
@@ -295,7 +295,7 @@ class LCPep():
                         cal_preds.append(slope * (uncal_pred-x_correction) + intercept)
             ret_preds = np.array(cal_preds)
         else:
-            if self.verbose: print("Going to make predictions ...")
+            if self.verbose: print("Predicting values ...")
             if self.cnn_model:
                 if mod_name == False:
                     mod = load_model(self.model)

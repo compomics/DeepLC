@@ -229,7 +229,7 @@ def fit_xgb(X_train,y_train,X_test,y_test,config_file="config.ini"):
     # train using the best hyperparameters and make cv preds
     model = xgb.XGBRegressor(**random_search.best_params_)
 
-    if verbose > 0: print("Going to perform CV predictions now...")
+    if verbose > 0: print("Predictioning tR with CV now...")
     train_cross_preds = cross_val_predict(model,X_train,y_train,cv=cv)
 
     random_search.feats = X_train.columns
