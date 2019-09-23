@@ -236,8 +236,14 @@ class LCPep():
         # Drop duplicated seq+mod
         seq_df.drop_duplicates(subset=["idents"],inplace=True)            
 
+        if self.verbose:
+            cnn_verbose = 1
+        else:
+            cnn_verbose = 0
+
         # If we need to apply deep NN
         if self.cnn_model:
+            if self.verbose: print("Going to extract feature for the CNN model ...")
             X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
             
@@ -248,6 +254,7 @@ class LCPep():
 
             X = np.stack(X["matrix"])
         else:
+            if self.verbose: print("Going to extract feature for the predictive model ...")
             seq_df.index
             X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
@@ -257,8 +264,10 @@ class LCPep():
         ret_preds = []
 
         if calibrate:
+            if self.verbose: print("Going to make predictions with calibration ...")
+
             cal_preds = []
-            
+
             if self.cnn_model:
                 if mod_name == False:
                     mod = load_model(self.model)
@@ -286,12 +295,13 @@ class LCPep():
                         cal_preds.append(slope * (uncal_pred-x_correction) + intercept)
             ret_preds = np.array(cal_preds)
         else:
+            if self.verbose: print("Going to make predictions ...")
             if self.cnn_model:
                 if mod_name == False:
                     mod = load_model(self.model)
                 else:
                     mod = load_model(mod_name)
-                ret_preds = mod.predict([X,X_sum,X_global],batch_size=1024).flatten()/correction_factor
+                ret_preds = mod.predict([X,X_sum,X_global],batch_size=1024,verbose=cnn_verbose).flatten()/correction_factor
             else:
                 ret_preds = self.model.predict(X)/correction_factor
 
@@ -301,6 +311,8 @@ class LCPep():
         ret_preds_shape = []
         for ident in identifiers:
             ret_preds_shape.append(pred_dict[identifiers_to_seqmod[ident]])
+
+        if self.verbose: print("Predictions done ...")
 
         tf.keras.backend.clear_session()
 
@@ -358,6 +370,8 @@ class LCPep():
         calibrate_min = float('inf')
         calibrate_max = 0
 
+        if self.verbose: print("Selecting the data points for calibration (used to fit the linear models between)")
+
         # smooth between observed and predicted
         for mtr,ptr in zip(self.split_seq(measured_tr,self.split_cal),self.split_seq(predicted_tr,self.split_cal)):
             if use_median:
@@ -366,7 +380,8 @@ class LCPep():
             else:
                 mtr_mean.append(sum(mtr)/len(mtr))
                 ptr_mean.append(sum(ptr)/len(ptr))
-                
+
+        if self.verbose: print("Fitting the linear models between the points")
 
         # calculate calibration curves
         for i in range(0,len(ptr_mean)):
@@ -401,6 +416,9 @@ class LCPep():
         if type(self.model) == str:
             self.model = [self.model]
         
+        if self.verbose: print("Start to calibrate predictions ...")
+        if self.verbose: print("Ready to find the best model out of: %s" % (self.model))
+
         best_perf = float("inf")
         best_calibrate_min = 0.0
         best_calibrate_max = 0.0
@@ -408,6 +426,7 @@ class LCPep():
         best_model = ""
         
         for m in self.model:
+            if self.verbose: print("Trying out the following model: %s" % (m))
             calibrate_output = self.calibrate_preds_func(seqs=seqs,
                                                         mods=mods,
                                                         identifiers=identifiers,
@@ -434,6 +453,8 @@ class LCPep():
             else:
                 perf = sum(abs(measured_tr-preds))
 
+            if self.verbose: print("For current model got a performance of: %s" % (perf/len(preds)))
+
             if perf < best_perf:
                 # TODO is deepcopy really required?
                 best_calibrate_dict = copy.deepcopy(self.calibrate_dict)
@@ -442,11 +463,15 @@ class LCPep():
 
                 best_model = copy.deepcopy(m)                
                 best_perf = perf
+                
+                if self.verbose: print("Model with the best performance got selected: %s" % (best_model))
         
         self.calibrate_dict = best_calibrate_dict
         self.calibrate_min = best_calibrate_min
         self.calibrate_max = best_calibrate_max
         self.model = best_model
+
+        if self.verbose: print("Model with the best performance got selected: %s" % (best_model))
 
     def split_seq(self,
                 a,
