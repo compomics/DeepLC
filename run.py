@@ -41,20 +41,24 @@ def parse_arguments():
     Returns
     -------
     """
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--file_pred", type=str, dest="file_pred",default="",
                         help="Specify the file and path to make predictions for")
-    
+
     parser.add_argument("--file_cal", type=str, dest="file_cal", default="",
                         help="Specify the file and path for calibrating the predictions (leave empty for no calibration)")
-    
+
     parser.add_argument("--file_pred_out", type=str, dest="file_pred_out", default="",
                         help="Specify the outputfile for the (calibrated) predictions")
 
-    parser.add_argument("--file_model", type=str, dest="file_model", default="",
-                        help="Specify the model to use to make the (calibrated) predictions")
+    parser.add_argument("--file_model",
+                        help="Specify the model(s) to use to make the (calibrated) predictions seperate with spaces",
+                        nargs="+",
+                        default="mods/full_dia_fixed_mods.hdf5 mods/full_integrated_dataset_v3.hdf5 mods/full_seqs_21_ptm_alltype_fixed_mods.hdf5")
+
+    #parser.add_argument("--file_model", type=str, dest="file_model", default="",
+    #                    help="Specify the model to use to make the (calibrated) predictions")
 
     parser.add_argument("--n_threads", type=int, dest="n_threads", default=32,
                         help="Number of peaks to extract and consider for combinations in a spectrum")
@@ -89,16 +93,7 @@ def run(file_pred="",
         n_threads=32,
         split_cal=50,
         dict_divider=50):
-    
-    file_model = ["mods/full_dia_fixed_mods.hdf5",
-                "mods/full_integrated_dataset_v3.hdf5",
-                "mods/full_seqs_21_ptm_alltype_fixed_mods.hdf5"]#,
-                #"mods/full_prosit_table3_gluc_fixed_mods.hdf5",
-                #"mods/full_prosit_table3_chymotrypsin_fixed_mods.hdf5",
-                #"mods/full_prosit_table1_fixed_mods.hdf5",
-                #"mods/full_SCX_fixed_mods.hdf5",
-                #"mods/full_LUNA_HILIC_fixed_mods.hdf5",
-                #"mods/full_LUNA_SILICA_fixed_mods.hdf5"]
+    print(file_model)
 
     df_pred = pd.read_csv(file_pred)
     df_pred = df_pred.fillna("")
