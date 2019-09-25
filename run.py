@@ -55,7 +55,7 @@ def parse_arguments():
     parser.add_argument("--file_model",
                         help="Specify the model(s) to use to make the (calibrated) predictions seperate with spaces",
                         nargs="+",
-                        default="mods/full_dia_fixed_mods.hdf5 mods/full_integrated_dataset_v3.hdf5 mods/full_seqs_21_ptm_alltype_fixed_mods.hdf5")
+                        default=["mods/full_dia_fixed_mods.hdf5","mods/full_integrated_dataset_v3.hdf5", "mods/full_seqs_21_ptm_alltype_fixed_mods.hdf5"])
 
     #parser.add_argument("--file_model", type=str, dest="file_model", default="",
     #                    help="Specify the model to use to make the (calibrated) predictions")
