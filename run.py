@@ -10,7 +10,7 @@ __version__ = "1.0"
 __maintainer__ = "Robbin Bouwmeester"
 __email__ = "Robbin.Bouwmeester@ugent.be"
 
-from lc_pep import LCPep
+from lc_pep import DeepLC
 from feat_extractor import FeatExtractor
 
 # Native imports
@@ -35,6 +35,7 @@ import numpy as np
 def parse_arguments():
     """
     Read arguments from the command line
+
     Parameters
     ----------
         
@@ -76,6 +77,15 @@ def parse_arguments():
     return results
 
 def main():
+    """
+    Main function for the CLI interface
+    
+    Parameters
+    ----------
+        
+    Returns
+    -------
+    """
     argu = parse_arguments()
 
     run(file_pred=argu.file_pred,
@@ -93,8 +103,33 @@ def run(file_pred="",
         n_threads=32,
         split_cal=50,
         dict_divider=50):
-    print(file_model)
-
+    """
+    Main function to run the DeepLC code
+    
+    Parameters
+    ----------
+    file_pred : str
+        the file in peprec format that we need to make predictions for
+        this file is not required to contain a tr column
+    file_cal : str
+        the file in peprec format that we use for calibrating the prediction
+        model. This file is required to contain a tr column
+    file_pred_out : str
+        outfile for predictions, the file is in peprec format and predictions
+        are added in the column !!!
+    file_model : str | list
+        the model(s) to try for retention time prediction can be a single location
+        or several locations for multiple models to try
+    n_threads : int
+        number of threads to run mainly the feature extraction on
+    split_cal : int
+        number of splits or divisions to use for the calibration
+    dict_divider : int
+        !!!
+        
+    Returns
+    -------
+    """
     df_pred = pd.read_csv(file_pred)
     df_pred = df_pred.fillna("")
 
@@ -103,7 +138,7 @@ def run(file_pred="",
         df_cal = df_cal.fillna("")
 
     # Make a feature extraction object; you can skip this if you do not want to use the default settings
-    # for pep_lc. Here we want to use a model that does not use RDKit features so we skip the chemical
+    # for DeepLC. Here we want to use a model that does not use RDKit features so we skip the chemical
     # descriptor making procedure.
     f_extractor = FeatExtractor(add_sum_feat=False,
                                 ptm_add_feat=False,
@@ -114,8 +149,8 @@ def run(file_pred="",
                                 cnn_feats = True,
                                 verbose = True)
     
-    # Make the pep_lc object that will handle making predictions and calibration
-    pepper = LCPep(path_model=file_model,
+    # Make the DeepLC object that will handle making predictions and calibration
+    pepper = DeepLC(path_model=file_model,
                 f_extractor=f_extractor,
                 cnn_model=True,
                 verbose=False)

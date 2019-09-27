@@ -60,7 +60,7 @@ def warn(*args, **kwargs):
 import warnings
 warnings.warn = warn
 
-class LCPep():
+class DeepLC():
     def __init__(self,
                 main_path=os.getcwd(),
                 path_model=None,
@@ -72,6 +72,16 @@ class LCPep():
                 config_file=None,
                 f_extractor=None,
                 cnn_model=False):
+        """
+        What to put here!!!
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
+        """
         
         # if a config file is defined overwrite standard parameters
         if config_file:
@@ -150,7 +160,7 @@ class LCPep():
 
         Parameters
         ----------
-        df_instances : pd.DataFrame
+        df_instances : object :: pd.DataFrame
             dataframe containing the sequences (column:seq), modifications (column:modifications) and naming (column:index)
 
         Returns
@@ -168,7 +178,7 @@ class LCPep():
 
         Parameters
         ----------
-        df_instances : pd.DataFrame
+        df_instances : object :: pd.DataFrame
             dataframe containing the sequences (column:seq), modifications (column:modifications) and naming (column:index)
         
         Returns
@@ -197,7 +207,7 @@ class LCPep():
 
         Parameters
         ----------
-        seq_df : pd.DataFrame
+        seq_df : object :: pd.DataFrame
             dataframe containing the sequences (column:seq), modifications (column:modifications) and naming (column:index);
             will use parallel by default!
         seqs : list
@@ -263,11 +273,13 @@ class LCPep():
         
         ret_preds = []
 
+        # If we need to calibrate
         if calibrate:
             if self.verbose: print("Predicting with calibration ...")
 
             cal_preds = []
 
+            # Load the model differently if we are going to use a CNN
             if self.cnn_model:
                 if mod_name == False:
                     mod = load_model(self.model)
@@ -296,6 +308,8 @@ class LCPep():
             ret_preds = np.array(cal_preds)
         else:
             if self.verbose: print("Predicting values ...")
+
+            # Load the model different if we use CNN
             if self.cnn_model:
                 if mod_name == False:
                     mod = load_model(self.model)
@@ -314,6 +328,8 @@ class LCPep():
 
         if self.verbose: print("Predictions done ...")
 
+        # Below can cause freezing on some systems
+        # It is meant to clear any remaining vars in memory
         tf.keras.backend.clear_session()
 
         del X
@@ -334,7 +350,7 @@ class LCPep():
                              use_median=True,
                              mod_name=False):
         """
-        Make calibration curve for predictions TODO make similar function for pd.DataFrame
+        Make calibration curve for predictions
 
         Parameters
         ----------
@@ -346,10 +362,28 @@ class LCPep():
             identifiers of the peptides; should correspond to seqs and mods
         measured_tr : list
             measured tr of the peptides; should correspond to seqs, identifiers, and mods
+        correction_factor : float
+            correction factor that needs to be applied to the supplied measured trs
+        seq_df : object :: pd.DataFrame
+            a pd.DataFrame that contains the sequences, modifications and observed
+            retention times to fit a calibration curve
+        use_median : boolean
+            flag to indicate we need to use the median valuein a window to perform calibration
+        mod_name
+            specify a model to use instead of the model assigned originally to this instance
+            of the object
 
         Returns
         -------
-        
+        float
+            the minimum value where a calibration curve was fitted, lower values
+            will be extrapolated from the minimum fit of the calibration curve
+        float
+            the maximum value where a calibration curve was fitted, higher values
+            will be extrapolated from the maximum fit of the calibration curve
+        dict
+            dictionary with keys for rounded tr, and the values concern a linear model
+            that should be applied to do calibration (!!! what is the shape of this?)        
         """
         if len(seqs) == 0:
             seq_df.index
@@ -413,6 +447,31 @@ class LCPep():
                         correction_factor=1.0,
                         seq_df=None,
                         use_median=True):
+        """
+        Make calibration curve for predictions
+
+        Parameters
+        ----------
+        seqs : list
+            peptide sequence list; should correspond to mods and identifiers
+        mods : list
+            naming of the mods; should correspond to seqs and identifiers
+        identifiers : list
+            identifiers of the peptides; should correspond to seqs and mods
+        measured_tr : list
+            measured tr of the peptides; should correspond to seqs, identifiers, and mods
+        correction_factor : float
+            correction factor that needs to be applied to the supplied measured trs
+        seq_df : object :: pd.DataFrame
+            a pd.DataFrame that contains the sequences, modifications and observed
+            retention times to fit a calibration curve
+        use_median : boolean
+            flag to indicate we need to use the median valuein a window to perform calibration
+
+        Returns
+        -------
+
+        """
         if type(self.model) == str:
             self.model = [self.model]
         

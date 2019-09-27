@@ -3,7 +3,7 @@ import numpy as np
 from collections import Counter
 import re
 
-from lc_pep import LCPep
+from lc_pep import DeepLC
 from feat_extractor import FeatExtractor
 
 # Native imports
@@ -39,7 +39,7 @@ def main():
     df_cal = df[df['scan_id'].isin(train_ids)]
 
     # Make a feature extraction object; you can skip this if you do not want to use the default settings
-    # for pep_lc. Here we want to use a model that does not use RDKit features so we skip the chemical
+    # for DeepLC. Here we want to use a model that does not use RDKit features so we skip the chemical
     # descriptor making procedure.
     f_extractor = FeatExtractor(add_sum_feat=False,
                                 ptm_add_feat=False,
@@ -50,8 +50,8 @@ def main():
                                 cnn_feats = True,
                                 verbose = True)
     
-    # Make the pep_lc object that will handle making predictions and calibration
-    pepper = LCPep(config_file = "config.ini",
+    # Make the DeepLC object that will handle making predictions and calibration
+    pepper = DeepLC(config_file = "config.ini",
                 path_model=["mods/full_dia_fixed_mods.hdf5",
                             "mods/full_integrated_dataset_v3.hdf5",
                             "mods/full_seqs_21_ptm_alltype_fixed_mods.hdf5",

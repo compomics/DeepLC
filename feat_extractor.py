@@ -47,7 +47,16 @@ class FeatExtractor():
                 add_comp_feat=True,
                 cnn_feats=False,
                 config_file=None):
+        """
+        What to put here!!!
 
+        Parameters
+        ----------
+
+        Returns
+        -------
+
+        """
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()
@@ -245,7 +254,7 @@ class FeatExtractor():
 
         Returns
         -------
-        pd.DataFrame
+        object :: pd.DataFrame
             pandas dataframe containing the features calculated for the peptide
         """
 
@@ -317,7 +326,7 @@ class FeatExtractor():
 
         Returns
         -------
-        pd.DataFrame
+        object :: pd.DataFrame
             pandas dataframe containing the features calculated for the peptide
         """
         if not split_size: split_size = self.split_size
@@ -440,7 +449,7 @@ class FeatExtractor():
 
         Returns
         -------
-        pd.DataFrame
+        object :: pd.DataFrame
             feature matrix for peptide PTMs
         """
         if not split_size: split_size = self.split_size
@@ -509,7 +518,7 @@ class FeatExtractor():
 
         Returns
         -------
-        pd.DataFrame
+        object :: pd.DataFrame
             feature matrix for peptide PTMs
         """
         if not split_size: split_size = self.split_size
@@ -565,7 +574,7 @@ class FeatExtractor():
 
         Returns
         -------
-        pd.DataFrame
+        object :: pd.DataFrame
             feature matrix for compositional changes caused by modifications
         """
         composition_dict = {}
@@ -719,13 +728,13 @@ class FeatExtractor():
 
         Returns
         -------
-        pd.DataFrame
+        object :: pd.DataFrame
             feature matrix (np.matrix) of all positions (up till padding length)
-        pd.DataFrame
+        object :: pd.DataFrame
             feature matrix (np.matrix) of summed positions (up till paddint length / sum_mods)
-        pd.DataFrame
+        object :: pd.DataFrame
             feature matrix (np.matrix) of specific positions (from positions argument)
-        pd.DataFrame
+        object :: pd.DataFrame
             feature matrix (np.matrix) of summed composition
         """
         
