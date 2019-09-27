@@ -755,10 +755,10 @@ class FeatExtractor():
             seq = seq+padding
             
             # Initialize all feature matrixes
-            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.float16)
-            matrix_sum = np.zeros((int(len(seq)/sum_mods),len(dict_index.keys())),dtype=np.float32)
-            matrix_all = np.zeros(len(dict_index_all.keys())+1,dtype=np.float32)
-            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.float16)
+            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.int8)
+            matrix_sum = np.zeros((int(len(seq)/sum_mods),len(dict_index.keys())),dtype=np.int16)
+            matrix_all = np.zeros(len(dict_index_all.keys())+1,dtype=np.int16)
+            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.int8)
 
             # Add the feature of sequence length to the feature matrix where all atom are counted
             matrix_all[len(dict_index_all.keys())] = len(seq)
