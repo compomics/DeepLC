@@ -72,16 +72,17 @@ class DeepLC():
 
     """
     def __init__(self,
-                main_path=os.getcwd(),
-                path_model=None,
-                verbose=True,
-                bin_dist=1,
-                dict_cal_divider = 100,
-                split_cal = 25,
-                n_jobs=32,
-                config_file=None,
-                f_extractor=None,
-                cnn_model=False):        
+                 main_path=os.getcwd(),
+                 path_model=None,
+                 verbose=True,
+                 bin_dist=1,
+                 dict_cal_divider = 100,
+                 split_cal = 25,
+                 n_jobs=32,
+                 config_file=None,
+                 f_extractor=None,
+                 cnn_model=False,
+                 batch_num=350000):        
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()
@@ -98,6 +99,7 @@ class DeepLC():
         self.calibrate_max = 0
         self.cnn_model = cnn_model
 
+        self.batch_num = batch_num
         self.dict_cal_divider = dict_cal_divider
         self.split_cal = split_cal
         self.n_jobs = n_jobs
@@ -193,7 +195,7 @@ class DeepLC():
         pool.join()
         return df
 
-    def make_preds(self,
+    def make_preds_core(self,
                 seqs=[],
                 mods=[],
                 identifiers=[],
@@ -338,6 +340,41 @@ class DeepLC():
         del mod
 
         return ret_preds_shape
+
+    def make_preds(self,
+            seqs=[],
+            mods=[],
+            identifiers=[],
+            calibrate=True,
+            seq_df=None,
+            correction_factor=1.0,
+            mod_name=False):
+        if self.batch_num == 0:
+            return self.make_preds_core(seqs=seqs,
+                                        mods=mods,
+                                        identifiers=identifiers,
+                                        calibrate=calibrate,
+                                        seq_df=seq_df,
+                                        correction_factor=correction_factor,
+                                        mod_name=mod_name)
+        else:
+            ret_preds = []
+            if len(seqs) > 0:
+                seq_df = pd.DataFrame({"seq": seqs,
+                                       "modifications": mods},
+                                       index=identifiers)
+            for g, seq_df_t in seq_df.groupby(np.arange(len(seq_df)) // self.batch_num):
+                temp_preds = self.make_preds_core(identifiers=identifiers,
+                                                  calibrate=calibrate,
+                                                  seq_df=seq_df_t,
+                                                  correction_factor=correction_factor,
+                                                  mod_name=mod_name)
+                ret_preds.extend(temp_preds)
+
+                #if self.verbose:
+                print("Finished predicting retention time for: %s/%s" % (len(ret_preds),len(seq_df)))
+            return ret_preds
+
 
     def calibrate_preds_func(self,
                              seqs=[],
