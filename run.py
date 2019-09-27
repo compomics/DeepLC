@@ -10,7 +10,7 @@ __version__ = "1.0"
 __maintainer__ = "Robbin Bouwmeester"
 __email__ = "Robbin.Bouwmeester@ugent.be"
 
-from lc_pep import DeepLC
+from deeplc import DeepLC
 from feat_extractor import FeatExtractor
 
 # Native imports

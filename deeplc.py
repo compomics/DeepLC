@@ -61,6 +61,16 @@ import warnings
 warnings.warn = warn
 
 class DeepLC():
+    """
+    Place holder, fill later
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
     def __init__(self,
                 main_path=os.getcwd(),
                 path_model=None,
@@ -71,18 +81,7 @@ class DeepLC():
                 n_jobs=32,
                 config_file=None,
                 f_extractor=None,
-                cnn_model=False):
-        """
-        What to put here!!!
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
-        
+                cnn_model=False):        
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()

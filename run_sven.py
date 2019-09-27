@@ -3,7 +3,7 @@ import numpy as np
 from collections import Counter
 import re
 
-from lc_pep import DeepLC
+from deeplc import DeepLC
 from feat_extractor import FeatExtractor
 
 # Native imports

@@ -27,6 +27,16 @@ import numpy as np
 import pandas as pd
 
 class FeatExtractor():
+    """
+    Place holder, fill later
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    """
     def __init__(self,
                 main_path=os.getcwd(),
                 lib_path_mod=os.path.join(os.getcwd(),"unimod/"),
@@ -47,16 +57,6 @@ class FeatExtractor():
                 add_comp_feat=True,
                 cnn_feats=False,
                 config_file=None):
-        """
-        What to put here!!!
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-
-        """
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()
