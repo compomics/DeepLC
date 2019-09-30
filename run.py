@@ -165,7 +165,7 @@ def run(file_pred="",
     df_pred["Predicted tR"] = preds
     df_pred.to_csv(file_pred_out)
 
-    if len(file_cal) > 1:
+    if len(file_cal) > 1 and "tr" in df_pred.columns:
         plt.figure(figsize=(11.5,9))
         plt.scatter(df_pred["tr"],df_pred["Predicted tR"],s=3)
         plt.title("Predicted retention times")
