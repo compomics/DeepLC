@@ -38,12 +38,12 @@ class FeatExtractor():
 
     """
     def __init__(self,
-                main_path=os.getcwd(),
-                lib_path_mod=os.path.join(os.getcwd(),"unimod/"),
-                lib_path_prot_scale=os.path.join(os.getcwd(),"expasy/"),
-                lib_aa_composition=os.path.join(os.getcwd(),"aa_comp_rel.csv"),
-                lib_path_smiles=os.path.join(os.getcwd(),"mod_to_smiles/"),
-                lib_three_to_one=os.path.join(os.getcwd(),"expasy/three_to_one.csv"),
+                main_path=os.path.dirname(os.path.realpath(__file__)),
+                lib_path_mod=os.path.join(os.path.dirname(os.path.realpath(__file__)),"unimod/"),
+                lib_path_prot_scale=os.path.join(os.path.dirname(os.path.realpath(__file__)),"expasy/"),
+                lib_aa_composition=os.path.join(os.path.dirname(os.path.realpath(__file__)),"aa_comp_rel.csv"),
+                lib_path_smiles=os.path.join(os.path.dirname(os.path.realpath(__file__)),"mod_to_smiles/"),
+                lib_three_to_one=os.path.join(os.path.dirname(os.path.realpath(__file__)),"expasy/three_to_one.csv"),
                 split_size=7,
                 verbose=True,
                 include_specific_posses=[0,1,2,3,4,5,6,-1,-2,-3,-4,-5,-6,-7],

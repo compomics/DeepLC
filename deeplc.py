@@ -72,7 +72,7 @@ class DeepLC():
 
     """
     def __init__(self,
-                 main_path=os.getcwd(),
+                 main_path=os.path.dirname(os.path.realpath(__file__)),
                  path_model=None,
                  verbose=True,
                  bin_dist=1,
