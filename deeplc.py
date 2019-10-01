@@ -12,8 +12,12 @@ __version__ = "1.0"
 __maintainer__ = "Robbin Bouwmeester"
 __email__ = "Robbin.Bouwmeester@ugent.be"
 
-# Native imports
 import os
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(SCRIPT_DIR)
+
+# Native imports
 import time
 import pickle
 from operator import itemgetter
@@ -48,7 +52,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 #session = tf.compat.v1.Session(config=config)
 
 # Feature extraction
-from .feat_extractor import FeatExtractor
+from feat_extractor import FeatExtractor
 
 # Multiproc
 from multiprocessing import Pool
@@ -95,7 +99,7 @@ class DeepLC():
         self.verbose = verbose
         self.bin_dist = bin_dist
         self.calibrate_dict = {}
-        self.calibrate_min = float('inf')
+        self.calibrate_min = float("inf")
         self.calibrate_max = 0
         self.cnn_model = cnn_model
 
