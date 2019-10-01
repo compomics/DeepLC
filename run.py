@@ -67,6 +67,9 @@ def parse_arguments():
     parser.add_argument("--dict_divider", type=int, dest="dict_divider", default=50,
                         help="Number of peaks to extract and consider for combinations in a spectrum")
 
+    parser.add_argument("--batch_num", type=int, dest="batch_num", default=50000,
+                        help="Batch size (of peptides) to use for predicting the retention time. Lower to decrease memory footprint")
+
     parser.add_argument("--version", action="version", version="%(prog)s 1.0")
 
     results = parser.parse_args()
@@ -91,7 +94,8 @@ def main():
         file_model=argu.file_model,
         n_threads=argu.n_threads,
         split_cal=argu.split_cal,
-        dict_divider=argu.dict_divider)
+        dict_divider=argu.dict_divider,
+        batch_num=argu.batch_num)
 
 def run(file_pred="",
         file_cal="",
@@ -99,7 +103,8 @@ def run(file_pred="",
         file_model="",
         n_threads=32,
         split_cal=50,
-        dict_divider=50):
+        dict_divider=50,
+        batch_num=50000):
     """
     Main function to run the DeepLC code
     
@@ -150,7 +155,8 @@ def run(file_pred="",
     pepper = DeepLC(path_model=file_model,
                 f_extractor=f_extractor,
                 cnn_model=True,
-                verbose=False)
+                verbose=False,
+                batch_num=batch_num)
 
     # Calibrate the original model based on the new retention times
     if len(file_cal) > 1:
