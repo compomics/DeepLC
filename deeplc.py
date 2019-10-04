@@ -57,7 +57,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 #session = tf.compat.v1.Session(config=config)
 
 # Feature extraction
-from .feat_extractor import FeatExtractor
+from feat_extractor import FeatExtractor
 
 # Multiproc
 from multiprocessing import Pool
