@@ -58,7 +58,7 @@ def parse_arguments():
                         nargs="+",
                         default=["mods/full_dia_fixed_mods.hdf5","mods/full_integrated_dataset_v3.hdf5", "mods/full_seqs_21_ptm_alltype_fixed_mods.hdf5"])
 
-    parser.add_argument("--n_threads", type=int, dest="n_threads", default=8,
+    parser.add_argument("--n_threads", type=int, dest="n_threads", default=16,
                         help="Number of peaks to extract and consider for combinations in a spectrum")
 
     parser.add_argument("--split_cal", type=int, dest="split_cal", default=50,
