@@ -12,8 +12,13 @@ __version__ = "1.0"
 __maintainer__ = "Robbin Bouwmeester"
 __email__ = "Robbin.Bouwmeester@ugent.be"
 
-# Native imports
 import os
+import sys
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(SCRIPT_DIR)
+
+# Native imports
 import time
 import pickle
 from operator import itemgetter
@@ -32,6 +37,10 @@ import xgboost as xgb
 
 # Keras
 from tensorflow.keras.models import load_model
+from tensorflow.keras.backend import set_session
+from tensorflow.keras.backend import clear_session
+from tensorflow.keras.backend import get_session
+
 import tensorflow as tf
 
 # Set to force CPU calculations
@@ -60,6 +69,15 @@ def warn(*args, **kwargs):
 import warnings
 warnings.warn = warn
 
+# Reset Keras Session
+def reset_keras():
+    sess = get_session()
+    clear_session()
+    sess.close()
+    sess = get_session()
+    print(gc.collect()) # if it's done something you should see a number being outputted
+
+
 class DeepLC():
     """
     Place holder, fill later
@@ -72,7 +90,7 @@ class DeepLC():
 
     """
     def __init__(self,
-                 main_path=os.getcwd(),
+                 main_path=os.path.dirname(os.path.realpath(__file__)),
                  path_model=None,
                  verbose=True,
                  bin_dist=1,
@@ -95,7 +113,7 @@ class DeepLC():
         self.verbose = verbose
         self.bin_dist = bin_dist
         self.calibrate_dict = {}
-        self.calibrate_min = float('inf')
+        self.calibrate_min = float("inf")
         self.calibrate_max = 0
         self.cnn_model = cnn_model
 
@@ -331,12 +349,7 @@ class DeepLC():
 
         # Below can cause freezing on some systems
         # It is meant to clear any remaining vars in memory
-        tf.keras.backend.clear_session()
-
-        del X
-        del X_sum
-        del X_global
-        del ret_preds
+        reset_keras()
         del mod
 
         return ret_preds_shape
