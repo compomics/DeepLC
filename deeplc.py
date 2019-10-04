@@ -81,8 +81,7 @@ def reset_keras():
     clear_session()
     sess.close()
     sess = get_session()
-    print(gc.collect()) # if it's done something you should see a number being outputted
-
+    gc.collect()
 
 class DeepLC():
     """
