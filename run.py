@@ -58,7 +58,7 @@ def parse_arguments():
                         nargs="+",
                         default=["mods/full_dia_fixed_mods.hdf5","mods/full_integrated_dataset_v3.hdf5", "mods/full_seqs_21_ptm_alltype_fixed_mods.hdf5"])
 
-    parser.add_argument("--n_threads", type=int, dest="n_threads", default=32,
+    parser.add_argument("--n_threads", type=int, dest="n_threads", default=8,
                         help="Number of peaks to extract and consider for combinations in a spectrum")
 
     parser.add_argument("--split_cal", type=int, dest="split_cal", default=50,
@@ -67,7 +67,7 @@ def parse_arguments():
     parser.add_argument("--dict_divider", type=int, dest="dict_divider", default=50,
                         help="Number of peaks to extract and consider for combinations in a spectrum")
 
-    parser.add_argument("--batch_num", type=int, dest="batch_num", default=50000,
+    parser.add_argument("--batch_num", type=int, dest="batch_num", default=250000,
                         help="Batch size (of peptides) to use for predicting the retention time. Lower to decrease memory footprint")
 
     parser.add_argument("--version", action="version", version="%(prog)s 1.0")
@@ -155,6 +155,7 @@ def run(file_pred="",
     pepper = DeepLC(path_model=file_model,
                 f_extractor=f_extractor,
                 cnn_model=True,
+                n_jobs=n_threads,
                 verbose=False,
                 batch_num=batch_num)
 

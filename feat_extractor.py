@@ -750,7 +750,7 @@ class FeatExtractor():
             feature matrix (np.matrix) of summed composition
         """
         def rolling_sum(a, n=4) :
-            ret = np.cumsum(a, axis=1, dtype=np.int16)
+            ret = np.cumsum(a, axis=1, dtype=np.float16)
             ret[:, n:] = ret[:, n:] - ret[:, :-n]
             return ret[:, n - 1:]
 
@@ -773,10 +773,10 @@ class FeatExtractor():
             seq = seq+padding
             
             # Initialize all feature matrixes
-            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.int8)
+            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.float16)
             #matrix_sum = np.zeros((int(len(seq)/sum_mods),len(dict_index.keys())),dtype=np.int16)
-            matrix_all = np.zeros(len(dict_index_all.keys())+1,dtype=np.int16)
-            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.int8)
+            matrix_all = np.zeros(len(dict_index_all.keys())+1,dtype=np.float16)
+            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.float16)
 
             # Add the feature of sequence length to the feature matrix where all atom are counted
             matrix_all[len(dict_index_all.keys())] = len(seq)
@@ -798,7 +798,12 @@ class FeatExtractor():
                         matrix_pos[index,dict_index_pos[atom]] = val
                     elif index-seq_len in positions:
                         matrix_pos[index-seq_len,dict_index_pos[atom]] = val
-            matrix_sum = rolling_sum(df,n=2)[:,1::2]
+            matrix_sum = rolling_sum(matrix.T,n=2)[:,::2].T
+            #print(matrix_sum)
+            #print(matrix)
+            #print("\n\n\n\n====")
+            #print(rolling_sum(matrix,n=2))
+            #input()
             # If there are no modifications we can continue to the next peptide
             if len(mods) == 0:
                 ret_list[row_index] = {"index_name":row_index,"matrix":matrix}
@@ -809,28 +814,26 @@ class FeatExtractor():
             
             
             # Iterate over all modifications
-            mods = mods.split("|")
+            mods = mods.rstrip().lower().split("|")
             for i in range(1,len(mods),2):
-                # We do not allow any capitals in our modifications
-                mod = mods[i].lower()
 
                 try:
-                    mod_add = self.lib_add[mod]
-                    mod_sub = self.lib_subtract[mod]
+                    mod_add = self.lib_add[mods[i]]
+                    mod_sub = self.lib_subtract[mods[i]]
                 except KeyError:
                     print("Skipping the following modification due to it not being present in the library: %s" % (mod))
                     continue
                 # Try to get the compositional change
                 try:
-                    subtract_mods,subtract_num = look_up_mod_subtract[self.lib_subtract[split_mod[i]]]
+                    subtract_mods,subtract_num = look_up_mod_subtract[mod_sub]
                 except KeyError:
-                    look_up_mod_subtract[self.lib_subtract[split_mod[i]]] = self.calc_feats_mods(self.lib_subtract[split_mod[i]])
-                    subtract_mods,subtract_num = look_up_mod_subtract[self.lib_subtract[split_mod[i]]]
+                    look_up_mod_subtract[mod_sub] = self.calc_feats_mods(mod_sub)
+                    subtract_mods,subtract_num = look_up_mod_subtract[mod_sub]
                 try:
-                    fill_mods,fill_num = look_up_mod_add[self.lib_subtract[split_mod[i]]]
+                    fill_mods,fill_num = look_up_mod_add[mod_add]
                 except KeyError:
-                    look_up_mod_add[self.lib_subtract[split_mod[i]]] = self.calc_feats_mods(self.lib_add[split_mod[i]])
-                    fill_mods,fill_num = look_up_mod_add[self.lib_subtract[split_mod[i]]]
+                    look_up_mod_add[mod_add] = self.calc_feats_mods(mod_add)
+                    fill_mods,fill_num = look_up_mod_add[mod_add]
 
                 # What is the location? If bigger than sequence... Put it on C-terminus...
                 # TODO display error
