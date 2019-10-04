@@ -310,7 +310,7 @@ class DeepLC():
                     mod = load_model(self.model)
                 else:
                     mod = load_model(mod_name)
-                uncal_preds = mod.predict([X,X_sum,X_global],batch_size=1024).flatten()/correction_factor
+                uncal_preds = mod.predict([X,X_sum,X_global],batch_size=5120).flatten()/correction_factor
             else:
                 # first get uncalibrated prediction
                 uncal_preds = self.model.predict(X)/correction_factor
@@ -340,7 +340,7 @@ class DeepLC():
                     mod = load_model(self.model)
                 else:
                     mod = load_model(mod_name)
-                ret_preds = mod.predict([X,X_sum,X_global],batch_size=1024,verbose=cnn_verbose).flatten()/correction_factor
+                ret_preds = mod.predict([X,X_sum,X_global],batch_size=5120,verbose=cnn_verbose).flatten()/correction_factor
             else:
                 ret_preds = self.model.predict(X)/correction_factor
 

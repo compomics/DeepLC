@@ -692,6 +692,8 @@ class FeatExtractor():
                     indexes,
                     padding_length=60,
                     positions=set([0,1,2,3,-1,-2,-3,-4]),
+                    positions_pos=set([0,1,2,3]),
+                    positions_neg=set([-1,-2,-3,-4]),
                     sum_mods=2,
                     dict_index_pos={'C' : 0,
                                 'H' : 1,
@@ -749,8 +751,8 @@ class FeatExtractor():
         object :: pd.DataFrame
             feature matrix (np.matrix) of summed composition
         """
-        def rolling_sum(a, n=4) :
-            ret = np.cumsum(a, axis=1, dtype=np.float16)
+        def rolling_sum(a, n=2) :
+            ret = np.cumsum(a, axis=1, dtype=np.int16)
             ret[:, n:] = ret[:, n:] - ret[:, :-n]
             return ret[:, n - 1:]
 
@@ -765,21 +767,20 @@ class FeatExtractor():
         for row_index,seq,mods in zip(indexes,seqs,mods_all):
             # For now anything longer than padding length is cut away (C-terminal cutting)
             seq_len = len(seq)
-            if seq_len > padding_length: 
+            if seq_len > padding_length:
                 seq = seq[0:padding_length]
+                seq_len = len(seq)
             
             # Add padding for peptides that are too short
             padding = "".join(["X"]*(padding_length-len(seq)))
             seq = seq+padding
             
             # Initialize all feature matrixes
-            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.float16)
-            #matrix_sum = np.zeros((int(len(seq)/sum_mods),len(dict_index.keys())),dtype=np.int16)
-            matrix_all = np.zeros(len(dict_index_all.keys())+1,dtype=np.float16)
-            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.float16)
+            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.int8)
+            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.int8)
 
             # Add the feature of sequence length to the feature matrix where all atom are counted
-            matrix_all[len(dict_index_all.keys())] = len(seq)
+            pep_len = len(seq)-seq.count("X")
             
             for index,aa in enumerate(seq):
                 # Stop iterating if we start analyzing the padding characters
@@ -791,19 +792,26 @@ class FeatExtractor():
                 for atom,val in self.lib_aa_composition[aa].items():
                     # Add compositional features to all matrixes
                     matrix[index,dict_index[atom]] = val
-                    #matrix_sum[index_sum,dict_index[atom]] += val
-                    matrix_all[dict_index_all[atom]] += val
-                    
-                    if index in positions:
-                        matrix_pos[index,dict_index_pos[atom]] = val
-                    elif index-seq_len in positions:
-                        matrix_pos[index-seq_len,dict_index_pos[atom]] = val
+            
+            for p in positions_pos:
+                aa = seq[p]
+                
+                for atom,val in self.lib_aa_composition[aa].items():
+                    matrix_pos[p,dict_index_pos[atom]] = val
+            
+            for pn in positions_neg:
+                aa = seq[seq_len+pn]
+                if aa == "X":
+                    print(aa)
+                    input()
+                
+                for atom,val in self.lib_aa_composition[aa].items():
+                    matrix_pos[pn,dict_index_pos[atom]] = val
+
             matrix_sum = rolling_sum(matrix.T,n=2)[:,::2].T
-            #print(matrix_sum)
-            #print(matrix)
-            #print("\n\n\n\n====")
-            #print(rolling_sum(matrix,n=2))
-            #input()
+            matrix_all = np.sum(matrix_sum,axis=0)
+            matrix_all = np.append(matrix_all,seq_len)
+
             # If there are no modifications we can continue to the next peptide
             if len(mods) == 0:
                 ret_list[row_index] = {"index_name":row_index,"matrix":matrix}
