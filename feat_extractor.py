@@ -795,16 +795,11 @@ class FeatExtractor():
             
             for p in positions_pos:
                 aa = seq[p]
-                
                 for atom,val in self.lib_aa_composition[aa].items():
                     matrix_pos[p,dict_index_pos[atom]] = val
             
             for pn in positions_neg:
-                aa = seq[seq_len+pn]
-                if aa == "X":
-                    print(aa)
-                    input()
-                
+                aa = seq[seq_len+pn]               
                 for atom,val in self.lib_aa_composition[aa].items():
                     matrix_pos[pn,dict_index_pos[atom]] = val
 
