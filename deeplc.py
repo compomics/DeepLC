@@ -37,6 +37,10 @@ import xgboost as xgb
 
 # Keras
 from tensorflow.keras.models import load_model
+from tensorflow.keras.backend import set_session
+from tensorflow.keras.backend import clear_session
+from tensorflow.keras.backend import get_session
+
 import tensorflow as tf
 
 # Set to force CPU calculations
@@ -64,6 +68,15 @@ def warn(*args, **kwargs):
     pass
 import warnings
 warnings.warn = warn
+
+# Reset Keras Session
+def reset_keras():
+    sess = get_session()
+    clear_session()
+    sess.close()
+    sess = get_session()
+    print(gc.collect()) # if it's done something you should see a number being outputted
+
 
 class DeepLC():
     """
@@ -336,12 +349,7 @@ class DeepLC():
 
         # Below can cause freezing on some systems
         # It is meant to clear any remaining vars in memory
-        tf.keras.backend.clear_session()
-
-        del X
-        del X_sum
-        del X_global
-        del ret_preds
+        reset_keras()
         del mod
 
         return ret_preds_shape
