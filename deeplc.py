@@ -38,11 +38,11 @@ import xgboost as xgb
 # Keras
 from tensorflow.keras.models import load_model
 try: from tensorflow.keras.backend import set_session
-except ImportError: tf.compat.v1.keras.backend import set_session
+except ImportError: from tf.compat.v1.keras.backend import set_session
 try: from tensorflow.keras.backend import clear_session
-except ImportError: tf.compat.v1.keras.backend import clear_session
+except ImportError: from tf.compat.v1.keras.backend import clear_session
 try: from tensorflow.keras.backend import get_session
-except ImportError: tf.compat.v1.keras.backend import get_session
+except ImportError: from tf.compat.v1.keras.backend import get_session
 
 import tensorflow as tf
 
