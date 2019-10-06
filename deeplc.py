@@ -41,12 +41,12 @@ import tensorflow as tf
 
 from tensorflow.keras.models import load_model
 
-try: from tensorflow.keras.backend import set_session
-except ImportError: from tensorflow.compat.v1.keras.backend import set_session
-try: from tensorflow.keras.backend import clear_session
-except ImportError: from tensorflow.compat.v1.keras.backend import clear_session
-try: from tensorflow.keras.backend import get_session
-except ImportError: from tensorflow.compat.v1.keras.backend import get_session
+try: from tensorflow.compat.v1.keras.backend import set_session
+except ImportError: from tensorflow.keras.backend import set_session
+try: from tensorflow.compat.v1.keras.backend import clear_session
+except ImportError: from tensorflow.keras.backend import clear_session
+try: from tensorflow.compat.v1.keras.backend import get_session
+except ImportError: from tensorflow.keras.backend import get_session
 
 
 # Set to force CPU calculations
@@ -80,8 +80,10 @@ def reset_keras():
     sess = get_session()
     clear_session()
     sess.close()
-    sess = get_session()
+    #sess = get_session()
     gc.collect()
+    # Set to force CPU calculations
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 class DeepLC():
     """

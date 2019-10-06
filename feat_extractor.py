@@ -56,6 +56,7 @@ class FeatExtractor():
                 include_unnormalized=True,
                 add_comp_feat=True,
                 cnn_feats=False,
+                ignore_mods=False,
                 config_file=None):
         # if a config file is defined overwrite standard parameters
         if config_file:
@@ -98,6 +99,7 @@ class FeatExtractor():
         self.include_unnormalized = include_unnormalized
         self.include_specific_posses = include_specific_posses
         self.add_comp_feat = add_comp_feat
+        self.ignore_mods = ignore_mods
 
     def __str__(self):
         return("""
@@ -416,8 +418,8 @@ class FeatExtractor():
                 atom_symbol = atom.split("(")[0]
                 num_atom = atom.split("(")[1].rstrip(")")
             new_atoms.append(atom_symbol)
-            new_num_atoms.append(num_atom)
-        return new_atoms,map(int,new_num_atoms)
+            new_num_atoms.append(int(num_atom))
+        return new_atoms,new_num_atoms
 
     def get_feats_mods(self,
                     seqs,
@@ -803,12 +805,11 @@ class FeatExtractor():
                 for atom,val in self.lib_aa_composition[aa].items():
                     matrix_pos[pn,dict_index_pos[atom]] = val
 
-            matrix_sum = rolling_sum(matrix.T,n=2)[:,::2].T
-            matrix_all = np.sum(matrix_sum,axis=0)
-            matrix_all = np.append(matrix_all,seq_len)
-
             # If there are no modifications we can continue to the next peptide
             if len(mods) == 0:
+                matrix_all = np.sum(matrix,axis=0)
+                matrix_all = np.append(matrix_all,seq_len)
+                matrix_sum = rolling_sum(matrix.T,n=2)[:,::2].T
                 ret_list[row_index] = {"index_name":row_index,"matrix":matrix}
                 ret_list_sum[row_index] = {"index_name":row_index,"matrix_sum":matrix_sum}
                 ret_list_all[row_index] = {"index_name":row_index,"matrix_all":matrix_all}
@@ -818,13 +819,16 @@ class FeatExtractor():
             
             # Iterate over all modifications
             mods = mods.rstrip().lower().split("|")
+            
             for i in range(1,len(mods),2):
-
+                if self.ignore_mods:
+                    continue
+                
                 try:
                     mod_add = self.lib_add[mods[i]]
                     mod_sub = self.lib_subtract[mods[i]]
                 except KeyError:
-                    print("Skipping the following modification due to it not being present in the library: %s" % (mod))
+                    print("Skipping the following modification due to it not being present in the library: %s" % (mods[i]))
                     continue
                 # Try to get the compositional change
                 try:
@@ -849,7 +853,6 @@ class FeatExtractor():
                 for atom,atom_change in zip(fill_mods,fill_num):
                     try:
                         matrix[loc,dict_index[atom]] += atom_change
-                        matrix_all[dict_index_all[atom]] += val
                         if loc in positions:
                             matrix_pos[loc,dict_index_pos[atom]] += val
                         elif loc-len(seq) in positions:
@@ -859,14 +862,12 @@ class FeatExtractor():
                         pass
                         #print("Skipping the following atom in modification: %s" % (mod))
                     except IndexError:
-                        print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
+                        print("Index does not exist for: ",atom,atom_change,mods[i],seq)
                 
                 # For subtractions in compositional change
                 for atom,atom_change in zip(subtract_mods,subtract_num):
                     try:
-                        
                         matrix[loc,dict_index[atom]] -= atom_change
-                        matrix_all[dict_index_all[atom]] -= val
                         if loc in positions:
                             matrix_pos[loc,dict_index_pos[atom]] -= val
                         elif loc-len(seq) in positions:
@@ -876,7 +877,11 @@ class FeatExtractor():
                         pass
                         #print("Skipping the following atom in modification: %s" % (mod))
                     except IndexError:
-                        print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
+                        print("Index does not exist for: ",atom,atom_change,mods[i],seq)
+
+            matrix_all = np.sum(matrix,axis=0)
+            matrix_all = np.append(matrix_all,seq_len)
+            matrix_sum = rolling_sum(matrix.T,n=2)[:,::2].T
 
             ret_list[row_index] = {"index_name":row_index,"matrix":matrix}
             ret_list_sum[row_index] = {"index_name":row_index,"matrix_sum":matrix_sum}
