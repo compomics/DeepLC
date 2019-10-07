@@ -87,9 +87,9 @@ public class MainController {
         mainFrame.getModelFileChooser().setMultiSelectionEnabled(true);
         mainFrame.getOutputFileChooser().setFileSelectionMode(JFileChooser.FILES_ONLY);
 
-        mainFrame.setTitle("DeepColumn " + ConfigHolder.getInstance().getString("deep_lc_gui.version", "N/A"));
+        mainFrame.setTitle("DeepLC " + ConfigHolder.getInstance().getString("deep_lc_gui.version", "N/A"));
 
-        OutLogger.tieSystemOutAndErrToLog();
+        //OutLogger.tieSystemOutAndErrToLog();
 
         //get the gui appender for setting the log text area
         logTextAreaAppender = (LogTextAreaAppender) Logger.getRootLogger().getAppender("gui");
@@ -385,7 +385,6 @@ public class MainController {
                 throw new UnsupportedOperationException();
             }
 
-            pb.inheritIO();
             // Start the process.
             Process process = pb.start();
 
@@ -459,7 +458,6 @@ public class MainController {
                 command.append(" --split_cal ").append(mainFrame.getSplitCalibrationTextField().getText());
                 command.append(" --dict_divider ").append(mainFrame.getDictionaryDividerTextField().getText());
                 command.append(" --dict_divider ").append(mainFrame.getBatchNumberTextField().getText());
-                System.out.println(command);
 
                 printWriter.println(command);
             }
@@ -502,7 +500,6 @@ public class MainController {
                 command.append(" --split_cal ").append(mainFrame.getSplitCalibrationTextField().getText());
                 command.append(" --dict_divider ").append(mainFrame.getDictionaryDividerTextField().getText());
                 command.append(" --dict_divider ").append(mainFrame.getBatchNumberTextField().getText());
-                System.out.println(command);
 
                 printWriter.print(command);
             }
