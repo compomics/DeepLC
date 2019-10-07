@@ -25,6 +25,7 @@ from operator import itemgetter
 import sys
 from configparser import ConfigParser
 import time
+import gc
 
 # Pandas
 import pandas as pd
@@ -36,8 +37,17 @@ import numpy as np
 import xgboost as xgb
 
 # Keras
-from tensorflow.keras.models import load_model
 import tensorflow as tf
+
+from tensorflow.keras.models import load_model
+
+try: from tensorflow.compat.v1.keras.backend import set_session
+except ImportError: from tensorflow.keras.backend import set_session
+try: from tensorflow.compat.v1.keras.backend import clear_session
+except ImportError: from tensorflow.keras.backend import clear_session
+try: from tensorflow.compat.v1.keras.backend import get_session
+except ImportError: from tensorflow.keras.backend import get_session
+
 
 # Set to force CPU calculations
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -64,6 +74,16 @@ def warn(*args, **kwargs):
     pass
 import warnings
 warnings.warn = warn
+
+# Reset Keras Session
+def reset_keras():
+    sess = get_session()
+    clear_session()
+    sess.close()
+    #sess = get_session()
+    gc.collect()
+    # Set to force CPU calculations
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 class DeepLC():
     """
@@ -291,7 +311,7 @@ class DeepLC():
                     mod = load_model(self.model)
                 else:
                     mod = load_model(mod_name)
-                uncal_preds = mod.predict([X,X_sum,X_global],batch_size=1024).flatten()/correction_factor
+                uncal_preds = mod.predict([X,X_sum,X_global],batch_size=5120).flatten()/correction_factor
             else:
                 # first get uncalibrated prediction
                 uncal_preds = self.model.predict(X)/correction_factor
@@ -321,7 +341,7 @@ class DeepLC():
                     mod = load_model(self.model)
                 else:
                     mod = load_model(mod_name)
-                ret_preds = mod.predict([X,X_sum,X_global],batch_size=1024,verbose=cnn_verbose).flatten()/correction_factor
+                ret_preds = mod.predict([X,X_sum,X_global],batch_size=5120,verbose=cnn_verbose).flatten()/correction_factor
             else:
                 ret_preds = self.model.predict(X)/correction_factor
 
@@ -336,12 +356,7 @@ class DeepLC():
 
         # Below can cause freezing on some systems
         # It is meant to clear any remaining vars in memory
-        tf.keras.backend.clear_session()
-
-        del X
-        del X_sum
-        del X_global
-        del ret_preds
+        reset_keras()
         del mod
 
         return ret_preds_shape

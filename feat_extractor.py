@@ -56,6 +56,7 @@ class FeatExtractor():
                 include_unnormalized=True,
                 add_comp_feat=True,
                 cnn_feats=False,
+                ignore_mods=False,
                 config_file=None):
         # if a config file is defined overwrite standard parameters
         if config_file:
@@ -98,6 +99,7 @@ class FeatExtractor():
         self.include_unnormalized = include_unnormalized
         self.include_specific_posses = include_specific_posses
         self.add_comp_feat = add_comp_feat
+        self.ignore_mods = ignore_mods
 
     def __str__(self):
         return("""
@@ -416,8 +418,8 @@ class FeatExtractor():
                 atom_symbol = atom.split("(")[0]
                 num_atom = atom.split("(")[1].rstrip(")")
             new_atoms.append(atom_symbol)
-            new_num_atoms.append(num_atom)
-        return new_atoms,map(int,new_num_atoms)
+            new_num_atoms.append(int(num_atom))
+        return new_atoms,new_num_atoms
 
     def get_feats_mods(self,
                     seqs,
@@ -455,6 +457,8 @@ class FeatExtractor():
         if not split_size: split_size = self.split_size
         if self.verbose: t0 = time.time()
         mod_dict = {}
+        look_up_mod_subtract = {}
+        look_up_mod_add = {}
 
         len_init = len([ao+str(spl_s) for spl_s in range(split_size) for ao in atoms_order])
         for index_name,mod,seq in zip(identifiers,mods,seqs):
@@ -468,10 +472,20 @@ class FeatExtractor():
                 if math.isnan(mod):
                     continue
 
-            split_mod = mod.split("|")
+            split_mod = mod.rstrip().split("|")
             for i in range(1,len(split_mod),2):
-                if subtract_mods: fill_mods,num = self.calc_feats_mods(self.lib_subtract[split_mod[i].rstrip()])
-                else: fill_mods,num = self.calc_feats_mods(self.lib_add[split_mod[i].rstrip()])
+                if subtract_mods:
+                    try:
+                        fill_mods,num = look_up_mod_subtract[self.lib_subtract[split_mod[i]]]
+                    except KeyError:
+                        look_up_mod_subtract[self.lib_subtract[split_mod[i]]] = self.calc_feats_mods(self.lib_subtract[split_mod[i]])
+                        fill_mods,num = look_up_mod_subtract[self.lib_subtract[split_mod[i]]]
+                else: 
+                    try:
+                        fill_mods,num = look_up_mod_add[self.lib_subtract[split_mod[i]]]
+                    except KeyError:
+                        look_up_mod_add[self.lib_subtract[split_mod[i]]] = self.calc_feats_mods(self.lib_add[split_mod[i]])
+                        fill_mods,num = look_up_mod_add[self.lib_subtract[split_mod[i]]]
 
                 loc = int(split_mod[i-1])
                 
@@ -679,7 +693,9 @@ class FeatExtractor():
                     mods_all,
                     indexes,
                     padding_length=60,
-                    positions=[0,1,2,3,-1,-2,-3,-4],
+                    positions=set([0,1,2,3,-1,-2,-3,-4]),
+                    positions_pos=set([0,1,2,3]),
+                    positions_neg=set([-1,-2,-3,-4]),
                     sum_mods=2,
                     dict_index_pos={'C' : 0,
                                 'H' : 1,
@@ -737,52 +753,63 @@ class FeatExtractor():
         object :: pd.DataFrame
             feature matrix (np.matrix) of summed composition
         """
-        
+        def rolling_sum(a, n=2) :
+            ret = np.cumsum(a, axis=1, dtype=np.float32)
+            ret[:, n:] = ret[:, n:] - ret[:, :-n]
+            return ret[:, n - 1:]
+
         ret_list = {}
         ret_list_sum = {}
         ret_list_all = {}
         ret_list_pos = {}
+        look_up_mod_subtract = {}
+        look_up_mod_add = {}
         
         # Iterate over all instances
         for row_index,seq,mods in zip(indexes,seqs,mods_all):
             # For now anything longer than padding length is cut away (C-terminal cutting)
             seq_len = len(seq)
-            if seq_len > padding_length: 
+            if seq_len > padding_length:
                 seq = seq[0:padding_length]
+                seq_len = len(seq)
             
             # Add padding for peptides that are too short
             padding = "".join(["X"]*(padding_length-len(seq)))
             seq = seq+padding
             
             # Initialize all feature matrixes
-            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.int8)
-            matrix_sum = np.zeros((int(len(seq)/sum_mods),len(dict_index.keys())),dtype=np.int16)
-            matrix_all = np.zeros(len(dict_index_all.keys())+1,dtype=np.int16)
-            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.int8)
+            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.float16)
+            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.float16)
 
             # Add the feature of sequence length to the feature matrix where all atom are counted
-            matrix_all[len(dict_index_all.keys())] = len(seq)
+            pep_len = len(seq)-seq.count("X")
             
             for index,aa in enumerate(seq):
                 # Stop iterating if we start analyzing the padding characters
                 if aa == "X": break
 
                 # Calculate the index for the summed feature matrix
-                index_sum = int(index/sum_mods)
+                #index_sum = int(index/sum_mods)
                 
                 for atom,val in self.lib_aa_composition[aa].items():
                     # Add compositional features to all matrixes
                     matrix[index,dict_index[atom]] = val
-                    matrix_sum[index_sum,dict_index[atom]] += val
-                    matrix_all[dict_index_all[atom]] += val
-                    
-                    if index in positions:
-                        matrix_pos[index,dict_index_pos[atom]] = val
-                    elif index-seq_len in positions:
-                        matrix_pos[index-seq_len,dict_index_pos[atom]] = val
             
+            for p in positions_pos:
+                aa = seq[p]
+                for atom,val in self.lib_aa_composition[aa].items():
+                    matrix_pos[p,dict_index_pos[atom]] = val
+            
+            for pn in positions_neg:
+                aa = seq[seq_len+pn]               
+                for atom,val in self.lib_aa_composition[aa].items():
+                    matrix_pos[pn,dict_index_pos[atom]] = val
+
             # If there are no modifications we can continue to the next peptide
             if len(mods) == 0:
+                matrix_all = np.sum(matrix,axis=0)
+                matrix_all = np.append(matrix_all,seq_len)
+                matrix_sum = rolling_sum(matrix.T,n=2)[:,::2].T
                 ret_list[row_index] = {"index_name":row_index,"matrix":matrix}
                 ret_list_sum[row_index] = {"index_name":row_index,"matrix_sum":matrix_sum}
                 ret_list_all[row_index] = {"index_name":row_index,"matrix_all":matrix_all}
@@ -791,19 +818,30 @@ class FeatExtractor():
             
             
             # Iterate over all modifications
-            mods = mods.split("|")
+            mods = mods.rstrip().lower().split("|")
+            
             for i in range(1,len(mods),2):
-                # We do not allow any capitals in our modifications
-                mod = mods[i].lower()
-
-                # Try to get the compositional change
-                try:
-                    fill_mods,fill_num = self.calc_feats_mods(self.lib_add[mod])
-                    subtract_mods,subtract_num = self.calc_feats_mods(self.lib_subtract[mod])
-                except KeyError:
-                    print("Skipping the following modification due to it not being present in the library: %s" % (mod))
+                if self.ignore_mods:
                     continue
                 
+                try:
+                    mod_add = self.lib_add[mods[i]]
+                    mod_sub = self.lib_subtract[mods[i]]
+                except KeyError:
+                    print("Skipping the following modification due to it not being present in the library: %s" % (mods[i]))
+                    continue
+                # Try to get the compositional change
+                try:
+                    subtract_mods,subtract_num = look_up_mod_subtract[mod_sub]
+                except KeyError:
+                    look_up_mod_subtract[mod_sub] = self.calc_feats_mods(mod_sub)
+                    subtract_mods,subtract_num = look_up_mod_subtract[mod_sub]
+                try:
+                    fill_mods,fill_num = look_up_mod_add[mod_add]
+                except KeyError:
+                    look_up_mod_add[mod_add] = self.calc_feats_mods(mod_add)
+                    fill_mods,fill_num = look_up_mod_add[mod_add]
+
                 # What is the location? If bigger than sequence... Put it on C-terminus...
                 # TODO display error
                 # TODO find better solution than C-terminus
@@ -815,7 +853,6 @@ class FeatExtractor():
                 for atom,atom_change in zip(fill_mods,fill_num):
                     try:
                         matrix[loc,dict_index[atom]] += atom_change
-                        matrix_all[dict_index_all[atom]] += val
                         if loc in positions:
                             matrix_pos[loc,dict_index_pos[atom]] += val
                         elif loc-len(seq) in positions:
@@ -825,14 +862,12 @@ class FeatExtractor():
                         pass
                         #print("Skipping the following atom in modification: %s" % (mod))
                     except IndexError:
-                        print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
+                        print("Index does not exist for: ",atom,atom_change,mods[i],seq)
                 
                 # For subtractions in compositional change
                 for atom,atom_change in zip(subtract_mods,subtract_num):
                     try:
-                        
                         matrix[loc,dict_index[atom]] -= atom_change
-                        matrix_all[dict_index_all[atom]] -= val
                         if loc in positions:
                             matrix_pos[loc,dict_index_pos[atom]] -= val
                         elif loc-len(seq) in positions:
@@ -842,7 +877,11 @@ class FeatExtractor():
                         pass
                         #print("Skipping the following atom in modification: %s" % (mod))
                     except IndexError:
-                        print("Index does not exist for: ",atom,atom_change,ident,mod,seq)
+                        print("Index does not exist for: ",atom,atom_change,mods[i],seq)
+
+            matrix_all = np.sum(matrix,axis=0)
+            matrix_all = np.append(matrix_all,seq_len)
+            matrix_sum = rolling_sum(matrix.T,n=2)[:,::2].T
 
             ret_list[row_index] = {"index_name":row_index,"matrix":matrix}
             ret_list_sum[row_index] = {"index_name":row_index,"matrix_sum":matrix_sum}
