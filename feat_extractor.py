@@ -754,7 +754,7 @@ class FeatExtractor():
             feature matrix (np.matrix) of summed composition
         """
         def rolling_sum(a, n=2) :
-            ret = np.cumsum(a, axis=1, dtype=np.int16)
+            ret = np.cumsum(a, axis=1, dtype=np.float32)
             ret[:, n:] = ret[:, n:] - ret[:, :-n]
             return ret[:, n - 1:]
 
@@ -778,8 +778,8 @@ class FeatExtractor():
             seq = seq+padding
             
             # Initialize all feature matrixes
-            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.int8)
-            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.int8)
+            matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.float16)
+            matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.float16)
 
             # Add the feature of sequence length to the feature matrix where all atom are counted
             pep_len = len(seq)-seq.count("X")
