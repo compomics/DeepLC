@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.compomics.pep_lc_gui.view;
+package com.compomics.deep_lc_gui.view;
 
 import java.io.File;
 import javax.swing.JButton;

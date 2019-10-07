@@ -1,4 +1,4 @@
-package com.compomics.pep_lc_gui.view;
+package com.compomics.deep_lc_gui.view;
 
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;

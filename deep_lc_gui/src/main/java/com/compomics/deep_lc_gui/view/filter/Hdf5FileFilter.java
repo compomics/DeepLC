@@ -1,4 +1,4 @@
-package com.compomics.pep_lc_gui.view.filter;
+package com.compomics.deep_lc_gui.view.filter;
 
 import java.io.File;
 import javax.swing.filechooser.FileFilter;

@@ -1,6 +1,6 @@
-package com.compomics.pep_lc_gui;
+package com.compomics.deep_lc_gui;
 
-import com.compomics.pep_lc_gui.view.MainController;
+import com.compomics.deep_lc_gui.view.MainController;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
@@ -17,12 +17,12 @@ import org.apache.log4j.Logger;
  *
  * @author Niels Hulstaert
  */
-public class PepLcGuiStarter {
+public class DeepLcGuiStarter {
 
     /**
      * Logger instance.
      */
-    private static final Logger LOGGER = Logger.getLogger(PepLcGuiStarter.class);
+    private static final Logger LOGGER = Logger.getLogger(DeepLcGuiStarter.class);
 
     /**
      * The startup error message.
@@ -38,7 +38,7 @@ public class PepLcGuiStarter {
     /**
      * No-arg constructor.
      */
-    public PepLcGuiStarter() {
+    public DeepLcGuiStarter() {
     }
 
     /**
@@ -82,8 +82,8 @@ public class PepLcGuiStarter {
                     }
                 });
 
-        PepLcGuiStarter pepLcGuiStarter = new PepLcGuiStarter();
-        pepLcGuiStarter.launch();
+        DeepLcGuiStarter deepLcGuiStarter = new DeepLcGuiStarter();
+        deepLcGuiStarter.launch();
     }
 
     /**
@@ -104,7 +104,7 @@ public class PepLcGuiStarter {
             textArea.setLineWrap(true);
             textArea.setWrapStyleWord(true);
 
-            JOptionPane.showMessageDialog(null, scrollPane, "pep_lc GUI startup error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, scrollPane, "deep_lc GUI startup error", JOptionPane.ERROR_MESSAGE);
             System.exit(0);
         }
     }

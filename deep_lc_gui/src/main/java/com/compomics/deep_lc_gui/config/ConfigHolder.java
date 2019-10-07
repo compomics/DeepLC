@@ -1,4 +1,4 @@
-package com.compomics.pep_lc_gui.config;
+package com.compomics.deep_lc_gui.config;
 
 import java.io.IOException;
 import org.apache.commons.configuration.ConfigurationException;
@@ -22,7 +22,7 @@ public class ConfigHolder extends PropertiesConfiguration {
 
     static {
         try {
-            Resource propertiesResource = ResourceUtils.getResourceByRelativePath("pep_lc_gui.properties");
+            Resource propertiesResource = ResourceUtils.getResourceByRelativePath("deep_lc_gui.properties");
             ourInstance = new ConfigHolder(propertiesResource);
         } catch (IOException | ConfigurationException e) {
             LOGGER.error(e.getMessage(), e);

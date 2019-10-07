@@ -1,6 +1,6 @@
-package com.compomics.pep_lc_gui.view;
+package com.compomics.deep_lc_gui.view;
 
-import com.compomics.pep_lc_gui.config.ConfigHolder;
+import com.compomics.deep_lc_gui.config.ConfigHolder;
 import java.awt.CardLayout;
 import java.awt.Component;
 import java.awt.Container;
@@ -12,6 +12,8 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -23,6 +25,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingWorker;
+import org.apache.commons.lang.SystemUtils;
 import org.apache.log4j.Logger;
 
 /**
@@ -84,7 +87,7 @@ public class MainController {
         mainFrame.getModelFileChooser().setMultiSelectionEnabled(true);
         mainFrame.getOutputFileChooser().setFileSelectionMode(JFileChooser.FILES_ONLY);
 
-        mainFrame.setTitle("DeepColumn " + ConfigHolder.getInstance().getString("pep_lc_gui.version", "N/A"));
+        mainFrame.setTitle("DeepColumn " + ConfigHolder.getInstance().getString("deep_lc_gui.version", "N/A"));
 
         OutLogger.tieSystemOutAndErrToLog();
 
@@ -152,8 +155,8 @@ public class MainController {
         });
 
         mainFrame.getStartButton().addActionListener(e -> {
-            List<String> firstPanelValidationMessages = validateFirstPanel();
-            //List<String> firstPanelValidationMessages = new ArrayList<>();
+            //List<String> firstPanelValidationMessages = validateFirstPanel();
+            List<String> firstPanelValidationMessages = new ArrayList<>();
             if (firstPanelValidationMessages.isEmpty()) {
                 getCardLayout().show(mainFrame.getTopPanel(), LAST_PANEL);
                 onCardSwitch();
@@ -368,14 +371,24 @@ public class MainController {
 
             // start the waiting animation
             logTextAreaAppender.setLoading(true);
-            
-            File tempScript = createTempScript();
-            ProcessBuilder pb
-                    = new ProcessBuilder("bash", tempScript.toString());
 
+            File tempScript;
+            ProcessBuilder pb = null;
+            if (SystemUtils.IS_OS_LINUX) {
+                tempScript = createLinuxTempScript();
+                pb = new ProcessBuilder("bash", tempScript.toString());
+            } else if (SystemUtils.IS_OS_WINDOWS) {
+                tempScript = createWindowsTempScript();
+                //tempScript = new File("C:\\Users\\compomics\\Desktop\\Niels\\DeepLC\\deep_lc_gui\\test.bat");
+                pb = new ProcessBuilder(tempScript.getAbsolutePath());
+            } else {
+                throw new UnsupportedOperationException();
+            }
+
+            pb.inheritIO();
             // Start the process.
             Process process = pb.start();
-            
+
             InputStream out = process.getInputStream();
             byte[] buffer = new byte[4000];
             while (isAlive(process)) {
@@ -390,7 +403,7 @@ public class MainController {
                 } catch (InterruptedException e) {
                 }
             }
-                        
+
             // stop the waiting animation
             logTextAreaAppender.setLoading(false);
             return null;
@@ -417,7 +430,7 @@ public class MainController {
             }
         }
 
-        private File createTempScript() throws IOException {
+        private File createLinuxTempScript() throws IOException {
             File tempScript = File.createTempFile("script", null);
 
             try (Writer streamWriter = new OutputStreamWriter(new FileOutputStream(
@@ -432,13 +445,13 @@ public class MainController {
                 //command.append(" --file_pred ").append(deep_lc_location).append("/datasets/test_pred.csv");
                 command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
                 //command.append(" --file_cal ").append(deep_lc_location).append("/datasets/test_train.csv");
-                command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());                
+                command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());
                 //command.append(" --file_pred_out ").append(deep_lc_location).append("/datasets/preds_out.csv");
-                command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());                
+                command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());
                 //command.append(" --file_model ").append(deep_lc_location).append("/mods/full_dia.hdf5");
                 command.append(" --file_model ");
                 Enumeration<File> elements = modelFileListModel.elements();
-                while(elements.hasMoreElements()){
+                while (elements.hasMoreElements()) {
                     File modelFile = elements.nextElement();
                     command.append(modelFile.getAbsolutePath());
                 }
@@ -449,6 +462,49 @@ public class MainController {
                 System.out.println(command);
 
                 printWriter.println(command);
+            }
+
+            return tempScript;
+        }
+
+        private File createWindowsTempScript() throws IOException {
+            File tempScript = File.createTempFile("script", ".bat");
+
+            try (Writer streamWriter = new OutputStreamWriter(new FileOutputStream(
+                    tempScript));
+                    PrintWriter printWriter = new PrintWriter(streamWriter)) {
+                StringBuilder command = new StringBuilder();
+                command.append("call ");
+                String condaEnvLocation = ConfigHolder.getInstance().getString("conda_env_location");      
+                if (!new File(condaEnvLocation).isAbsolute()) {
+                    Path currentRelativePath = Paths.get("");
+                    String currentAbsolutePath = currentRelativePath.toAbsolutePath().toString();
+                    command.append(currentAbsolutePath).append("/");
+                }
+                command.append(condaEnvLocation).append("/Scripts/activate.bat DL & ^python ");
+                command.append("../run.py");
+                
+                String deepLcLocation = ConfigHolder.getInstance().getString("deep_lc_location");
+                command.append(" --file_pred ").append(deepLcLocation).append("/datasets/test_pred.csv");
+                //command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
+                command.append(" --file_cal ").append(deepLcLocation).append("/datasets/test_train.csv");
+                //command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());                
+                command.append(" --file_pred_out ").append(deepLcLocation).append("/datasets/preds_out.csv");
+                //command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());                
+                command.append(" --file_model ").append(deepLcLocation).append("/mods/full_dia.hdf5");
+                //command.append(" --file_model ");
+                //Enumeration<File> elements = modelFileListModel.elements();
+                //while(elements.hasMoreElements()){
+                //    File modelFile = elements.nextElement();
+                //    command.append(modelFile.getAbsolutePath());
+                //}
+                command.append(" --n_threads ").append(mainFrame.getNumberOfThreadsTextField().getText());
+                command.append(" --split_cal ").append(mainFrame.getSplitCalibrationTextField().getText());
+                command.append(" --dict_divider ").append(mainFrame.getDictionaryDividerTextField().getText());
+                command.append(" --dict_divider ").append(mainFrame.getBatchNumberTextField().getText());
+                System.out.println(command);
+
+                printWriter.print(command);
             }
 
             return tempScript;

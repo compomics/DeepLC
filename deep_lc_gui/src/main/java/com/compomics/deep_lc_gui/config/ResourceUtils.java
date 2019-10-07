@@ -1,4 +1,4 @@
-package com.compomics.pep_lc_gui.config;
+package com.compomics.deep_lc_gui.config;
 
 import java.io.File;
 import org.springframework.core.io.ClassPathResource;
