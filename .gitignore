@@ -3,3 +3,6 @@
 *.pyc
 datasets/an_data.csv
 datasets/integrated_dataset_filtered.csv
+deep_lc_gui/target/
+install/Miniconda3/
+install/Miniconda3-latest-Linux-x86_64.sh
