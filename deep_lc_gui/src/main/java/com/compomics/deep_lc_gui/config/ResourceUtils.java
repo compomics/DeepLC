@@ -22,7 +22,7 @@ public class ResourceUtils {
      * @return the found resource
      */
     public static Resource getResourceByRelativePath(String fileName) {
-        Resource resource = new FileSystemResource(RESOURCES_FOLDER + File.separator + fileName);
+        Resource resource = new FileSystemResource(fileName);
         if (!resource.exists()) {
             //try to find it on the classpath
             resource = new ClassPathResource(fileName);

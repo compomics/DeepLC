@@ -379,7 +379,6 @@ public class MainController {
                 pb = new ProcessBuilder("bash", tempScript.toString());
             } else if (SystemUtils.IS_OS_WINDOWS) {
                 tempScript = createWindowsTempScript();
-                //tempScript = new File("C:\\Users\\compomics\\Desktop\\Niels\\DeepLC\\deep_lc_gui\\test.bat");
                 pb = new ProcessBuilder(tempScript.getAbsolutePath());
             } else {
                 throw new UnsupportedOperationException();
@@ -394,6 +393,7 @@ public class MainController {
                 int no = out.available();
                 if (no > 0) {
                     int n = out.read(buffer, 0, Math.min(no, buffer.length));
+                    //String output = 
                     LOGGER.info(new String(buffer, 0, n));
                 }
 
@@ -419,7 +419,7 @@ public class MainController {
             } catch (CancellationException ex) {
                 LOGGER.info("The DeepLC run was cancelled.");
             } catch (Exception ex) {
-                LOGGER.error(ex.getMessage(), ex);
+                ex.printStackTrace();
                 List<String> messages = new ArrayList<>();
                 messages.add(ex.getMessage());
                 showMessageDialog("Unexpected error", messages, JOptionPane.ERROR_MESSAGE);
@@ -437,23 +437,23 @@ public class MainController {
                     PrintWriter printWriter = new PrintWriter(streamWriter)) {
                 printWriter.println("#!/bin/bash");
 
-                String deep_lc_location = ConfigHolder.getInstance().getString("deep_lc_location");
+                String deep_lc_location = ConfigHolder.getInstance().getString("deep_lc_location_linux");
                 StringBuilder command = new StringBuilder();
-                command.append(ConfigHolder.getInstance().getString("conda_env_location")).append("/bin/python").append(" ");
+                command.append(ConfigHolder.getInstance().getString("conda_env_location_linux")).append("/bin/python").append(" ");
                 command.append(deep_lc_location).append("/run.py");
-                //command.append(" --file_pred ").append(deep_lc_location).append("/datasets/test_pred.csv");
-                command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
-                //command.append(" --file_cal ").append(deep_lc_location).append("/datasets/test_train.csv");
-                command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());
-                //command.append(" --file_pred_out ").append(deep_lc_location).append("/datasets/preds_out.csv");
-                command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());
-                //command.append(" --file_model ").append(deep_lc_location).append("/mods/full_dia.hdf5");
-                command.append(" --file_model ");
-                Enumeration<File> elements = modelFileListModel.elements();
-                while (elements.hasMoreElements()) {
-                    File modelFile = elements.nextElement();
-                    command.append(modelFile.getAbsolutePath());
-                }
+                command.append(" --file_pred ").append(deep_lc_location).append("/datasets/test_pred.csv");
+                //command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
+                command.append(" --file_cal ").append(deep_lc_location).append("/datasets/test_train.csv");
+                //command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());
+                command.append(" --file_pred_out ").append(deep_lc_location).append("/datasets/preds_out.csv");
+                //command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());
+                command.append(" --file_model ").append(deep_lc_location).append("/mods/full_dia.hdf5");
+                //command.append(" --file_model ");
+                //Enumeration<File> elements = modelFileListModel.elements();
+                //while (elements.hasMoreElements()) {
+                //    File modelFile = elements.nextElement();
+                //    command.append(modelFile.getAbsolutePath());
+                //}
                 command.append(" --n_threads ").append(mainFrame.getNumberOfThreadsTextField().getText());
                 command.append(" --split_cal ").append(mainFrame.getSplitCalibrationTextField().getText());
                 command.append(" --dict_divider ").append(mainFrame.getDictionaryDividerTextField().getText());
@@ -473,7 +473,7 @@ public class MainController {
                     PrintWriter printWriter = new PrintWriter(streamWriter)) {
                 StringBuilder command = new StringBuilder();
                 command.append("call ");
-                String condaEnvLocation = ConfigHolder.getInstance().getString("conda_env_location");      
+                String condaEnvLocation = ConfigHolder.getInstance().getString("conda_env_location_windows");      
                 if (!new File(condaEnvLocation).isAbsolute()) {
                     Path currentRelativePath = Paths.get("");
                     String currentAbsolutePath = currentRelativePath.toAbsolutePath().toString();
@@ -482,7 +482,7 @@ public class MainController {
                 command.append(condaEnvLocation).append("/Scripts/activate.bat DL & ^python ");
                 command.append("../run.py");
                 
-                String deepLcLocation = ConfigHolder.getInstance().getString("deep_lc_location");
+                String deepLcLocation = ConfigHolder.getInstance().getString("deep_lc_location_windows");
                 command.append(" --file_pred ").append(deepLcLocation).append("/datasets/test_pred.csv");
                 //command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
                 command.append(" --file_cal ").append(deepLcLocation).append("/datasets/test_train.csv");
