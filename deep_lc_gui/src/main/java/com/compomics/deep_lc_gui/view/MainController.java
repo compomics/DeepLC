@@ -155,8 +155,8 @@ public class MainController {
         });
 
         mainFrame.getStartButton().addActionListener(e -> {
-            //List<String> firstPanelValidationMessages = validateFirstPanel();
-            List<String> firstPanelValidationMessages = new ArrayList<>();
+            List<String> firstPanelValidationMessages = validateFirstPanel();
+            //List<String> firstPanelValidationMessages = new ArrayList<>();
             if (firstPanelValidationMessages.isEmpty()) {
                 getCardLayout().show(mainFrame.getTopPanel(), LAST_PANEL);
                 onCardSwitch();
@@ -484,18 +484,18 @@ public class MainController {
                 
                 String deepLcLocation = ConfigHolder.getInstance().getString("deep_lc_location_windows");
                 command.append(" --file_pred ").append(deepLcLocation).append("/datasets/test_pred.csv");
-                //command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
-                command.append(" --file_cal ").append(deepLcLocation).append("/datasets/test_train.csv");
-                //command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());                
-                command.append(" --file_pred_out ").append(deepLcLocation).append("/datasets/preds_out.csv");
-                //command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());                
-                command.append(" --file_model ").append(deepLcLocation).append("/mods/full_dia.hdf5");
-                //command.append(" --file_model ");
-                //Enumeration<File> elements = modelFileListModel.elements();
-                //while(elements.hasMoreElements()){
-                //    File modelFile = elements.nextElement();
-                //    command.append(modelFile.getAbsolutePath());
-                //}
+                command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
+                //command.append(" --file_cal ").append(deepLcLocation).append("/datasets/test_train.csv");
+                command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());                
+                //command.append(" --file_pred_out ").append(deepLcLocation).append("/datasets/preds_out.csv");
+                command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());                
+                //command.append(" --file_model ").append(deepLcLocation).append("/mods/full_dia.hdf5");
+                command.append(" --file_model ");
+                Enumeration<File> elements = modelFileListModel.elements();
+                while(elements.hasMoreElements()){
+                    File modelFile = elements.nextElement();
+                    command.append(modelFile.getAbsolutePath());
+                }
                 command.append(" --n_threads ").append(mainFrame.getNumberOfThreadsTextField().getText());
                 command.append(" --split_cal ").append(mainFrame.getSplitCalibrationTextField().getText());
                 command.append(" --dict_divider ").append(mainFrame.getDictionaryDividerTextField().getText());
