@@ -282,7 +282,7 @@ class DeepLC():
             if self.verbose: print("Extracting features for the CNN model ...")
             X = self.do_f_extraction_pd_parallel(seq_df)
             X = X.loc[seq_df.index]
-            
+
             X_sum = np.stack(X["matrix_sum"])
             X_global = np.concatenate((np.stack(X["matrix_all"]),
                                     np.stack(X["pos_matrix"])),
