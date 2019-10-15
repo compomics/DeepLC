@@ -56,7 +56,7 @@ def parse_arguments():
     parser.add_argument("--file_model",
                         help="Specify the model(s) to use to make the (calibrated) predictions seperate with spaces",
                         nargs="+",
-                        default=["mods/full_dia_fixed_mods.hdf5","mods/full_integrated_dataset_v3.hdf5", "mods/full_seqs_21_ptm_alltype_fixed_mods.hdf5"])
+                        default=["mods/full_hc_dia_fixed_mods.hdf5","mods/full_hc_PXD005573_fixed_mods.hdf5", "mods/full_hc_PXD008783_median_fixed_mods.hdf5"])
 
     parser.add_argument("--n_threads", type=int, dest="n_threads", default=16,
                         help="Number of peaks to extract and consider for combinations in a spectrum")
