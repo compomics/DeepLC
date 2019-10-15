@@ -287,7 +287,7 @@ class DeepLC():
             X_global = np.concatenate((np.stack(X["matrix_all"]),
                                     np.stack(X["pos_matrix"])),
                                     axis=1)
-
+            X_hc = np.stack(X["matrix_hc"])
             X = np.stack(X["matrix"])
         else:
             if self.verbose: print("Extracting features for the predictive model ...")
@@ -311,7 +311,7 @@ class DeepLC():
                     mod = load_model(self.model)
                 else:
                     mod = load_model(mod_name)
-                uncal_preds = mod.predict([X,X_sum,X_global],batch_size=5120).flatten()/correction_factor
+                uncal_preds = mod.predict([X,X_sum,X_global,X_hc],batch_size=5120).flatten()/correction_factor
             else:
                 # first get uncalibrated prediction
                 uncal_preds = self.model.predict(X)/correction_factor
@@ -341,7 +341,7 @@ class DeepLC():
                     mod = load_model(self.model)
                 else:
                     mod = load_model(mod_name)
-                ret_preds = mod.predict([X,X_sum,X_global],batch_size=5120,verbose=cnn_verbose).flatten()/correction_factor
+                ret_preds = mod.predict([X,X_sum,X_global,X_hc],batch_size=5120,verbose=cnn_verbose).flatten()/correction_factor
             else:
                 ret_preds = self.model.predict(X)/correction_factor
 

@@ -688,7 +688,7 @@ class FeatExtractor():
         
         return(pd.DataFrame(feat_dict).T)
 
-    def encode_atoms(self,
+        def encode_atoms(self,
                     seqs,
                     mods_all,
                     indexes,
@@ -697,6 +697,28 @@ class FeatExtractor():
                     positions_pos=set([0,1,2,3]),
                     positions_neg=set([-1,-2,-3,-4]),
                     sum_mods=2,
+                    dict_aa = {
+                        "K" : 0,
+                        "R" : 1,
+                        "P" : 2,
+                        "T" : 3,
+                        "N" : 4,
+                        "A" : 5,
+                        "Q" : 6,
+                        "V" : 7,
+                        "S" : 8,
+                        "G" : 9,
+                        "I" : 10,
+                        "L" : 11,
+                        "C" : 12,
+                        "M" : 13,
+                        "H" : 14,
+                        "F" : 15,
+                        "Y" : 16,
+                        "W" : 17,
+                        "E" : 18,
+                        "D" : 19
+                    },
                     dict_index_pos={'C' : 0,
                                 'H' : 1,
                                 'N' : 2,
@@ -762,6 +784,7 @@ class FeatExtractor():
         ret_list_sum = {}
         ret_list_all = {}
         ret_list_pos = {}
+        ret_list_hc = {}
         look_up_mod_subtract = {}
         look_up_mod_add = {}
         
@@ -779,6 +802,7 @@ class FeatExtractor():
             
             # Initialize all feature matrixes
             matrix = np.zeros((len(seq),len(dict_index.keys())),dtype=np.float16)
+            matrix_hc = np.zeros((len(seq),len(dict_aa.keys())),dtype=np.float16)
             matrix_pos = np.zeros((len(positions),len(dict_index.keys())),dtype=np.float16)
 
             # Add the feature of sequence length to the feature matrix where all atom are counted
@@ -790,6 +814,11 @@ class FeatExtractor():
 
                 # Calculate the index for the summed feature matrix
                 #index_sum = int(index/sum_mods)
+                try:
+                    matrix_hc[index,dict_aa[aa]] = 1.
+                except KeyError:
+                    # TODO write to std out
+                    pass
                 
                 for atom,val in self.lib_aa_composition[aa].items():
                     # Add compositional features to all matrixes
@@ -814,6 +843,7 @@ class FeatExtractor():
                 ret_list_sum[row_index] = {"index_name":row_index,"matrix_sum":matrix_sum}
                 ret_list_all[row_index] = {"index_name":row_index,"matrix_all":matrix_all}
                 ret_list_pos[row_index] = {"index_name":row_index,"pos_matrix":matrix_pos.flatten()}
+                ret_list_hc[row_index] = {"index_name":row_index,"matrix_hc":matrix_hc}
                 continue
             
             
@@ -887,13 +917,15 @@ class FeatExtractor():
             ret_list_sum[row_index] = {"index_name":row_index,"matrix_sum":matrix_sum}
             ret_list_all[row_index] = {"index_name":row_index,"matrix_all":matrix_all}
             ret_list_pos[row_index] = {"index_name":row_index,"pos_matrix":matrix_pos.flatten()}
+            ret_list_hc[row_index] = {"index_name":row_index,"matrix_hc":matrix_hc}
 
         ret_list = pd.DataFrame.from_dict(ret_list).T
         ret_list_sum = pd.DataFrame.from_dict(ret_list_sum).T
         ret_list_pos = pd.DataFrame.from_dict(ret_list_pos).T
         ret_list_all = pd.DataFrame.from_dict(ret_list_all).T
+        ret_list_hc = pd.DataFrame.from_dict(ret_list_hc).T
         
-        return ret_list, ret_list_sum, ret_list_pos, ret_list_all
+        return ret_list, ret_list_sum, ret_list_pos, ret_list_all, ret_list_hc
 
     def full_feat_extract(self,
                         seqs,
@@ -938,12 +970,13 @@ class FeatExtractor():
             X_feats_chem_descr = self.get_feats_chem_descr(seqs,mods,identifiers,split_size=3,add_str="_chem_desc")
         if self.cnn_feats:
             if self.verbose: print("Extracting CNN features")
-            X_cnn,X_sum,X_cnn_pos,X_cnn_count = self.encode_atoms(seqs,mods,identifiers)
-            X_cnn = pd.concat([X_cnn,X_sum,X_cnn_pos,X_cnn_count],axis=1)
+            X_cnn,X_sum,X_cnn_pos,X_cnn_count,X_hc = self.encode_atoms(seqs,mods,identifiers)
+            X_cnn = pd.concat([X_cnn,X_sum,X_cnn_pos,X_cnn_count,X_hc],axis=1)
             
             del X_sum
             del X_cnn_pos
             del X_cnn_count
+            del X_hc
 
         if self.cnn_feats:
             try: X = pd.concat([X,X_cnn],axis=1)
