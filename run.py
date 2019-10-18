@@ -22,6 +22,7 @@ import itertools
 import argparse
 from collections import Counter
 import re
+import logging
 
 # Pandas
 import pandas as pd

@@ -19,6 +19,7 @@ import time
 from configparser import ConfigParser
 import ast
 from re import sub
+import logging
 
 # Numpy
 import numpy as np
@@ -304,7 +305,7 @@ class FeatExtractor():
                 
                 if self.include_unnormalized: feat_dict[name].update(dict([("sum_partial_%s_%s_unnorm" % (f,index+1),sum(feature_seq_split)) for index,feature_seq_split in enumerate(feature_seqs_split)]))
                 
-        if self.verbose: print("Time to calculate features: %s seconds" % (time.time() - t0))
+        if self.verbose: logging.debug("Time to calculate features: %s seconds" % (time.time() - t0))
         
         # transpose is needed to let rows be instances (peptides) and features columns
         return pd.DataFrame(feat_dict).T
@@ -496,7 +497,7 @@ class FeatExtractor():
                 for fm,n in zip(fill_mods,num):
                     if fm not in atoms_order: continue
                     mod_dict[index_name]["%s%s%s" % (fm,relative_loc,add_str)] += n
-        if self.verbose: print("Time to calculate mod features: %s seconds" % (time.time() - t0))
+        if self.verbose: logging.debug("Time to calculate mod features: %s seconds" % (time.time() - t0))
         df_ret = pd.DataFrame(mod_dict,dtype=int).T
         del mod_dict
         return df_ret
@@ -560,7 +561,7 @@ class FeatExtractor():
                 relative_loc = int(math.ceil((int(loc)/len(seq))*split_size))-1
                 for f in feat_order:
                     mod_dict[index_name]["%s%s%s" % (f,relative_loc,add_str)] += chem_descr[f]
-        if self.verbose: print("Time to calculate mod features: %s seconds" % (time.time() - t0))
+        if self.verbose: logging.debug("Time to calculate mod features: %s seconds" % (time.time() - t0))
         return pd.DataFrame(mod_dict).T
 
     def get_comp_change_mods(self,
@@ -613,7 +614,7 @@ class FeatExtractor():
             try:
                 split_mod = mod.split("|")
             except:
-                print("Not able to split the following mod properly: %s" % (mod))
+                logging.debug("Not able to split the following mod properly: %s" % (mod))
                 split_mod = []
 
             # Iterate over modifications
@@ -629,21 +630,17 @@ class FeatExtractor():
                     try:
                         mod_comp[split_mod[i-1]-1][atom] += atom_change
                     except KeyError:
-                        pass
-                        #print("Skipping the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
+                        logging.debug("Skipping the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
                     except IndexError:
-                        pass
-                        #print("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
+                        logging.debug("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
 
                 for atom,atom_change in zip(subtract_mods,subtract_num):
                     try:
                         mod_comp[split_mod[i-1]-1][atom] -= atom_change
                     except KeyError:
-                        pass
-                        #print("Skipping the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
+                        logging.debug("Skipping the following atom in modification: %s,%s,%s,%s,%s,%s" % (split_mod[i],atom,atom_change,ident,mod,seq))
                     except IndexError:
-                        pass
-                        #print("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
+                        logging.debug("Index does not exist for: %s,%s,%s,%s,%s" % (atom,atom_change,ident,mod,seq))
             
             # Make the native peptide compositional feature matrix a pd.DataFrame
             peptide_comp_df = pd.DataFrame(peptide_comp)
@@ -858,7 +855,7 @@ class FeatExtractor():
                     mod_add = self.lib_add[mods[i]]
                     mod_sub = self.lib_subtract[mods[i]]
                 except KeyError:
-                    print("Skipping the following modification due to it not being present in the library: %s" % (mods[i]))
+                    logging.debug("Skipping the following modification due to it not being present in the library: %s" % (mods[i]))
                     continue
                 # Try to get the compositional change
                 try:
@@ -889,10 +886,9 @@ class FeatExtractor():
                             matrix_pos[loc-len(seq),dict_index_pos[atom]] += val
                             
                     except KeyError:
-                        pass
-                        #print("Skipping the following atom in modification: %s" % (mod))
+                        logging.debug("Skipping the following atom in modification: %s" % (mod))
                     except IndexError:
-                        print("Index does not exist for: ",atom,atom_change,mods[i],seq)
+                        logging.debug("Index does not exist for: ",atom,atom_change,mods[i],seq)
                 
                 # For subtractions in compositional change
                 for atom,atom_change in zip(subtract_mods,subtract_num):
@@ -904,10 +900,9 @@ class FeatExtractor():
                             matrix_pos[loc-len(seq),dict_index_pos[atom]] -= val
                             
                     except KeyError:
-                        pass
-                        #print("Skipping the following atom in modification: %s" % (mod))
+                        logging.debug("Skipping the following atom in modification: %s" % (mod))
                     except IndexError:
-                        print("Index does not exist for: ",atom,atom_change,mods[i],seq)
+                        logging.debug("Index does not exist for: ",atom,atom_change,mods[i],seq)
 
             matrix_all = np.sum(matrix,axis=0)
             matrix_all = np.append(matrix_all,seq_len)
@@ -951,25 +946,25 @@ class FeatExtractor():
         if self.verbose: t0 = time.time()
 
         if self.standard_feat:
-            if self.verbose: print("Extracting standard features")
+            if self.verbose: logging.debug("Extracting standard features")
             X = self.get_feats(seqs,identifiers,split_size=self.split_size)
         if self.add_comp_feat:
-            if self.verbose: print("Extracting compositional features")
+            if self.verbose: logging.debug("Extracting compositional features")
             X_comp = self.get_comp_change_mods(seqs,mods,identifiers)
         if self.add_sum_feat:
-            if self.verbose: print("Extracting compositional sum features for modifications")
+            if self.verbose: logging.debug("Extracting compositional sum features for modifications")
             X_feats_sum = self.get_feats_mods(seqs,mods,identifiers,split_size=1,add_str="_sum")
         if self.ptm_add_feat:
-            if self.verbose: print("Extracting compositional add features for modifications")
+            if self.verbose: logging.debug("Extracting compositional add features for modifications")
             X_feats_add = self.get_feats_mods(seqs,mods,identifiers,split_size=self.split_size,add_str="_add")
         if self.ptm_subtract_feat:
-            if self.verbose: print("Extracting compositional subtract features for modifications")
+            if self.verbose: logging.debug("Extracting compositional subtract features for modifications")
             X_feats_neg = self.get_feats_mods(seqs,mods,identifiers,split_size=self.split_size,add_str="_subtract",subtract_mods=True)
         if self.chem_descr_feat:
-            if self.verbose: print("Extracting chemical descriptors features for modifications")
+            if self.verbose: logging.debug("Extracting chemical descriptors features for modifications")
             X_feats_chem_descr = self.get_feats_chem_descr(seqs,mods,identifiers,split_size=3,add_str="_chem_desc")
         if self.cnn_feats:
-            if self.verbose: print("Extracting CNN features")
+            if self.verbose: logging.debug("Extracting CNN features")
             X_cnn,X_sum,X_cnn_pos,X_cnn_count,X_hc = self.encode_atoms(seqs,mods,identifiers)
             X_cnn = pd.concat([X_cnn,X_sum,X_cnn_pos,X_cnn_count,X_hc],axis=1)
             

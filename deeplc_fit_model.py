@@ -14,6 +14,7 @@ __email__ = "Robbin.Bouwmeester@ugent.be"
 
 # Native imports
 from configparser import ConfigParser
+import logging
 
 #SciPy
 from scipy.stats import randint
@@ -229,7 +230,7 @@ def fit_xgb(X_train,y_train,X_test,y_test,config_file="config.ini"):
     # train using the best hyperparameters and make cv preds
     model = xgb.XGBRegressor(**random_search.best_params_)
 
-    if verbose > 0: print("Predictioning tR with CV now...")
+    if verbose > 0: logging.debug("Predicting tR with CV now...")
     train_cross_preds = cross_val_predict(model,X_train,y_train,cv=cv)
 
     random_search.feats = X_train.columns
@@ -237,9 +238,9 @@ def fit_xgb(X_train,y_train,X_test,y_test,config_file="config.ini"):
     test_preds = xgb_model.predict(X_test)
     
     if verbose > 0:
-        print("=====")
-        print(random_search.best_params_)
-        print(random_search.best_score_)
-        print("=====")
+        logging.debug("=====")
+        logging.debug(random_search.best_params_)
+        logging.debug(random_search.best_score_)
+        logging.debug("=====")
     
     return train_preds,train_cross_preds,test_preds,random_search
