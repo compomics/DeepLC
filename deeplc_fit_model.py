@@ -6,7 +6,7 @@ For the library versions see the .yml file
 
 __author__ = "Robbin Bouwmeester"
 __copyright__ = "Copyright 2019"
-__credits__ = ["Robbin Bouwmeester","Prof. Lennart Martens","Sven Degroeve"]
+__credits__ = ["Robbin Bouwmeester", "Prof. Lennart Martens", "Sven Degroeve"]
 __license__ = "Apache License, Version 2.0"
 __version__ = "1.0"
 __maintainer__ = "Robbin Bouwmeester"
@@ -16,11 +16,11 @@ __email__ = "Robbin.Bouwmeester@ugent.be"
 from configparser import ConfigParser
 import logging
 
-#SciPy
+# SciPy
 from scipy.stats import randint
 from scipy.stats import uniform
 
-#SKLearn
+# SKLearn
 from sklearn.model_selection import KFold
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
@@ -43,30 +43,42 @@ import numpy as np
 
 
 def fit_lasso(X_train,
-            y_train,
-            X_test,
-            y_test,
-            nfolds=10,
-            n_jobs=7):
+              y_train,
+              X_test,
+              y_test,
+              nfolds=10,
+              n_jobs=7):
     model = Lasso()
     params = {
-        'alpha' : [0.005,0.01,0.1,1.0,5.0,10.0,100.0,500.0,750.0,1000.0],
-        'copy_X' : [True],
-        'fit_intercept' : [True,False],
-        'normalize' : [True,False],
-        'precompute' : [False]
-    }
-
+        'alpha': [
+            0.005,
+            0.01,
+            0.1,
+            1.0,
+            5.0,
+            10.0,
+            100.0,
+            500.0,
+            750.0,
+            1000.0],
+        'copy_X': [True],
+        'fit_intercept': [
+            True,
+            False],
+        'normalize': [
+            True,
+            False],
+        'precompute': [False]}
 
     cv = KFold(n_splits=nfolds, shuffle=True, random_state=42)
     n_iter_search = 40
     random_search = RandomizedSearchCV(model,
-                                        param_distributions=params,
-                                        n_iter=n_iter_search,
-                                        verbose=10,
-                                        scoring="neg_mean_absolute_error",
-                                        n_jobs=n_jobs,
-                                        cv=cv)
+                                       param_distributions=params,
+                                       n_iter=n_iter_search,
+                                       verbose=10,
+                                       scoring="neg_mean_absolute_error",
+                                       n_jobs=n_jobs,
+                                       cv=cv)
 
     random_search = random_search.fit(X_train, y_train)
 
@@ -78,13 +90,14 @@ def fit_lasso(X_train,
 
     model = Lasso(**random_search.best_params_)
     train_cross_preds = cross_val_predict(model,
-                                            X_train,
-                                            y_train,
-                                            cv=cv)
+                                          X_train,
+                                          y_train,
+                                          cv=cv)
 
     random_search.feats = X_train.columns
 
     return train_preds, train_cross_preds, test_preds
+
 
 def fit_svr(X_train,
             y_train,
@@ -94,13 +107,29 @@ def fit_svr(X_train,
 
     model = SVR()
     params = {
-        'alpha' : [0.0005,0.001,0.005,0.01,0.1,1.0,5.0,10.0,100.0,500.0,750.0,1000.0],
-        'copy_X' : [True],
-        'fit_intercept' : [True,False],
-        'normalize' : [True,False],
-        'precompute' : [True,False]
-    }
-
+        'alpha': [
+            0.0005,
+            0.001,
+            0.005,
+            0.01,
+            0.1,
+            1.0,
+            5.0,
+            10.0,
+            100.0,
+            500.0,
+            750.0,
+            1000.0],
+        'copy_X': [True],
+        'fit_intercept': [
+            True,
+            False],
+        'normalize': [
+            True,
+            False],
+        'precompute': [
+            True,
+            False]}
 
     cv = KFold(n_splits=nfolds, shuffle=True, random_state=42)
     n_iter_search = 50
@@ -115,11 +144,11 @@ def fit_svr(X_train,
     random_search = random_search.fit(X_train, y_train)
 
     xgb_model = random_search.best_estimator_
-    
+
     test_preds = xgb_model.predict(X_test)
-    
+
     train_preds = xgb_model.predict(X_train)
-    
+
     model = SVR(**random_search.best_params_)
     train_cross_preds = cross_val_predict(model,
                                           X_train,
@@ -130,32 +159,34 @@ def fit_svr(X_train,
 
     return train_preds, train_cross_preds, test_preds
 
+
 def fit_xgb_leaf(X,
-                y,
-                X_test,
-                y_test,
-                cv=10,
-                param_dist =  {}):
+                 y,
+                 X_test,
+                 y_test,
+                 cv=10,
+                 param_dist={}):
 
     dtrain = xgb.DMatrix(X,
-                         label = y)
+                         label=y)
     dtest = xgb.DMatrix(X_test,
-                        label = y_test)
+                        label=y_test)
 
     watchlist = [(dtrain, 'train'), (dtest, 'test')]
-    
+
     bst = xgb.train(param_dist,
-                    dtrain, 
-                    num_boost_round=2000, 
-                    evals=watchlist, 
+                    dtrain,
+                    num_boost_round=2000,
+                    evals=watchlist,
                     early_stopping_rounds=10,
                     verbose_eval=False)
 
     pred = bst.predict(dtest)
 
-    return bst.predict(dtrain),bst.predict(dtest),bst.best_score,bst
+    return bst.predict(dtrain), bst.predict(dtest), bst.best_score, bst
 
-def fit_xgb(X_train,y_train,X_test,y_test,config_file="config.ini"):
+
+def fit_xgb(X_train, y_train, X_test, y_test, config_file="config.ini"):
     """
     Extract all features we can extract; without parallelization; use if you want to run feature extraction
     with a single core
@@ -189,58 +220,64 @@ def fit_xgb(X_train,y_train,X_test,y_test,config_file="config.ini"):
     cparser.read(config_file)
 
     # get hyperparameter space to sample from
-    n_estimators = eval(cparser.get("fitXGB","n_estimators"))
-    max_depth  = eval(cparser.get("fitXGB","max_depth"))
-    learning_rate  = eval(cparser.get("fitXGB","learning_rate"))
-    gamma  = eval(cparser.get("fitXGB","gamma"))
-    reg_alpha  = eval(cparser.get("fitXGB","reg_alpha"))
-    reg_lambda  = eval(cparser.get("fitXGB","reg_lambda"))
+    n_estimators = eval(cparser.get("fitXGB", "n_estimators"))
+    max_depth = eval(cparser.get("fitXGB", "max_depth"))
+    learning_rate = eval(cparser.get("fitXGB", "learning_rate"))
+    gamma = eval(cparser.get("fitXGB", "gamma"))
+    reg_alpha = eval(cparser.get("fitXGB", "reg_alpha"))
+    reg_lambda = eval(cparser.get("fitXGB", "reg_lambda"))
 
-    random_state  = cparser.getint("fitXGB","random_state")
-    nfolds  = cparser.getint("fitXGB","nfolds")
-    n_iter_search  = cparser.getint("fitXGB","n_iter_search")
-    verbose  = cparser.getint("fitXGB","verbose")
-    n_jobs  = cparser.getint("fitXGB","n_jobs")
-    eval_metric  = cparser.get("fitXGB","eval_metric").strip('"')
+    random_state = cparser.getint("fitXGB", "random_state")
+    nfolds = cparser.getint("fitXGB", "nfolds")
+    n_iter_search = cparser.getint("fitXGB", "n_iter_search")
+    verbose = cparser.getint("fitXGB", "verbose")
+    n_jobs = cparser.getint("fitXGB", "n_jobs")
+    eval_metric = cparser.get("fitXGB", "eval_metric").strip('"')
 
     model = xgb.XGBRegressor()
 
     params = {
-        'n_estimators' : n_estimators,
-        'max_depth' : max_depth,
-        'learning_rate' : learning_rate,
-        'gamma' : gamma,
-        'reg_alpha' : reg_alpha,
-        'reg_lambda' : reg_lambda,
-        'n_jobs' : [n_jobs]
+        'n_estimators': n_estimators,
+        'max_depth': max_depth,
+        'learning_rate': learning_rate,
+        'gamma': gamma,
+        'reg_alpha': reg_alpha,
+        'reg_lambda': reg_lambda,
+        'n_jobs': [n_jobs]
     }
 
-    cv = KFold(n_splits=nfolds, shuffle=True,random_state=random_state)
-    
-    random_search = RandomizedSearchCV(model, param_distributions=params,
-                                       n_iter=n_iter_search,verbose=verbose,scoring=eval_metric,
-                                       cv=cv,random_state=random_state)
+    cv = KFold(n_splits=nfolds, shuffle=True, random_state=random_state)
+
+    random_search = RandomizedSearchCV(
+        model,
+        param_distributions=params,
+        n_iter=n_iter_search,
+        verbose=verbose,
+        scoring=eval_metric,
+        cv=cv,
+        random_state=random_state)
 
     random_search = random_search.fit(X_train, y_train)
 
     xgb_model = random_search.best_estimator_
-    
+
     train_preds = xgb_model.predict(X_train)
-    
+
     # train using the best hyperparameters and make cv preds
     model = xgb.XGBRegressor(**random_search.best_params_)
 
-    if verbose > 0: logging.debug("Predicting tR with CV now...")
-    train_cross_preds = cross_val_predict(model,X_train,y_train,cv=cv)
+    if verbose > 0:
+        logging.debug("Predicting tR with CV now...")
+    train_cross_preds = cross_val_predict(model, X_train, y_train, cv=cv)
 
     random_search.feats = X_train.columns
-    
+
     test_preds = xgb_model.predict(X_test)
-    
+
     if verbose > 0:
         logging.debug("=====")
         logging.debug(random_search.best_params_)
         logging.debug(random_search.best_score_)
         logging.debug("=====")
-    
-    return train_preds,train_cross_preds,test_preds,random_search
+
+    return train_preds, train_cross_preds, test_preds, random_search
