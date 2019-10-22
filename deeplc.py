@@ -533,6 +533,17 @@ class DeepLC():
 
         if self.verbose:
             logging.debug("Fitting the linear models between the points")
+        
+        if self.split_cal >= len(measured_tr):
+            logging.error("There are not enough measured tr (%s) for the number of splits chosen (%s)" % (len(measured_tr),self.split_cal))
+            logging.error("Choose a smaller split_cal parameter or provide more peptides for fitting the calibration curve")
+            sys.exit(1)
+        if len(mtr_mean) == 0:
+            logging.error("The measured tr list is empty, not able to calibrate")
+            sys.exit(1)
+        if len(ptr_mean) == 0:
+            logging.error("The predicted tr list is empty, not able to calibrate")
+            sys.exit(1)
 
         # calculate calibration curves
         for i in range(0, len(ptr_mean)):

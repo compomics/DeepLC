@@ -1046,7 +1046,7 @@ class FeatExtractor():
                     except KeyError:
                         logging.debug(
                             "Skipping the following atom in modification: %s" %
-                            (mod))
+                            (atom))
                     except IndexError:
                         logging.debug(
                             "Index does not exist for: ",
