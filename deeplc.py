@@ -12,21 +12,6 @@ __version__ = "1.0"
 __maintainer__ = "Robbin Bouwmeester"
 __email__ = "Robbin.Bouwmeester@ugent.be"
 
-import warnings
-import copy
-from multiprocessing import Pool
-from feat_extractor import FeatExtractor
-from tensorflow.keras.models import load_model
-import tensorflow as tf
-import xgboost as xgb
-import numpy as np
-import pandas as pd
-import logging
-import gc
-from configparser import ConfigParser
-from operator import itemgetter
-import pickle
-import time
 import os
 import sys
 
@@ -34,28 +19,35 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(SCRIPT_DIR)
 
 # Native imports
+import time
+import pickle
+from operator import itemgetter
+import sys
+from configparser import ConfigParser
+import time
+import gc
+import logging
 
 # Pandas
+import pandas as pd
 
 # Numpy
+import numpy as np
 
 # XGBoost
+import xgboost as xgb
 
 # Keras
+import tensorflow as tf
 
+from tensorflow.keras.models import load_model
 
-try:
-    from tensorflow.compat.v1.keras.backend import set_session
-except ImportError:
-    from tensorflow.keras.backend import set_session
-try:
-    from tensorflow.compat.v1.keras.backend import clear_session
-except ImportError:
-    from tensorflow.keras.backend import clear_session
-try:
-    from tensorflow.compat.v1.keras.backend import get_session
-except ImportError:
-    from tensorflow.keras.backend import get_session
+try: from tensorflow.compat.v1.keras.backend import set_session
+except ImportError: from tensorflow.keras.backend import set_session
+try: from tensorflow.compat.v1.keras.backend import clear_session
+except ImportError: from tensorflow.keras.backend import clear_session
+try: from tensorflow.compat.v1.keras.backend import get_session
+except ImportError: from tensorflow.keras.backend import get_session
 
 
 # Set to force CPU calculations
@@ -72,19 +64,19 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 #session = tf.compat.v1.Session(config=config)
 
 # Feature extraction
+from feat_extractor import FeatExtractor
 
 # Multiproc
+from multiprocessing import Pool
 
+import copy
 
 def warn(*args, **kwargs):
     pass
-
-
+import warnings
 warnings.warn = warn
 
 # Reset Keras Session
-
-
 def reset_keras():
     sess = get_session()
     clear_session()
