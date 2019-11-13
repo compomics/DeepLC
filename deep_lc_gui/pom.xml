@@ -38,7 +38,7 @@
             </plugin>
         
             <!-- Dependency plugin -->
-<!--            <plugin>
+            <!--            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <version>2.10</version>
@@ -61,7 +61,7 @@
             </plugin>-->
             
             <!-- Resources plugin -->
-            <plugin>
+            <!--            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
                 <version>2.7</version>
@@ -74,7 +74,7 @@
                         </goals>
                         <configuration>
                             <outputDirectory>
-                                ${project.build.directory}/${project.artifactId}-${project.version}
+                                .
                             </outputDirectory>
                             <resources>
                                 <resource>
@@ -86,28 +86,9 @@
                                 </resource>                                
                             </resources>
                         </configuration>
-                    </execution>
-                    <execution>
-                        <id>copy-package-license</id>
-                        <phase>process-resources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/${project.artifactId}-${project.version}
-                            </outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}</directory>
-                                    <includes>
-                                        <include>LICENSE-2.0.txt</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>                   
+                    </execution>                                       
                 </executions>
-            </plugin>                                                                                   
+            </plugin>-->
             
             <!-- Jar plugin -->
             <!--            <plugin>
@@ -139,6 +120,7 @@
                             <goal>single</goal>
                         </goals>
                         <configuration>
+                            <outputDirectory>.</outputDirectory>
                             <archive>
                                 <manifest>
                                     <mainClass>com.compomics.deep_lc_gui.DeepLcGuiStarter</mainClass>

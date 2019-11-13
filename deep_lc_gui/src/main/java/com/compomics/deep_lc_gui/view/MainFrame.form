@@ -120,30 +120,24 @@
                               <Component id="calibrationPeptidesTextField" alignment="0" max="32767" attributes="0"/>
                               <Component id="outputFileTextField" alignment="1" max="32767" attributes="0"/>
                               <Group type="102" alignment="1" attributes="0">
-                                  <Group type="103" groupAlignment="0" attributes="0">
-                                      <Group type="102" alignment="0" attributes="0">
-                                          <Component id="dictionaryDividerLabel" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="DictionaryDividerTextField" min="-2" pref="120" max="-2" attributes="0"/>
-                                      </Group>
-                                      <Group type="102" alignment="0" attributes="0">
-                                          <Component id="splitCalibrationLabel" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace type="separate" max="-2" attributes="0"/>
-                                          <Component id="splitCalibrationTextField" min="-2" pref="120" max="-2" attributes="0"/>
-                                      </Group>
+                                  <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                      <Component id="splitCalibrationLabel" max="32767" attributes="0"/>
+                                      <Component id="dictionaryDividerLabel" max="32767" attributes="0"/>
                                   </Group>
-                                  <EmptySpace pref="43" max="32767" attributes="0"/>
+                                  <EmptySpace max="-2" attributes="0"/>
                                   <Group type="103" groupAlignment="0" attributes="0">
-                                      <Group type="102" attributes="0">
-                                          <Component id="batchNumberLabel" min="-2" pref="120" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="batchNumberTextField" min="-2" pref="120" max="-2" attributes="0"/>
-                                      </Group>
-                                      <Group type="102" attributes="0">
-                                          <Component id="numberOfThreadsLabel" min="-2" pref="120" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="numberOfThreadsTextField" min="-2" pref="120" max="-2" attributes="0"/>
-                                      </Group>
+                                      <Component id="DictionaryDividerTextField" min="-2" pref="120" max="-2" attributes="0"/>
+                                      <Component id="splitCalibrationTextField" min="-2" pref="120" max="-2" attributes="0"/>
+                                  </Group>
+                                  <EmptySpace pref="45" max="32767" attributes="0"/>
+                                  <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                      <Component id="batchNumberLabel" max="32767" attributes="0"/>
+                                      <Component id="numberOfThreadsLabel" pref="132" max="32767" attributes="0"/>
+                                  </Group>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Group type="103" groupAlignment="0" attributes="0">
+                                      <Component id="numberOfThreadsTextField" alignment="0" min="-2" pref="108" max="-2" attributes="0"/>
+                                      <Component id="batchNumberTextField" alignment="1" min="-2" pref="108" max="-2" attributes="0"/>
                                   </Group>
                               </Group>
                           </Group>
