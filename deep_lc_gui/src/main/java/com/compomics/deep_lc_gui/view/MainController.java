@@ -242,7 +242,7 @@ public class MainController {
         switch (currentCardName) {
             case FIRST_PANEL:
                 //show info
-                updateInfo("Click on \"start\" to run Deep LC");
+                updateInfo("Click on \"start\" to run DeepLC");
                 break;
             case LAST_PANEL:
                 mainFrame.getStartButton().setEnabled(false);
@@ -367,7 +367,7 @@ public class MainController {
 
         @Override
         protected Void doInBackground() throws Exception {
-            LOGGER.info("Starting to run Deep LC...");
+            LOGGER.info("Starting to run DeepLC...");
 
             // start the waiting animation
             logTextAreaAppender.setLoading(true);
