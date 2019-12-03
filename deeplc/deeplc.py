@@ -15,8 +15,8 @@ __email__ = "Robbin.Bouwmeester@ugent.be"
 import os
 import sys
 
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(SCRIPT_DIR)
+DEEPLC_DIR = os.path.dirname(os.path.realpath(__file__))
+#sys.path.append(SCRIPT_DIR)
 
 # Native imports
 import time
@@ -33,9 +33,6 @@ import pandas as pd
 
 # Numpy
 import numpy as np
-
-# XGBoost
-import xgboost as xgb
 
 # Keras
 import tensorflow as tf
@@ -64,7 +61,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 #session = tf.compat.v1.Session(config=config)
 
 # Feature extraction
-from feat_extractor import FeatExtractor
+from deeplc.feat_extractor import FeatExtractor
 
 # Multiproc
 from multiprocessing import Pool
@@ -115,9 +112,9 @@ class DeepLC():
         if config_file:
             cparser = ConfigParser()
             cparser.read(config_file)
-            dict_cal_divider = cparser.getint("lcPep", "dict_cal_divider")
-            split_cal = cparser.getint("lcPep", "split_cal")
-            n_jobs = cparser.getint("lcPep", "n_jobs")
+            dict_cal_divider = cparser.getint("DeepLC", "dict_cal_divider")
+            split_cal = cparser.getint("DeepLC", "split_cal")
+            n_jobs = cparser.getint("DeepLC", "n_jobs")
 
         self.main_path = main_path
         self.verbose = verbose

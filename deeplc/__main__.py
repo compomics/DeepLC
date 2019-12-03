@@ -11,7 +11,7 @@ __maintainer__ = "Robbin Bouwmeester"
 __email__ = "Robbin.Bouwmeester@ugent.be"
 
 from deeplc import DeepLC
-from feat_extractor import FeatExtractor
+from deeplc import FeatExtractor
 
 # Native imports
 import pickle
