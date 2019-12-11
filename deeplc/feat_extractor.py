@@ -1,5 +1,6 @@
 """
-This code is used to extract features for peptides used in lc_pep (or seperately if required)
+This code is used to extract features for peptides used in DeepLC (or seperately
+if required).
 
 For the library versions see the .yml file
 """
@@ -8,7 +9,6 @@ __author__ = "Robbin Bouwmeester"
 __copyright__ = "Copyright 2019"
 __credits__ = ["Robbin Bouwmeester", "Prof. Lennart Martens", "Sven Degroeve"]
 __license__ = "Apache License, Version 2.0"
-__version__ = "1.0"
 __maintainer__ = "Robbin Bouwmeester"
 __email__ = "Robbin.Bouwmeester@ugent.be"
 
@@ -50,15 +50,15 @@ class FeatExtractor():
                  split_size=7,
                  verbose=True,
                  include_specific_posses=[0, 1, 2, 3, 4, 5, 6, -1, -2, -3, -4, -5, -6, -7],
-                 standard_feat=True,
-                 add_sum_feat=True,
-                 ptm_add_feat=True,
-                 chem_descr_feat=True,
-                 ptm_subtract_feat=True,
+                 standard_feat=False,
+                 add_sum_feat=False,
+                 ptm_add_feat=False,
+                 chem_descr_feat=False,
+                 ptm_subtract_feat=False,
                  add_rolling_feat=False,
                  include_unnormalized=True,
-                 add_comp_feat=True,
-                 cnn_feats=False,
+                 add_comp_feat=False,
+                 cnn_feats=True,
                  ignore_mods=False,
                  config_file=None):
         # if a config file is defined overwrite standard parameters
@@ -119,7 +119,7 @@ class FeatExtractor():
   _____                  _      _____       __           _               _                  _
  |  __ \                | |    / ____|     / _|         | |             | |                | |
  | |  | | ___  ___ _ __ | |   | |   ______| |_ ___  __ _| |_    _____  _| |_ _ __ __ _  ___| |_ ___  _ __
- | |  | |/ _ \/ _ \ r'_ \| |   | |  |______|  _/ _ \/ _` | __|  / _ \ \/ / __| '__/ _` |/ __| __/ _ \| '__|
+ | |  | |/ _ \/ _ \ '_ \| |   | |  |______|  _/ _ \/ _` | __|  / _ \ \/ / __| '__/ _` |/ __| __/ _ \| '__|
  | |__| |  __/  __/ |_) | |___| |____     | ||  __/ (_| | |_  |  __/>  <| |_| | | (_| | (__| || (_) | |
  |_____/ \___|\___| .__/|______\_____|    |_| \___|\__,_|\__|  \___/_/\_\\__|_|  \__,_|\___|\__\___/|_|
                   | |
@@ -1209,7 +1209,7 @@ class FeatExtractor():
                 X = X_feats_chem_descr
 
         if self.verbose:
-            print(
+            logging.debug(
                 "Time to calculate all features: %s seconds" %
                 (time.time() - t0))
         return X
