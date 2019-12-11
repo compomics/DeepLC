@@ -1,24 +1,16 @@
-# Standard library imports
-import pickle
-import sys
-import os
-import random
-import itertools
-
-# Third party imports
-import numpy as np
+# Imports
 import pandas as pd
 from matplotlib import pyplot as plt
-
-# DeepLC imports
 from deeplc import DeepLC, FeatExtractor
 
 # Input files
-peptide_file = "datasets/seqs_exp.csv"
-config_file = "config.ini"
+peptide_file = "datasets/test_train.csv"
 
 # Read the input data to make predictions for
 df = pd.read_csv(peptide_file, sep=",")
+
+# Unmodified peptides in modifications column should be empty strings, not nan
+df = df.fillna("")
 
 # Generate some identifiers, any kind of identifiers will do
 df.index = ["Pep_"+str(dfi) for dfi in df.index]
@@ -41,7 +33,6 @@ f_extractor = FeatExtractor(
 )
 # Initiate a DeepLC instance that will perform the calibration and predictions
 dlc = DeepLC(
-    config_file=config_file,
     path_model="deeplc/mods/full_hc_dia_fixed_mods.hdf5",
     cnn_model=True,
     f_extractor=f_extractor,
@@ -60,8 +51,8 @@ preds_cal = dlc.make_preds(seq_df=df)
 preds_uncal = dlc.make_preds(seq_df=df,calibrate=False)
 
 # Compare calibrated and uncalibrated predictions
-print("Predictions (calibrated): ", preds_cal)
-print("Predictions (uncalibrated): ", preds_uncal)
+#print("Predictions (calibrated): ", preds_cal)
+#print("Predictions (uncalibrated): ", preds_uncal)
 
 plt.scatter(df["tr"],preds_cal,label="Calibrated",s=1)
 plt.scatter(df["tr"],preds_uncal,label="Uncalibrated",s=1)

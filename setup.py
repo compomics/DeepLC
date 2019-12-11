@@ -2,10 +2,10 @@ from distutils.core import setup
 
 setup(
 	name='deeplc',
-	version='0.1.0',
+	version='0.1.0-alpha',
 	description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
-	author='Robbin Bouwmeester, Niels Hulstaert, Ralf Gabriels, Sven Degroeve',
-	author_email='robbin.bouwmeester@vib-ugent.be',
+	author='Robbin Bouwmeester, Niels Hulstaert, Ralf Gabriels, Prof. Lennart Martens, Prof. Sven Degroeve',
+	author_email='Robbin.Bouwmeester@UGent.be',
 	url='https://www.github.com/CompOmics/DeepLC',
 	packages=['deeplc'],
 	include_package_data=True,
@@ -17,7 +17,7 @@ setup(
 		"License :: OSI Approved :: Apache Software License",
 		"Operating System :: OS Independent",
 		"Programming Language :: Python :: 3",
-		"Topic :: Scientific/Engineering :: Bio-Informatics",
+		"Topic :: Scientific/Engineering",
 		"Development Status :: 4 - Beta"
 	],
 	install_requires=[
@@ -25,7 +25,7 @@ setup(
         'numpy>=1.17.2,<2',
         'pandas>=0.25.1,<1',
         'scipy>=1.3.1,<2',
-        'tensorflow>=1.14.0,<2',
-        'xgboost>=0.90,<1',
+        'tensorflow>=1.14.0<3',
+        'xgboost>=0.90,<2',
 	],
 )
