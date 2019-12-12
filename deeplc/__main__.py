@@ -268,8 +268,6 @@ def run(file_pred="",
 
     if plot_predictions:
         if len(file_cal) > 1 and "tr" in df_pred.columns:
-            logging.warning('No observed retention time in input data. Cannot\
-plot predictions')
             file_pred_figure = os.path.splitext(file_pred_out)[0] + '.png'
             logging.debug("Saving scatterplot of predictions to file: %s", file_pred_figure)
             plt.figure(figsize=(11.5, 9))
@@ -278,6 +276,9 @@ plot predictions')
             plt.xlabel("Observed retention times")
             plt.ylabel("Predicted retention times")
             plt.savefig(file_pred_figure, dpi=300)
+        else:
+            logging.warning('No observed retention time in input data. Cannot \
+plot predictions')
 
     logging.info("DeepLC finished!")
 

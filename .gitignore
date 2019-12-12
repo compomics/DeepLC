@@ -1,4 +1,5 @@
 # DeepLC
+data/
 *.png
 *.pyc
 datasets/an_data.csv
