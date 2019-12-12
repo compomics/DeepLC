@@ -1,0 +1,5 @@
+include deeplc/expasy/*
+include deeplc/mod_to_smiles/*
+include deeplc/mods/*
+include deeplc/unimod/*
+include deeplc/aa_comp_rel.csv
