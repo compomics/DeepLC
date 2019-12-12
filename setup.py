@@ -6,7 +6,7 @@ setup(
 	description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
 	author='Robbin Bouwmeester, Niels Hulstaert, Ralf Gabriels, Prof. Lennart Martens, Prof. Sven Degroeve',
 	author_email='Robbin.Bouwmeester@UGent.be',
-	url='https://www.github.com/CompOmics/DeepLC',
+	url='http://compomics.github.io/projects/DeepLC',
 	packages=['deeplc'],
 	include_package_data=True,
 	entry_points={

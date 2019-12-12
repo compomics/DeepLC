@@ -9,6 +9,9 @@ install/Miniconda3/
 install/Miniconda3-latest-Linux-x86_64.sh
 install/Miniconda3-latest-Windows-x86_64.exe
 
+# Pytest
+.pytest_cache/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
