@@ -13,6 +13,19 @@ __maintainer__ = "Robbin Bouwmeester"
 __email__ = "Robbin.Bouwmeester@ugent.be"
 
 
+# Default models, will be used if no other is specified. If no best model is
+# selected during calibration, the first model in the list will be used.
+import os
+deeplc_dir = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_MODELS = [
+    "mods/full_hc_dia_fixed_mods.hdf5", 
+    "mods/full_hc_LUNA_HILIC_fixed_mods.hdf5",
+    "mods/full_hc_LUNA_SILICA_fixed_mods.hdf5", 
+    "mods/full_hc_PXD000954_fixed_mods.hdf5",
+]
+DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
+
+
 # Native imports
 from configparser import ConfigParser
 from operator import itemgetter
@@ -78,13 +91,39 @@ def reset_keras():
 
 class DeepLC():
     """
-    Place holder, fill later
+    DeepLC predictor.
 
     Parameters
     ----------
+    main_path : str
+        main path of module
+    path_model : str
+        path to model file: leave empty to use default models
+    verbose : bool
+        turn logging on/off
+    bin_dist : float
+        TODO
+    dict_cal_divider : int
+        TODO
+    split_cal : int
+        TODO
+    n_jobs : int or None
+        number of threads to use; if None, use maximum available
+    config_file : str or None
+        path to configuration file
+    f_extractor : object :: deeplc.FeatExtractor or None
+        deeplc.FeatExtractor object to use
+    cnn_model : bool
+        use CNN model or not
+    batch_num : int
+        number of peptides per batch; lower for lower memory footprint
 
-    Returns
+    Methods
     -------
+    calibrate_preds(seqs=[], mods=[], identifiers=[], measured_tr=[], correction_factor=1.0, seq_df=None, use_median=True)
+        Find best model and calibrate
+    make_preds(seqs=[], mods=[], identifiers=[], calibrate=True, seq_df=None, correction_factor=1.0, mod_name=None)
+        Make predictions
 
     """
 
@@ -100,6 +139,7 @@ class DeepLC():
                  f_extractor=None,
                  cnn_model=False,
                  batch_num=350000):
+        
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()
@@ -107,9 +147,6 @@ class DeepLC():
             dict_cal_divider = cparser.getint("DeepLC", "dict_cal_divider")
             split_cal = cparser.getint("DeepLC", "split_cal")
             n_jobs = cparser.getint("DeepLC", "n_jobs")
-
-        if not n_jobs:
-            n_jobs = multiprocessing.cpu_count()
 
         self.main_path = main_path
         self.verbose = verbose
@@ -124,6 +161,12 @@ class DeepLC():
         self.split_cal = split_cal
         self.n_jobs = n_jobs
 
+        max_threads = multiprocessing.cpu_count()
+        if not self.n_jobs:
+            self.n_jobs = max_threads
+        elif self.n_jobs > max_threads:
+            self.n_jobs = max_threads
+
         if path_model:
             if self.cnn_model:
                 self.model = path_model
@@ -131,17 +174,9 @@ class DeepLC():
                 with open(path_model, "rb") as handle:
                     self.model = pickle.load(handle)
         else:
-            deeplc_dir = os.path.dirname(os.path.realpath(__file__))
-            default_model = "mods/full_hc_dia_fixed_mods.hdf5"
-            #default_models = [
-            #    "mods/full_hc_LUNA_HILIC_fixed_mods.hdf5",
-            #    "mods/full_hc_LUNA_SILICA_fixed_mods.hdf5", 
-            #    "mods/full_hc_dia_fixed_mods.hdf5", 
-            #    "mods/full_hc_PXD000954_fixed_mods.hdf5",
-            #]
+            # Use default models
             self.cnn_model = True
-            self.model = os.path.join(deeplc_dir, default_model)
-            logging.debug("Using default CNN model: %s", default_model)
+            self.model = DEFAULT_MODELS
 
         if f_extractor:
             self.f_extractor = f_extractor
@@ -184,6 +219,7 @@ class DeepLC():
         """
         return self.f_extractor.full_feat_extract(seqs, mods, identifiers)
 
+
     def do_f_extraction_pd(self,
                            df_instances):
         """
@@ -206,6 +242,7 @@ class DeepLC():
             df_instances["seq"],
             df_instances["modifications"],
             df_instances.index)
+
 
     def do_f_extraction_pd_parallel(self,
                                     df_instances):
@@ -238,14 +275,15 @@ class DeepLC():
         pool.join()
         return df
 
+
     def make_preds_core(self,
+                        seq_df=None,
                         seqs=[],
                         mods=[],
                         identifiers=[],
                         calibrate=True,
-                        seq_df=None,
                         correction_factor=1.0,
-                        mod_name=False):
+                        mod_name=None):
         """
         Make predictions for sequences
 
@@ -263,6 +301,11 @@ class DeepLC():
             identifiers of the peptides; should correspond to seqs and mods
         calibrate : boolean
             calibrate predictions or just return the predictions
+        correction_factor : float
+            correction factor to apply to predictions
+        mod_name : str or None
+            specify a model to use instead of the model assigned originally to
+            this instance of the object
 
         Returns
         -------
@@ -329,7 +372,7 @@ class DeepLC():
  Calibrate before making predictions, or use calibrate=False"
 
             if self.verbose:
-                logging.debug("Predicting with calibration ...")
+                logging.debug("Predicting with calibration...")
 
             cal_preds = []
 
@@ -372,14 +415,19 @@ class DeepLC():
             ret_preds = np.array(cal_preds)
         else:
             if self.verbose:
-                logging.debug("Predicting values ...")
+                logging.debug("Predicting without calibration...")
 
-            # Load the model different if we use CNN
+            # Load the model differently if we use CNN
             if self.cnn_model:
                 if not mod_name:
-                    mod = load_model(self.model)
-                else:
-                    mod = load_model(mod_name)
+                    if isinstance(self.model, list):
+                        mod_name = self.model[0]
+                    elif isinstance(self.model, str):
+                        mod_name = self.model
+                    else:
+                        logging.critical('No CNN model defined.')
+                        exit(1)
+                mod = load_model(mod_name)
                 ret_preds = mod.predict([X,
                                          X_sum,
                                          X_global,
@@ -406,6 +454,7 @@ class DeepLC():
 
         return ret_preds_shape
 
+
     def make_preds(self,
                    seqs=[],
                    mods=[],
@@ -413,7 +462,35 @@ class DeepLC():
                    calibrate=True,
                    seq_df=None,
                    correction_factor=1.0,
-                   mod_name=False):
+                   mod_name=None):
+        """
+        Make predictions for sequences, in batches if required.
+
+        Parameters
+        ----------
+        seq_df : object :: pd.DataFrame
+            dataframe containing the sequences (column:seq), modifications
+            (column:modifications) and naming (column:index); will use parallel
+            by default!
+        seqs : list
+            peptide sequence list; should correspond to mods and identifiers
+        mods : list
+            naming of the mods; should correspond to seqs and identifiers
+        identifiers : list
+            identifiers of the peptides; should correspond to seqs and mods
+        calibrate : boolean
+            calibrate predictions or just return the predictions
+        correction_factor : float
+            correction factor to apply to predictions
+        mod_name : str or None
+            specify a model to use instead of the model assigned originally to
+            this instance of the object
+
+        Returns
+        -------
+        np.array
+            predictions
+        """
         if self.batch_num == 0:
             return self.make_preds_core(seqs=seqs,
                                         mods=mods,
@@ -439,10 +516,11 @@ class DeepLC():
                 ret_preds.extend(temp_preds)
 
                 # if self.verbose:
-                logging.info(
+                logging.debug(
                     "Finished predicting retention time for: %s/%s" %
                     (len(ret_preds), len(seq_df)))
             return ret_preds
+
 
     def calibrate_preds_func(self,
                              seqs=[],
@@ -452,7 +530,7 @@ class DeepLC():
                              correction_factor=1.0,
                              seq_df=None,
                              use_median=True,
-                             mod_name=False):
+                             mod_name=None):
         """
         Make calibration curve for predictions
 
@@ -525,7 +603,9 @@ class DeepLC():
 
         if self.verbose:
             logging.debug(
-                "Selecting the data points for calibration (used to fit the linear models between)")
+                "Selecting the data points for calibration (used to fit the\
+linear models between)"
+            )
 
         # smooth between observed and predicted
         for mtr, ptr in zip(
@@ -566,8 +646,11 @@ class DeepLC():
 
             # optimized predictions using a dict to find calibration curve very
             # fast
-            for v in np.arange(round(ptr_mean[i], self.bin_dist), round(
-                    ptr_mean[i + 1], self.bin_dist), 1 / ((self.bin_dist) * self.dict_cal_divider)):
+            for v in np.arange(
+                round(ptr_mean[i], self.bin_dist),
+                round(ptr_mean[i + 1], self.bin_dist),
+                1 / ((self.bin_dist) * self.dict_cal_divider)
+            ):
                 if v < calibrate_min:
                     calibrate_min = v
                 if v > calibrate_max:
@@ -576,6 +659,7 @@ class DeepLC():
                     slope, intercept, x_correction]
 
         return calibrate_min, calibrate_max, calibrate_dict
+
 
     def calibrate_preds(self,
                         seqs=[],
@@ -586,7 +670,7 @@ class DeepLC():
                         seq_df=None,
                         use_median=True):
         """
-        Select best model and make calibration curve for predictions
+        Find best model and calibrate.
 
         Parameters
         ----------
@@ -631,7 +715,7 @@ class DeepLC():
 
         for m in self.model:
             if self.verbose:
-                logging.info("Trying out the following model: %s" % (m))
+                logging.debug("Trying out the following model: %s" % (m))
             calibrate_output = self.calibrate_preds_func(
                 seqs=seqs,
                 mods=mods,
@@ -661,7 +745,7 @@ class DeepLC():
                 perf = sum(abs(measured_tr - preds))
 
             if self.verbose:
-                logging.info(
+                logging.debug(
                     "For current model got a performance of: %s" %
                     (perf / len(preds)))
 
@@ -679,7 +763,8 @@ class DeepLC():
         self.calibrate_max = best_calibrate_max
         self.model = best_model
 
-        logging.info("Model with the best performance got selected: %s" %(best_model))
+        logging.debug("Model with the best performance got selected: %s" %(best_model))
+
 
     def split_seq(self,
                   a,

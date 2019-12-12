@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from deeplc import DeepLC, FeatExtractor
 
 # Input files
-peptide_file = "datasets/test_train.csv"
+peptide_file = "examples/datasets/test_train.csv"
 
 # Read the input data to make predictions for
 df = pd.read_csv(peptide_file, sep=",")
@@ -48,7 +48,7 @@ dlc.calibrate_preds(seq_df=df)
 
 # Make predictions; calibrated and uncalibrated
 preds_cal = dlc.make_preds(seq_df=df)
-preds_uncal = dlc.make_preds(seq_df=df,calibrate=False)
+preds_uncal = dlc.make_preds(seq_df=df, calibrate=False)
 
 # Compare calibrated and uncalibrated predictions
 #print("Predictions (calibrated): ", preds_cal)
