@@ -23,7 +23,7 @@ def test_cli_full():
     """" Test command line interface with input files."""
     file_path_pred = "examples/datasets/test_train.csv"
     file_path_cal = "examples/datasets/test_train.csv"
-    file_path_out = "data/pytest_cli_out.csv"
+    file_path_out = "pytest_cli_out.csv"
 
     command = [
         "deeplc", "--file_pred", file_path_pred, "--file_cal", file_path_cal,
