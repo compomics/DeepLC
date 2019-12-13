@@ -1,9 +1,9 @@
 <img src="https://github.com/compomics/DeepLC/raw/master/img/deeplc_logo.png"
 width="150" height="150" /> <br/><br/>
 
-![Python](https://img.shields.io/badge/python-%3E3.6-blue?style=flat-square)
+![Python](https://img.shields.io/badge/python-3.6%20%7C%203.7-blue?style=flat-square)
 [![Build
-Status](https://img.shields.io/travis/compomics/DeepLC?style=flat-square)](https://travis-ci.org/compomics/DeepLC)
+Status](https://img.shields.io/github/workflow/status/compomics/DeepLC/Python%20package%20test?style=flat-square)](https://github.com/compomics/DeepLC/actions?query=workflow%3A%22Python+package+test%22)
 [![GitHub
 issues](https://img.shields.io/github/issues/compomics/DeepLC?style=flat-square)](https://github.com/compomics/DeepLC/issues)
 [![GitHub](https://img.shields.io/github/license/compomics/DeepLC.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
