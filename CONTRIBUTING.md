@@ -33,7 +33,8 @@ with these changes. You pull request message ideally should include:
     1. Merge into the `releases` branch.
     2. Change the version number in `setup.py` using [semantic versioning](https://semver.org/).
     3. Update the changelog (if not already done) in `CHANGELOG.md` according to [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-    4. Push to GitHub.
+    4. Set a new tag with the version number, e.g. `git tag 0.1.1-dev1`
+    4. Push to GitHub, with the tag: `git push --tags`
 
 - When new commits are pushed to the `releases` branch, the following GitHub Actions are triggered:
 

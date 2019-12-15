@@ -6,5 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1-dev2] - 2019-12-15
+- Add long description to setup.py
+
 ## [0.1.1-dev1] - 2019-12-15
 - Initial pre-release
