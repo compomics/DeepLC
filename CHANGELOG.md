@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1-dev4] - 2019-12-15
+- Test other trigger for publish action
+
 ## [0.1.1-dev3] - 2019-12-15
 - Update documentation, specify branch in publish action
 
