@@ -14,7 +14,7 @@ or as a python module.
 
 setup(
     name='deeplc',
-    version='0.1.1-dev5',
+    version='0.1.1-dev6',
     license='apache-2.0',
     description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
     long_description=LONG_DESCRIPTION,
