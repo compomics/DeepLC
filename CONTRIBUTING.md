@@ -11,7 +11,8 @@ it is best to communicate with the community by creating an issue in
 
 ## How to contribute
 
-- Fork [DeepLC](https://github.com/HUPO-PSI/SpectralLibraryFormat) onGitHub to make your changes.
+- Fork [DeepLC](https://github.com/HUPO-PSI/SpectralLibraryFormat) on GitHub to
+make your changes.
 - Commit and push your changes to your
 [fork](https://help.github.com/articles/pushing-to-a-remote/).
 - Open a
