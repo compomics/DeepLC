@@ -196,16 +196,16 @@ public class MainFrame extends javax.swing.JFrame {
         firstPanel.setName("firstPanel"); // NOI18N
         firstPanel.setOpaque(false);
 
-        predictionPeptidesLabel.setText("Peptides to make predictions for (peprec format):");
+        predictionPeptidesLabel.setText("Peptides to make predictions for (peprec CSV format):");
 
-        calibrationPeptidesLabel.setText("Peptide (e.g. observed on yout setup or iRT) for calibration:");
+        calibrationPeptidesLabel.setText("Peptide (e.g. observed on your setup or iRT) for calibration:");
 
         outputFileLabel.setText("Choose an output file:");
 
         calibrationPeptidesTextField.setEnabled(false);
 
         calibrationPeptidesButton.setText("choose");
-        calibrationPeptidesButton.setToolTipText("Select a directory for the moFF output");
+        calibrationPeptidesButton.setToolTipText("Choose the calibration peptide file location");
         calibrationPeptidesButton.setMaximumSize(new java.awt.Dimension(80, 25));
         calibrationPeptidesButton.setMinimumSize(new java.awt.Dimension(80, 25));
         calibrationPeptidesButton.setPreferredSize(new java.awt.Dimension(80, 25));
@@ -213,7 +213,7 @@ public class MainFrame extends javax.swing.JFrame {
         predictionPeptidesTextField.setEnabled(false);
 
         predictionPeptidesButton.setText("choose");
-        predictionPeptidesButton.setToolTipText("Choose the PeptideShaker directory location\n");
+        predictionPeptidesButton.setToolTipText("Choose the prediction peptide file location");
         predictionPeptidesButton.setMaximumSize(new java.awt.Dimension(80, 25));
         predictionPeptidesButton.setMinimumSize(new java.awt.Dimension(80, 25));
         predictionPeptidesButton.setPreferredSize(new java.awt.Dimension(80, 25));
@@ -221,7 +221,7 @@ public class MainFrame extends javax.swing.JFrame {
         outputFileTextField.setEnabled(false);
 
         outputFileButton.setText("choose");
-        outputFileButton.setToolTipText("Select a directory for the moFF output");
+        outputFileButton.setToolTipText("Select a file location for the DeepLC output");
         outputFileButton.setMaximumSize(new java.awt.Dimension(80, 25));
         outputFileButton.setMinimumSize(new java.awt.Dimension(80, 25));
         outputFileButton.setPreferredSize(new java.awt.Dimension(80, 25));
@@ -237,13 +237,13 @@ public class MainFrame extends javax.swing.JFrame {
         modelScrollPane1.setViewportView(modelList);
 
         modelButton.setText("choose");
-        modelButton.setToolTipText("Select a directory for the moFF output");
+        modelButton.setToolTipText("Select a DeepLC model file");
         modelButton.setMaximumSize(new java.awt.Dimension(80, 25));
         modelButton.setMinimumSize(new java.awt.Dimension(80, 25));
         modelButton.setPreferredSize(new java.awt.Dimension(80, 25));
 
         removeModelButton.setText("remove");
-        removeModelButton.setToolTipText("Select a directory for the moFF output");
+        removeModelButton.setToolTipText("Remove the selected directory");
         removeModelButton.setMaximumSize(new java.awt.Dimension(80, 25));
         removeModelButton.setMinimumSize(new java.awt.Dimension(80, 25));
         removeModelButton.setPreferredSize(new java.awt.Dimension(80, 25));

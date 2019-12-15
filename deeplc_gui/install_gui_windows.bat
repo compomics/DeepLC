@@ -12,6 +12,7 @@ start /wait "" Miniconda3-latest-Windows-x86_64.exe /InstallationType=JustMe /Re
 echo installing miniconda complete . . .
 echo installing environment in miniconda . . .
 call Miniconda3/Scripts/activate.bat
-call conda env create -f environment.yml
+call conda create -n deeplc_gui python=3.7
+call pip install deeplc
 echo done installing environment in miniconda . . .
 pause
