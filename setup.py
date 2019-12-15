@@ -2,16 +2,26 @@ from distutils.core import setup
 
 setup(
 	name='deeplc',
-	version='0.1.1',
+	version='0.1.1-dev1',
+	license='apache-2.0',
 	description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
 	author='Robbin Bouwmeester, Niels Hulstaert, Ralf Gabriels, Prof. Lennart Martens, Prof. Sven Degroeve',
 	author_email='Robbin.Bouwmeester@UGent.be',
 	url='http://compomics.github.io/projects/DeepLC',
+	project_urls={
+		'Documentation': 'http://compomics.github.io/projects/DeepLC',
+		'Source': 'https://github.com/compomics/DeepLC',
+		'Tracker': 'https://github.com/compomics/DeepLC/issues'
+	},
 	packages=['deeplc'],
 	include_package_data=True,
 	entry_points={
 		'console_scripts': ['deeplc=deeplc.__main__:main']
 	},
+	keywords=[
+		'DeepLC', 'Proteomics', 'deep learning', 'peptides', 'retention time',
+		'prediction'
+	],
 	classifiers=[
 		"Intended Audience :: Science/Research",
 		"License :: OSI Approved :: Apache Software License",
@@ -29,5 +39,5 @@ setup(
         'numpy>=1.17.2,<2',
         'pandas>=0.25.1,<1',
 	],
-	python_requires='>=3.6',
+	python_requires='>=3.6,<3.8',
 )
