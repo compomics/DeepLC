@@ -22,7 +22,8 @@ with these changes. You pull request message ideally should include:
    - A description of the implementation of the changes.
    - A description of how to test the changes.
 - The pull request should pass all the continuous integration tests which are
-  automatically run by GitHub Actions.
+  automatically run by
+  [GitHub Actions](https://github.com/compomics/DeepLC/actions).
 
 
 ## Development workflow
@@ -32,13 +33,23 @@ with these changes. You pull request message ideally should include:
 - When a new version is ready to be published:
 
     1. Merge into the `releases` branch.
-    2. Change the version number in `setup.py` using [semantic versioning](https://semver.org/).
-    3. Update the changelog (if not already done) in `CHANGELOG.md` according to [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-    4. Set a new tag with the version number, e.g. `git tag 0.1.1-dev1`
-    4. Push to GitHub, with the tag: `git push --tags`
+    2. Change the version number in `setup.py` using
+    [semantic versioning](https://semver.org/).
+    3. Update the changelog (if not already done) in `CHANGELOG.md` according to
+    [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+    4. Set a new tag with the version number, e.g. `git tag 0.1.1.dev1`.
+    5. Push to GitHub, with the tag: `git push --follow-tags`.
+    6. Update the version in the bioconda recipe using
+    `conda skeleton pypi deeplc` in the
+    [bioconda-recipes](https://github.com/bioconda/bioconda-recipes) repository.
 
-- When new commits are pushed to the `releases` branch, the following GitHub Actions are triggered:
+- When new commits are pushed to the `releases` branch, the following GitHub
+  Actions are triggered:
 
     1. The Python package is build and published to PyPI.
-    2. A zip archive is made of the `./deeplc_gui/` directory, excluding `./deeplc_gui/src` with [Zip Release](https://github.com/marketplace/actions/zip-release).
-    3. A GitHub release is made with the zipped GUI files as asset and the new changes listed in `CHANGELOG.md` with [Git Release](https://github.com/marketplace/actions/git-release).
+    2. A zip archive is made of the `./deeplc_gui/` directory, excluding
+    `./deeplc_gui/src` with
+    [Zip Release](https://github.com/marketplace/actions/zip-release).
+    3. A GitHub release is made with the zipped GUI files as asset and the new
+    changes listed in `CHANGELOG.md` with
+    [Git Release](https://github.com/marketplace/actions/git-release).

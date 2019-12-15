@@ -32,11 +32,11 @@ jobs:
         exclusions: '/*src/*'
         path: 'deeplc_gui'
     - name: GitHub Release
-      uses: docker://antonyurchenko/git-release:latest
+      uses: docker://antonyurchenko/git-release:v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        DRAFT_RELEASE: "false"
-        PRE_RELEASE: "true"
+        DRAFT_RELEASE: "true"
+        PRE_RELEASE: "false"
         CHANGELOG_FILE: "CHANGELOG.md"
       with:
         args: |

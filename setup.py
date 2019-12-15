@@ -14,7 +14,7 @@ or as a python module.
 
 setup(
     name='deeplc',
-    version='0.1.1-dev6',
+    version='0.1.1.dev7',
     license='apache-2.0',
     description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
     long_description=LONG_DESCRIPTION,
@@ -45,7 +45,7 @@ setup(
     ],
     install_requires=[
         'setuptools>=42.0.1',
-        'tensorflow>=1.14.0<3',
+        'tensorflow>=1.14.0,<3',
         'xgboost>=0.90,<2',
         'scipy>=1.3.1,<2',
         'matplotlib>=3,<4',

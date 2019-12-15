@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1.dev7] - 2019-12-16
+- Use dot instead of dash in versioning for bioconda
+
 ## [0.1.1-dev6] - 2019-12-15
 - Fix publish action branch specification (2)
 
