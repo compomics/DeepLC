@@ -6,6 +6,8 @@ and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.1.dev8] - 2019-12-16
 - Remove xgboost dependancy
 
 ## [0.1.1.dev7] - 2019-12-16
