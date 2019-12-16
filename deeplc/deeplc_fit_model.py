@@ -1,5 +1,6 @@
 """
-This code is used to train an XGBoost model. This code is no longer used and substituted for a deep learning alternative.
+This code is used to train an XGBoost model. This code is no longer used and
+substituted for a deep learning alternative.
 
 For the library versions see the .yml file
 """

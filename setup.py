@@ -46,7 +46,6 @@ setup(
     install_requires=[
         'setuptools>=42.0.1',
         'tensorflow>=1.14.0,<3',
-        'xgboost>=0.90,<2',
         'scipy>=1.3.1,<2',
         'matplotlib>=3,<4',
         'numpy>=1.17,<2',
