@@ -1,11 +1,12 @@
 <img src="https://github.com/compomics/DeepLC/raw/master/img/deeplc_logo.png"
 width="150" height="150" /> <br/><br/>
 
-![Python](https://img.shields.io/badge/python-3.6%20%7C%203.7-blue?style=flat-square)
-[![Build
-Status](https://img.shields.io/github/workflow/status/compomics/DeepLC/Python%20package%20test?style=flat-square)](https://github.com/compomics/DeepLC/actions?query=workflow%3A%22Python+package+test%22)
-[![GitHub
-issues](https://img.shields.io/github/issues/compomics/DeepLC?style=flat-square)](https://github.com/compomics/DeepLC/issues)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/deeplc?style=flat-square)
+[![PyPI](https://img.shields.io/pypi/v/deeplc?style=flat-square)](https://pypi.org/project/deeplc/)
+[![Conda](https://img.shields.io/conda/vn/bioconda/deeplc?style=flat-square)](https://bioconda.github.io/recipes/deeplc/README.html)
+[![GitHub release](https://img.shields.io/github/v/release/compomics/DeepLC?include_prereleases&style=flat-square)](https://github.com/compomics/DeepLC/releases/latest/)
+[![Build Status](https://img.shields.io/github/workflow/status/compomics/DeepLC/Python%20package%20test?style=flat-square)](https://github.com/compomics/DeepLC/actions?query=workflow%3A%22Python+package+test%22)
+[![GitHub issues](https://img.shields.io/github/issues/compomics/DeepLC?style=flat-square)](https://github.com/compomics/DeepLC/issues)
 [![GitHub](https://img.shields.io/github/license/compomics/DeepLC.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
 
 DeepLC: Retention time prediction for (modified) peptides using Deep Learning.
@@ -35,17 +36,25 @@ In the latter case, DeepLC can be used from the command line, or as a python
 module.
 
 ## Graphical user interface
+### Installation
 
-...
+- Download `deeplc_gui.zip` from the
+[latest release](https://github.com/compomics/DeepLC/releases/latest/) and
+unzip.
+- Install DeepLC GUI with `install_gui_windows.bat` or `install_gui_linux.sh`,
+depending on your operating system.
+- Run DeepLC GUI with `run_gui_windows.bat` or `run_gui_linux.sh`, depending on
+your operating system.
+
 
 ## Python package
 
 ### Installation
 
-Clone the repository and install with pip:
+Install with pip:
 
 ```sh
-pip install .
+pip install deeplc
 ```
 
 ### Command line interface

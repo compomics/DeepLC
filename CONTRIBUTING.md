@@ -38,8 +38,8 @@ with these changes. You pull request message ideally should include:
     3. Update the changelog (if not already done) in `CHANGELOG.md` according to
     [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     4. Set a new tag with the version number, e.g. `git tag 0.1.1.dev1`.
-    5. Push to GitHub, with the tag: `git push --follow-tags`.
-    6. Update the version in the bioconda recipe using
+    5. Push to GitHub, with the tag: `git push; git push --tags`.
+    6. Update the version and sha256 checksum in the bioconda recipe using
     `conda skeleton pypi deeplc` in the
     [bioconda-recipes](https://github.com/bioconda/bioconda-recipes) repository.
 
