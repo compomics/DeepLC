@@ -129,10 +129,10 @@
                                       <Component id="DictionaryDividerTextField" min="-2" pref="120" max="-2" attributes="0"/>
                                       <Component id="splitCalibrationTextField" min="-2" pref="120" max="-2" attributes="0"/>
                                   </Group>
-                                  <EmptySpace pref="45" max="32767" attributes="0"/>
+                                  <EmptySpace pref="25" max="32767" attributes="0"/>
                                   <Group type="103" groupAlignment="0" max="-2" attributes="0">
                                       <Component id="batchNumberLabel" max="32767" attributes="0"/>
-                                      <Component id="numberOfThreadsLabel" pref="132" max="32767" attributes="0"/>
+                                      <Component id="numberOfThreadsLabel" max="32767" attributes="0"/>
                                   </Group>
                                   <EmptySpace max="-2" attributes="0"/>
                                   <Group type="103" groupAlignment="0" attributes="0">
@@ -218,7 +218,7 @@
               <SubComponents>
                 <Component class="javax.swing.JLabel" name="predictionPeptidesLabel">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Peptides to make predictions for (peprec format):"/>
+                    <Property name="text" type="java.lang.String" value="Peptides to make predictions for (peprec format) *:"/>
                   </Properties>
                 </Component>
                 <Component class="javax.swing.JLabel" name="calibrationPeptidesLabel">
@@ -228,7 +228,7 @@
                 </Component>
                 <Component class="javax.swing.JLabel" name="outputFileLabel">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Choose an output file:"/>
+                    <Property name="text" type="java.lang.String" value="Choose an output file *:"/>
                   </Properties>
                 </Component>
                 <Component class="javax.swing.JTextField" name="calibrationPeptidesTextField">
@@ -293,26 +293,26 @@
                 </Component>
                 <Component class="javax.swing.JLabel" name="modelLabel">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Choose model:"/>
+                    <Property name="text" type="java.lang.String" value="Choose model(s) *:"/>
                   </Properties>
                 </Component>
                 <Component class="javax.swing.JLabel" name="numberOfThreadsLabel">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Number of threads:"/>
+                    <Property name="text" type="java.lang.String" value="Number of threads *:"/>
                   </Properties>
                 </Component>
                 <Component class="javax.swing.JTextField" name="splitCalibrationTextField">
                 </Component>
                 <Component class="javax.swing.JLabel" name="splitCalibrationLabel">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Split calibration:"/>
+                    <Property name="text" type="java.lang.String" value="Split calibration *:"/>
                   </Properties>
                 </Component>
                 <Component class="javax.swing.JTextField" name="numberOfThreadsTextField">
                 </Component>
                 <Component class="javax.swing.JLabel" name="dictionaryDividerLabel">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Dictionary divider:"/>
+                    <Property name="text" type="java.lang.String" value="Dictionary divider *:"/>
                   </Properties>
                 </Component>
                 <Component class="javax.swing.JTextField" name="DictionaryDividerTextField">
@@ -363,7 +363,7 @@
                 </Component>
                 <Component class="javax.swing.JLabel" name="batchNumberLabel">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Batch number:"/>
+                    <Property name="text" type="java.lang.String" value="Batch number *:"/>
                   </Properties>
                 </Component>
                 <Component class="javax.swing.JTextField" name="batchNumberTextField">

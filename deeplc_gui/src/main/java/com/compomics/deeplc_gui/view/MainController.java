@@ -1,11 +1,12 @@
-package com.compomics.deep_lc_gui.view;
+package com.compomics.deeplc_gui.view;
 
-import com.compomics.deep_lc_gui.config.ConfigHolder;
+import com.compomics.deeplc_gui.config.ConfigHolder;
 import java.awt.CardLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -87,7 +88,7 @@ public class MainController {
         mainFrame.getModelFileChooser().setMultiSelectionEnabled(true);
         mainFrame.getOutputFileChooser().setFileSelectionMode(JFileChooser.FILES_ONLY);
 
-        mainFrame.setTitle("DeepLC " + ConfigHolder.getInstance().getString("deep_lc_gui.version", "N/A"));
+        mainFrame.setTitle("DeepLC");
 
         //OutLogger.tieSystemOutAndErrToLog();
         //get the gui appender for setting the log text area
@@ -115,6 +116,19 @@ public class MainController {
                 mainFrame.getCalibrationPeptidesTextField().setText(calibrationPeptidesFile.getAbsolutePath());
             }
         });
+
+        //fill the model list with the models in the models.directory
+        File modelsDirectory = new File(ConfigHolder.getInstance().getString("models_directory"));
+        if (modelsDirectory.exists() && modelsDirectory.isDirectory()) {
+            for (File model : modelsDirectory.listFiles(new FileFilter() {
+                @Override
+                public boolean accept(File modelFile) {
+                    return modelFile.getName().toLowerCase().endsWith("hdf5");
+                }
+            })) {
+                modelFileListModel.addElement(model);
+            }
+        }
 
         mainFrame.getModelList().setModel(modelFileListModel);
         mainFrame.getModelButton().addActionListener(e -> {
@@ -273,7 +287,7 @@ public class MainController {
         if (predictionPeptidesFile == null || !predictionPeptidesFile.exists()) {
             validationMessages.add("Please choose a valid predictions peptides file.");
         }
-        if (calibrationPeptidesFile == null || !calibrationPeptidesFile.exists()) {
+        if (calibrationPeptidesFile != null && !calibrationPeptidesFile.exists()) {
             validationMessages.add("Please choose a valid calibration peptides file.");
         }
         if (modelFileListModel.isEmpty()) {
@@ -438,15 +452,15 @@ public class MainController {
                     PrintWriter printWriter = new PrintWriter(streamWriter)) {
                 printWriter.println("#!/bin/bash");
 
-                String deepLCLocation = ConfigHolder.getInstance().getString("deep_lc_location_linux");
-
                 StringBuilder command = new StringBuilder();
                 command.append(ConfigHolder.getInstance().getString("conda_env_location_linux")).append("/bin/python ");
                 command.append("-m deeplc");
                 //command.append(" --file_pred ").append(deep_lc_location).append("/datasets/test_pred.csv");
                 command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
                 //command.append(" --file_cal ").append(deep_lc_location).append("/datasets/test_train.csv");
-                command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());
+                if (calibrationPeptidesFile != null) {
+                    command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());
+                }
                 //command.append(" --file_pred_out ").append(deep_lc_location).append("/datasets/preds_out.csv");
                 command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());
                 //command.append(" --file_model ").append(deep_lc_location).append("/mods/full_hc_dia_fixed_mods.hdf5");
@@ -473,7 +487,6 @@ public class MainController {
             try (Writer streamWriter = new OutputStreamWriter(new FileOutputStream(
                     tempScript));
                     PrintWriter printWriter = new PrintWriter(streamWriter)) {
-                String deepLCLocation = ConfigHolder.getInstance().getString("deep_lc_location_windows");
 
                 StringBuilder command = new StringBuilder();
                 command.append("call ");
@@ -483,13 +496,15 @@ public class MainController {
                     String currentAbsolutePath = currentRelativePath.toAbsolutePath().toString();
                     command.append(currentAbsolutePath).append("/");
                 }
-                command.append(condaEnvLocation).append("/Scripts/activate.bat DL & ^python ");
+                command.append(condaEnvLocation).append("/Scripts/activate.bat deeplc_gui & ^python ");
                 command.append("-m deeplc");
 
                 //command.append(" --file_pred ").append(deepLcLocation).append("/datasets/test_pred.csv");
                 command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
                 //command.append(" --file_cal ").append(deepLcLocation).append("/datasets/test_train.csv");
-                command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());
+                if (calibrationPeptidesFile != null) {
+                    command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());
+                }
                 //command.append(" --file_pred_out ").append(deepLcLocation).append("/datasets/preds_out.csv");
                 command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());
                 //command.append(" --file_model ").append(deepLcLocation).append("/mods/full_hc_dia_fixed_mods.hdf5");

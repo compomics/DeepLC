@@ -1,4 +1,4 @@
-package com.compomics.deep_lc_gui.config;
+package com.compomics.deeplc_gui.config;
 
 import java.io.File;
 import org.springframework.core.io.ClassPathResource;

@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.compomics.deep_lc_gui.view;
+package com.compomics.deeplc_gui.view;
 
 import java.io.PrintStream;
 import org.apache.log4j.Logger;

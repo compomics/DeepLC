@@ -1,6 +1,6 @@
-package com.compomics.deep_lc_gui;
+package com.compomics.deeplc_gui;
 
-import com.compomics.deep_lc_gui.view.MainController;
+import com.compomics.deeplc_gui.view.MainController;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;

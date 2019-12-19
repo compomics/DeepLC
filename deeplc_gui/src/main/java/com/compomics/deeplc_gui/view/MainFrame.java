@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.compomics.deep_lc_gui.view;
+package com.compomics.deeplc_gui.view;
 
 import java.io.File;
 import javax.swing.JButton;
@@ -196,16 +196,16 @@ public class MainFrame extends javax.swing.JFrame {
         firstPanel.setName("firstPanel"); // NOI18N
         firstPanel.setOpaque(false);
 
-        predictionPeptidesLabel.setText("Peptides to make predictions for (peprec CSV format):");
+        predictionPeptidesLabel.setText("Peptides to make predictions for (peprec format) *:");
 
-        calibrationPeptidesLabel.setText("Peptide (e.g. observed on your setup or iRT) for calibration:");
+        calibrationPeptidesLabel.setText("Peptide (e.g. observed on yout setup or iRT) for calibration:");
 
-        outputFileLabel.setText("Choose an output file:");
+        outputFileLabel.setText("Choose an output file *:");
 
         calibrationPeptidesTextField.setEnabled(false);
 
         calibrationPeptidesButton.setText("choose");
-        calibrationPeptidesButton.setToolTipText("Choose the calibration peptide file location");
+        calibrationPeptidesButton.setToolTipText("Select a directory for the moFF output");
         calibrationPeptidesButton.setMaximumSize(new java.awt.Dimension(80, 25));
         calibrationPeptidesButton.setMinimumSize(new java.awt.Dimension(80, 25));
         calibrationPeptidesButton.setPreferredSize(new java.awt.Dimension(80, 25));
@@ -213,7 +213,7 @@ public class MainFrame extends javax.swing.JFrame {
         predictionPeptidesTextField.setEnabled(false);
 
         predictionPeptidesButton.setText("choose");
-        predictionPeptidesButton.setToolTipText("Choose the prediction peptide file location");
+        predictionPeptidesButton.setToolTipText("Choose the PeptideShaker directory location\n");
         predictionPeptidesButton.setMaximumSize(new java.awt.Dimension(80, 25));
         predictionPeptidesButton.setMinimumSize(new java.awt.Dimension(80, 25));
         predictionPeptidesButton.setPreferredSize(new java.awt.Dimension(80, 25));
@@ -221,34 +221,34 @@ public class MainFrame extends javax.swing.JFrame {
         outputFileTextField.setEnabled(false);
 
         outputFileButton.setText("choose");
-        outputFileButton.setToolTipText("Select a file location for the DeepLC output");
+        outputFileButton.setToolTipText("Select a directory for the moFF output");
         outputFileButton.setMaximumSize(new java.awt.Dimension(80, 25));
         outputFileButton.setMinimumSize(new java.awt.Dimension(80, 25));
         outputFileButton.setPreferredSize(new java.awt.Dimension(80, 25));
 
-        modelLabel.setText("Choose model:");
+        modelLabel.setText("Choose model(s) *:");
 
-        numberOfThreadsLabel.setText("Number of threads:");
+        numberOfThreadsLabel.setText("Number of threads *:");
 
-        splitCalibrationLabel.setText("Split calibration:");
+        splitCalibrationLabel.setText("Split calibration *:");
 
-        dictionaryDividerLabel.setText("Dictionary divider:");
+        dictionaryDividerLabel.setText("Dictionary divider *:");
 
         modelScrollPane1.setViewportView(modelList);
 
         modelButton.setText("choose");
-        modelButton.setToolTipText("Select a DeepLC model file");
+        modelButton.setToolTipText("Select a directory for the moFF output");
         modelButton.setMaximumSize(new java.awt.Dimension(80, 25));
         modelButton.setMinimumSize(new java.awt.Dimension(80, 25));
         modelButton.setPreferredSize(new java.awt.Dimension(80, 25));
 
         removeModelButton.setText("remove");
-        removeModelButton.setToolTipText("Remove the selected directory");
+        removeModelButton.setToolTipText("Select a directory for the moFF output");
         removeModelButton.setMaximumSize(new java.awt.Dimension(80, 25));
         removeModelButton.setMinimumSize(new java.awt.Dimension(80, 25));
         removeModelButton.setPreferredSize(new java.awt.Dimension(80, 25));
 
-        batchNumberLabel.setText("Batch number:");
+        batchNumberLabel.setText("Batch number *:");
 
         javax.swing.GroupLayout firstPanelLayout = new javax.swing.GroupLayout(firstPanel);
         firstPanel.setLayout(firstPanelLayout);
@@ -277,10 +277,10 @@ public class MainFrame extends javax.swing.JFrame {
                         .addGroup(firstPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(DictionaryDividerTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(splitCalibrationTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 45, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 25, Short.MAX_VALUE)
                         .addGroup(firstPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(batchNumberLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(numberOfThreadsLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 132, Short.MAX_VALUE))
+                            .addComponent(numberOfThreadsLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(firstPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(numberOfThreadsTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 108, javax.swing.GroupLayout.PREFERRED_SIZE)

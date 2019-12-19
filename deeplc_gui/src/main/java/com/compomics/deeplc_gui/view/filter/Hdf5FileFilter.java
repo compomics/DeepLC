@@ -1,20 +1,19 @@
-package com.compomics.deep_lc_gui.view.filter;
+package com.compomics.deeplc_gui.view.filter;
 
 import java.io.File;
 import javax.swing.filechooser.FileFilter;
 import org.apache.commons.io.FilenameUtils;
 
 /**
- * A file filter for tab separated files.
+ * A file filter for HDF5 files.
  *
  * @author Niels Hulstaert
  */
-public class TabSeparatedFileFilter extends FileFilter {
+public class Hdf5FileFilter extends FileFilter {
 
-    public static final String TSV_EXTENSION = "tsv";
-    public static final String TAB_EXTENSION = "tab";
-    public static final String TXT_EXTENSION = "txt";
-    private static final String DESCRIPTION = "*.tsv, *.tab, *.txt";
+    public static final String HDF5_EXTENSION = "hdf5";
+    public static final String H5_EXTENSION = "h5";
+    private static final String DESCRIPTION = "*.hdf5";
 
     @Override
     public boolean accept(File file) {
@@ -22,7 +21,7 @@ public class TabSeparatedFileFilter extends FileFilter {
 
         if (file.isFile()) {
             String extension = FilenameUtils.getExtension(file.getName());
-            if (!extension.isEmpty() && (extension.equals(TSV_EXTENSION) || extension.equals(TAB_EXTENSION) || extension.equals(TXT_EXTENSION))) {
+            if (!extension.isEmpty() && (extension.equalsIgnoreCase(HDF5_EXTENSION) || extension.equalsIgnoreCase(H5_EXTENSION))) {
                 accept = true;
             }
         } else {
