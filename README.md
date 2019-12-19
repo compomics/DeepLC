@@ -45,8 +45,7 @@ module.
 unzip.
 2. Install DeepLC GUI with `install_gui_windows.bat` or `install_gui_linux.sh`,
 depending on your operating system.
-3. Run DeepLC GUI with `run_gui_windows.bat` or `run_gui_linux.sh`, depending on
-your operating system.
+3. Run DeepLC GUI by running the `deeplc_gui.jar`.
 
 
 ## Python package
