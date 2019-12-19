@@ -138,10 +138,10 @@ settings:
 
 | Model filename | Experimental settings | Publication | PXD identifier |
 | - | - | - | - |
-| full_hc_dia_fixed_mods.hdf5 | | | |
-| full_hc_LUNA_HILIC_fixed_mods.hdf5 | | | |
-| full_hc_LUNA_SILICA_fixed_mods.hdf5 | | | |
-| full_hc_PXD000954_fixed_mods.hdf5 | | | |
+| full_hc_dia_fixed_mods.hdf5 | RP | Rosenberger et al. 2014 | PXD000953-4 |
+| full_hc_LUNA_HILIC_fixed_mods.hdf5 | HILIC | Spicer et al. 2018 | |
+| full_hc_LUNA_SILICA_fixed_mods.hdf5 | HILIC | Spicer et al. 2018 | |
+| full_hc_PXD000954_fixed_mods.hdf5 | RP | Rosenberger et al. 2014 | PXD000953-4 |
 
 By default, DeepLC selects the best model based on the calibration dataset. If
 no calibration is performed, the first default model is selected. Always keep
