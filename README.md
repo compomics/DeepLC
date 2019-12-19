@@ -38,12 +38,14 @@ module.
 ## Graphical user interface
 ### Installation
 
-- Download `deeplc_gui.zip` from the
+[![Download GUI](https://img.shields.io/badge/download-GUI-green?style=flat-square)](https://github.com/compomics/DeepLC/releases/latest/)
+
+1. Download `deeplc_gui.zip` from the
 [latest release](https://github.com/compomics/DeepLC/releases/latest/) and
 unzip.
-- Install DeepLC GUI with `install_gui_windows.bat` or `install_gui_linux.sh`,
+2. Install DeepLC GUI with `install_gui_windows.bat` or `install_gui_linux.sh`,
 depending on your operating system.
-- Run DeepLC GUI with `run_gui_windows.bat` or `run_gui_linux.sh`, depending on
+3. Run DeepLC GUI with `run_gui_windows.bat` or `run_gui_linux.sh`, depending on
 your operating system.
 
 
@@ -51,11 +53,15 @@ your operating system.
 
 ### Installation
 
-Install with pip:
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat-square)](http://bioconda.github.io/recipes/deeplc/README.html)
+[![install with pip](https://img.shields.io/badge/install%20with-pip-blue.svg?style=flat-square)](http://bioconda.github.io/recipes/deeplc/README.html)
+[![container](https://img.shields.io/badge/container-ready-green?style=flat-square)](https://quay.io/repository/biocontainers/deeplc)
 
-```sh
-pip install deeplc
-```
+Install with conda, using the `bioconda` and `conda-forge` channels:  
+`conda install -c bioconda -c conda-forge deeplc`
+
+Or install with pip:  
+`pip install deeplc`
 
 ### Command line interface
 
