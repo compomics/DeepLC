@@ -18,19 +18,12 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
-    - name: Build and publish
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        python setup.py sdist
-        twine upload dist/*
     - name: Zip GUI directory
       uses: thedoctor0/zip-release@master
       with:
         filename: 'deeplc_gui.zip'
         exclusions: '/*src/*'
-        path: 'deeplc_gui'
+        path: 'deeplc_gui/*'
     - name: GitHub Release
       uses: docker://antonyurchenko/git-release:v1
       env:
@@ -41,3 +34,10 @@ jobs:
       with:
         args: |
           deeplc_gui.zip
+    - name: Build and publish
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        python setup.py sdist bdist_wheel
+        twine upload dist/*

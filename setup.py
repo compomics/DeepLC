@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 
 with open("README.md", "r") as fh:
@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='deeplc',
-    version='0.1.1.dev8',
+    version='0.1.1',
     license='apache-2.0',
     description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
     long_description=LONG_DESCRIPTION,

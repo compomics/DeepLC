@@ -7,6 +7,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.1] - 2019-12-18
+- Switch to setuptools
+- Reorder publish workflow; build wheels
+
 ## [0.1.1.dev8] - 2019-12-16
 - Remove xgboost dependancy
 
