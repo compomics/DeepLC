@@ -55,9 +55,9 @@ your operating system.
 
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat-square)](http://bioconda.github.io/recipes/deeplc/README.html)
 [![install with pip](https://img.shields.io/badge/install%20with-pip-blue.svg?style=flat-square)](http://bioconda.github.io/recipes/deeplc/README.html)
-[![container](https://img.shields.io/badge/container-ready-green?style=flat-square)](https://quay.io/repository/biocontainers/deeplc)
+[![container](https://img.shields.io/badge/pull&nbsp;docker-biocontainers-green?style=flat-square)](https://quay.io/repository/biocontainers/deeplc)
 
-Install with conda, using the `bioconda` and `conda-forge` channels:  
+Install with conda, using the bioconda and conda-forge channels:  
 `conda install -c bioconda -c conda-forge deeplc`
 
 Or install with pip:  
@@ -136,12 +136,12 @@ for more examples.
 DeepLC comes with multiple CNN models trained on data from various experimental
 settings:
 
-| Model filename | Experimental settings | Publication | PXD identifier |
-| - | - | - | - |
-| full_hc_dia_fixed_mods.hdf5 | RP | Rosenberger et al. 2014 | PXD000953-4 |
-| full_hc_LUNA_HILIC_fixed_mods.hdf5 | HILIC | Spicer et al. 2018 | |
-| full_hc_LUNA_SILICA_fixed_mods.hdf5 | HILIC | Spicer et al. 2018 | |
-| full_hc_PXD000954_fixed_mods.hdf5 | RP | Rosenberger et al. 2014 | PXD000953-4 |
+| Model filename | Experimental settings | Publication |
+| - | - | - |
+| full_hc_dia_fixed_mods.hdf5 | Reverse phase | [Rosenberger et al. 2014](https://doi.org/10.1038/sdata.2014.31) |
+| full_hc_LUNA_HILIC_fixed_mods.hdf5 | HILIC | [Spicer et al. 2018](https://doi.org/10.1016/j.chroma.2017.12.046) |
+| full_hc_LUNA_SILICA_fixed_mods.hdf5 | HILIC | [Spicer et al. 2018](https://doi.org/10.1016/j.chroma.2017.12.046) |
+| full_hc_PXD000954_fixed_mods.hdf5 | Reverse phase | [Rosenberger et al. 2014](https://doi.org/10.1038/sdata.2014.31) |
 
 By default, DeepLC selects the best model based on the calibration dataset. If
 no calibration is performed, the first default model is selected. Always keep
