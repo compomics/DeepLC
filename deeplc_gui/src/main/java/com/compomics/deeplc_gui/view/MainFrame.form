@@ -109,11 +109,11 @@
                           <EmptySpace min="185" pref="185" max="-2" attributes="0"/>
                       </Group>
                       <Group type="102" alignment="0" attributes="0">
-                          <Group type="103" groupAlignment="1" max="-2" attributes="0">
-                              <Component id="outputFileLabel" alignment="0" max="32767" attributes="0"/>
-                              <Component id="modelLabel" alignment="0" max="32767" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Component id="outputFileLabel" min="-2" max="-2" attributes="0"/>
+                              <Component id="modelLabel" min="-2" pref="253" max="-2" attributes="0"/>
                           </Group>
-                          <EmptySpace min="-2" pref="110" max="-2" attributes="0"/>
+                          <EmptySpace max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="1" attributes="0">
                               <Component id="modelScrollPane1" alignment="0" max="32767" attributes="0"/>
                               <Component id="predictionPeptidesTextField" alignment="0" max="32767" attributes="0"/>
@@ -183,10 +183,13 @@
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Group type="102" attributes="0">
                                   <Group type="103" groupAlignment="0" attributes="0">
-                                      <Component id="modelLabel" min="-2" max="-2" attributes="0"/>
                                       <Component id="modelScrollPane1" max="32767" attributes="0"/>
+                                      <Group type="102" attributes="0">
+                                          <Component id="modelLabel" min="-2" pref="60" max="-2" attributes="0"/>
+                                          <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                                      </Group>
                                   </Group>
-                                  <EmptySpace type="unrelated" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
                                   <Group type="103" groupAlignment="0" attributes="0">
                                       <Component id="numberOfThreadsTextField" alignment="0" min="-2" max="-2" attributes="0"/>
                                       <Group type="103" groupAlignment="3" attributes="0">
@@ -293,7 +296,8 @@
                 </Component>
                 <Component class="javax.swing.JLabel" name="modelLabel">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Choose model(s) *:"/>
+                    <Property name="text" type="java.lang.String" value="&lt;html&gt;Choose one or more models:&lt;br&gt;(leave empty for the default ones)&lt;/html&gt;"/>
+                    <Property name="verticalAlignment" type="int" value="1"/>
                   </Properties>
                 </Component>
                 <Component class="javax.swing.JLabel" name="numberOfThreadsLabel">

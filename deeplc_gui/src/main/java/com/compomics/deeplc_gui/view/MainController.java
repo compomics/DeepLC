@@ -117,19 +117,6 @@ public class MainController {
             }
         });
 
-        //fill the model list with the models in the models.directory
-        File modelsDirectory = new File(ConfigHolder.getInstance().getString("models_directory"));
-        if (modelsDirectory.exists() && modelsDirectory.isDirectory()) {
-            for (File model : modelsDirectory.listFiles(new FileFilter() {
-                @Override
-                public boolean accept(File modelFile) {
-                    return modelFile.getName().toLowerCase().endsWith("hdf5");
-                }
-            })) {
-                modelFileListModel.addElement(model);
-            }
-        }
-
         mainFrame.getModelList().setModel(modelFileListModel);
         mainFrame.getModelButton().addActionListener(e -> {
             int returnVal = mainFrame.getModelFileChooser().showOpenDialog(mainFrame);
@@ -290,9 +277,7 @@ public class MainController {
         if (calibrationPeptidesFile != null && !calibrationPeptidesFile.exists()) {
             validationMessages.add("Please choose a valid calibration peptides file.");
         }
-        if (modelFileListModel.isEmpty()) {
-            validationMessages.add("Please choose at least one model file.");
-        } else {
+        if (!modelFileListModel.isEmpty()) {
             Enumeration<File> elements = modelFileListModel.elements();
             while (elements.hasMoreElements()) {
                 File modelFile = elements.nextElement();
@@ -464,11 +449,13 @@ public class MainController {
                 //command.append(" --file_pred_out ").append(deep_lc_location).append("/datasets/preds_out.csv");
                 command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());
                 //command.append(" --file_model ").append(deep_lc_location).append("/mods/full_hc_dia_fixed_mods.hdf5");
-                command.append(" --file_model ");
-                Enumeration<File> elements = modelFileListModel.elements();
-                while (elements.hasMoreElements()) {
-                    File modelFile = elements.nextElement();
-                    command.append(modelFile.getAbsolutePath()).append(" ");
+                if (!modelFileListModel.isEmpty()) {
+                    command.append(" --file_model ");
+                    Enumeration<File> elements = modelFileListModel.elements();
+                    while (elements.hasMoreElements()) {
+                        File modelFile = elements.nextElement();
+                        command.append(modelFile.getAbsolutePath()).append(" ");
+                    }
                 }
                 command.append(" --n_threads ").append(mainFrame.getNumberOfThreadsTextField().getText());
                 command.append(" --split_cal ").append(mainFrame.getSplitCalibrationTextField().getText());
@@ -508,11 +495,13 @@ public class MainController {
                 //command.append(" --file_pred_out ").append(deepLcLocation).append("/datasets/preds_out.csv");
                 command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());
                 //command.append(" --file_model ").append(deepLcLocation).append("/mods/full_hc_dia_fixed_mods.hdf5");
-                command.append(" --file_model ");
-                Enumeration<File> elements = modelFileListModel.elements();
-                while (elements.hasMoreElements()) {
-                    File modelFile = elements.nextElement();
-                    command.append(modelFile.getAbsolutePath()).append(" ");
+                if (!modelFileListModel.isEmpty()) {
+                    command.append(" --file_model ");
+                    Enumeration<File> elements = modelFileListModel.elements();
+                    while (elements.hasMoreElements()) {
+                        File modelFile = elements.nextElement();
+                        command.append(modelFile.getAbsolutePath()).append(" ");
+                    }
                 }
                 command.append(" --n_threads ").append(mainFrame.getNumberOfThreadsTextField().getText());
                 command.append(" --split_cal ").append(mainFrame.getSplitCalibrationTextField().getText());

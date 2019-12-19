@@ -226,7 +226,8 @@ public class MainFrame extends javax.swing.JFrame {
         outputFileButton.setMinimumSize(new java.awt.Dimension(80, 25));
         outputFileButton.setPreferredSize(new java.awt.Dimension(80, 25));
 
-        modelLabel.setText("Choose model(s) *:");
+        modelLabel.setText("<html>Choose one or more models:<br>(leave empty for the default ones)</html>");
+        modelLabel.setVerticalAlignment(javax.swing.SwingConstants.TOP);
 
         numberOfThreadsLabel.setText("Number of threads *:");
 
@@ -260,10 +261,10 @@ public class MainFrame extends javax.swing.JFrame {
                     .addComponent(calibrationPeptidesLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addGap(185, 185, 185))
             .addGroup(firstPanelLayout.createSequentialGroup()
-                .addGroup(firstPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                    .addComponent(outputFileLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(modelLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addGap(110, 110, 110)
+                .addGroup(firstPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(outputFileLabel)
+                    .addComponent(modelLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 253, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(firstPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(modelScrollPane1, javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(predictionPeptidesTextField, javax.swing.GroupLayout.Alignment.LEADING)
@@ -319,8 +320,10 @@ public class MainFrame extends javax.swing.JFrame {
                 .addGroup(firstPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(firstPanelLayout.createSequentialGroup()
                         .addGroup(firstPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(modelLabel)
-                            .addComponent(modelScrollPane1))
+                            .addComponent(modelScrollPane1)
+                            .addGroup(firstPanelLayout.createSequentialGroup()
+                                .addComponent(modelLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(0, 0, Short.MAX_VALUE)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(firstPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(numberOfThreadsTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
