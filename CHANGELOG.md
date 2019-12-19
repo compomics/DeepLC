@@ -7,6 +7,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.2] - 2019-12-19
+- Example files in GUI folder
+- Unnecesary bat and sh for running GUI removed
+
 ## [0.1.1] - 2019-12-18
 - Switch to setuptools
 - Reorder publish workflow; build wheels
