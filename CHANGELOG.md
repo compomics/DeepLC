@@ -7,6 +7,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.3] - 2020-01-17
+- Fixed the .bat installer (now uses bioconda)
+
 ## [0.1.2] - 2019-12-19
 - Example files in GUI folder
 - Unnecesary bat and sh for running GUI removed
