@@ -7,6 +7,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.4] - 2020-01-17
+- Fix the latest release
+
 ## [0.1.3] - 2020-01-17
 - Fixed the .bat installer (now uses bioconda)
 
