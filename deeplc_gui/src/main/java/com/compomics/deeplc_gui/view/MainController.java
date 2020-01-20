@@ -441,20 +441,20 @@ public class MainController {
                 command.append(ConfigHolder.getInstance().getString("conda_env_location_linux")).append("/bin/python ");
                 command.append("-m deeplc");
                 //command.append(" --file_pred ").append(deep_lc_location).append("/datasets/test_pred.csv");
-                command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
+                command.append(" --file_pred ").append("\"").append(predictionPeptidesFile.getAbsolutePath()).append("\"");
                 //command.append(" --file_cal ").append(deep_lc_location).append("/datasets/test_train.csv");
                 if (calibrationPeptidesFile != null) {
-                    command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());
+                    command.append(" --file_cal ").append("\"").append(calibrationPeptidesFile.getAbsolutePath()).append("\"");
                 }
                 //command.append(" --file_pred_out ").append(deep_lc_location).append("/datasets/preds_out.csv");
-                command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());
+                command.append(" --file_pred_out ").append("\"").append(outPutFile.getAbsolutePath()).append("\"");
                 //command.append(" --file_model ").append(deep_lc_location).append("/mods/full_hc_dia_fixed_mods.hdf5");
                 if (!modelFileListModel.isEmpty()) {
                     command.append(" --file_model ");
                     Enumeration<File> elements = modelFileListModel.elements();
                     while (elements.hasMoreElements()) {
                         File modelFile = elements.nextElement();
-                        command.append(modelFile.getAbsolutePath()).append(" ");
+                        command.append("\"").append(modelFile.getAbsolutePath()).append("\" ");
                     }
                 }
                 command.append(" --n_threads ").append(mainFrame.getNumberOfThreadsTextField().getText());
@@ -487,20 +487,20 @@ public class MainController {
                 command.append("-m deeplc");
 
                 //command.append(" --file_pred ").append(deepLcLocation).append("/datasets/test_pred.csv");
-                command.append(" --file_pred ").append(predictionPeptidesFile.getAbsolutePath());
+                command.append(" --file_pred ").append("\"").append(predictionPeptidesFile.getAbsolutePath()).append("\"");
                 //command.append(" --file_cal ").append(deepLcLocation).append("/datasets/test_train.csv");
                 if (calibrationPeptidesFile != null) {
-                    command.append(" --file_cal ").append(calibrationPeptidesFile.getAbsolutePath());
+                    command.append(" --file_cal ").append("\"").append(calibrationPeptidesFile.getAbsolutePath()).append("\"");
                 }
                 //command.append(" --file_pred_out ").append(deepLcLocation).append("/datasets/preds_out.csv");
-                command.append(" --file_pred_out ").append(outPutFile.getAbsolutePath());
+                command.append(" --file_pred_out ").append("\"").append(outPutFile.getAbsolutePath()).append("\"");
                 //command.append(" --file_model ").append(deepLcLocation).append("/mods/full_hc_dia_fixed_mods.hdf5");
                 if (!modelFileListModel.isEmpty()) {
                     command.append(" --file_model ");
                     Enumeration<File> elements = modelFileListModel.elements();
                     while (elements.hasMoreElements()) {
                         File modelFile = elements.nextElement();
-                        command.append(modelFile.getAbsolutePath()).append(" ");
+                        command.append("\"").append(modelFile.getAbsolutePath()).append("\" ");
                     }
                 }
                 command.append(" --n_threads ").append(mainFrame.getNumberOfThreadsTextField().getText());

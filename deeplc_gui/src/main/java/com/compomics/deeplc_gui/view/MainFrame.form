@@ -242,7 +242,7 @@
                 <Component class="javax.swing.JButton" name="calibrationPeptidesButton">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="choose"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Select a directory for the moFF output"/>
+                    <Property name="toolTipText" type="java.lang.String" value=""/>
                     <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                       <Dimension value="[80, 25]"/>
                     </Property>
@@ -262,7 +262,7 @@
                 <Component class="javax.swing.JButton" name="predictionPeptidesButton">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="choose"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Choose the PeptideShaker directory location&#xa;"/>
+                    <Property name="toolTipText" type="java.lang.String" value="&#xa;"/>
                     <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                       <Dimension value="[80, 25]"/>
                     </Property>
@@ -282,7 +282,7 @@
                 <Component class="javax.swing.JButton" name="outputFileButton">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="choose"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Select a directory for the moFF output"/>
+                    <Property name="toolTipText" type="java.lang.String" value=""/>
                     <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                       <Dimension value="[80, 25]"/>
                     </Property>
@@ -338,7 +338,7 @@
                 <Component class="javax.swing.JButton" name="modelButton">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="choose"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Select a directory for the moFF output"/>
+                    <Property name="toolTipText" type="java.lang.String" value=""/>
                     <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                       <Dimension value="[80, 25]"/>
                     </Property>
@@ -353,7 +353,7 @@
                 <Component class="javax.swing.JButton" name="removeModelButton">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="remove"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Select a directory for the moFF output"/>
+                    <Property name="toolTipText" type="java.lang.String" value=""/>
                     <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                       <Dimension value="[80, 25]"/>
                     </Property>

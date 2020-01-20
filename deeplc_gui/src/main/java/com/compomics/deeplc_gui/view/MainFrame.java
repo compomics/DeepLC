@@ -205,7 +205,7 @@ public class MainFrame extends javax.swing.JFrame {
         calibrationPeptidesTextField.setEnabled(false);
 
         calibrationPeptidesButton.setText("choose");
-        calibrationPeptidesButton.setToolTipText("Select a directory for the moFF output");
+        calibrationPeptidesButton.setToolTipText("");
         calibrationPeptidesButton.setMaximumSize(new java.awt.Dimension(80, 25));
         calibrationPeptidesButton.setMinimumSize(new java.awt.Dimension(80, 25));
         calibrationPeptidesButton.setPreferredSize(new java.awt.Dimension(80, 25));
@@ -213,7 +213,7 @@ public class MainFrame extends javax.swing.JFrame {
         predictionPeptidesTextField.setEnabled(false);
 
         predictionPeptidesButton.setText("choose");
-        predictionPeptidesButton.setToolTipText("Choose the PeptideShaker directory location\n");
+        predictionPeptidesButton.setToolTipText("\n");
         predictionPeptidesButton.setMaximumSize(new java.awt.Dimension(80, 25));
         predictionPeptidesButton.setMinimumSize(new java.awt.Dimension(80, 25));
         predictionPeptidesButton.setPreferredSize(new java.awt.Dimension(80, 25));
@@ -221,7 +221,7 @@ public class MainFrame extends javax.swing.JFrame {
         outputFileTextField.setEnabled(false);
 
         outputFileButton.setText("choose");
-        outputFileButton.setToolTipText("Select a directory for the moFF output");
+        outputFileButton.setToolTipText("");
         outputFileButton.setMaximumSize(new java.awt.Dimension(80, 25));
         outputFileButton.setMinimumSize(new java.awt.Dimension(80, 25));
         outputFileButton.setPreferredSize(new java.awt.Dimension(80, 25));
@@ -238,13 +238,13 @@ public class MainFrame extends javax.swing.JFrame {
         modelScrollPane1.setViewportView(modelList);
 
         modelButton.setText("choose");
-        modelButton.setToolTipText("Select a directory for the moFF output");
+        modelButton.setToolTipText("");
         modelButton.setMaximumSize(new java.awt.Dimension(80, 25));
         modelButton.setMinimumSize(new java.awt.Dimension(80, 25));
         modelButton.setPreferredSize(new java.awt.Dimension(80, 25));
 
         removeModelButton.setText("remove");
-        removeModelButton.setToolTipText("Select a directory for the moFF output");
+        removeModelButton.setToolTipText("");
         removeModelButton.setMaximumSize(new java.awt.Dimension(80, 25));
         removeModelButton.setMinimumSize(new java.awt.Dimension(80, 25));
         removeModelButton.setPreferredSize(new java.awt.Dimension(80, 25));
