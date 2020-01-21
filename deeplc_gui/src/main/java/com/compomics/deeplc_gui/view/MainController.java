@@ -438,7 +438,7 @@ public class MainController {
                 printWriter.println("#!/bin/bash");
 
                 StringBuilder command = new StringBuilder();
-                command.append(ConfigHolder.getInstance().getString("conda_env_location_linux")).append("/bin/python ");
+                command.append("\"").append(ConfigHolder.getInstance().getString("conda_env_location_linux")).append("/bin/python\" ");
                 command.append("-m deeplc");
                 //command.append(" --file_pred ").append(deep_lc_location).append("/datasets/test_pred.csv");
                 command.append(" --file_pred ").append("\"").append(predictionPeptidesFile.getAbsolutePath()).append("\"");
@@ -483,7 +483,7 @@ public class MainController {
                     String currentAbsolutePath = currentRelativePath.toAbsolutePath().toString();
                     command.append(currentAbsolutePath).append("/");
                 }
-                command.append(condaEnvLocation).append("/Scripts/activate.bat deeplc_gui & ^python ");
+                command.append("\"").append(condaEnvLocation).append("/Scripts/activate.bat deeplc_gui & ^python\" ");
                 command.append("-m deeplc");
 
                 //command.append(" --file_pred ").append(deepLcLocation).append("/datasets/test_pred.csv");
