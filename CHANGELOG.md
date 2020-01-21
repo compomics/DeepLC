@@ -7,6 +7,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.6] - 2020-01-21
+- Fix the latest release
+
 ## [0.1.5] - 2020-01-21
 - Spaces in paths to files and installation allowed
 - References to other CompOmics tools removed in GUI
