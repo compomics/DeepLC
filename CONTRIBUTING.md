@@ -37,19 +37,17 @@ with these changes. You pull request message ideally should include:
     [semantic versioning](https://semver.org/).
     3. Update the changelog (if not already done) in `CHANGELOG.md` according to
     [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-    4. Set a new tag with the version number, e.g. `git tag 0.1.1.dev1`.
+    4. Set a new tag with the version number, e.g. `git tag v0.1.5`.
     5. Push to GitHub, with the tag: `git push; git push --tags`.
-    6. Update the version and sha256 checksum in the bioconda recipe using
-    `conda skeleton pypi deeplc` in the
-    [bioconda-recipes](https://github.com/bioconda/bioconda-recipes) repository.
 
-- When new commits are pushed to the `releases` branch, the following GitHub
-  Actions are triggered:
+- When a new tag is pushed to (or made on) GitHub that matches `v*`, the
+following GitHub Actions are triggered:
 
     1. The Python package is build and published to PyPI.
     2. A zip archive is made of the `./deeplc_gui/` directory, excluding
     `./deeplc_gui/src` with
     [Zip Release](https://github.com/marketplace/actions/zip-release).
-    3. A GitHub release is made with the zipped GUI files as asset and the new
+    3. A GitHub release is made with the zipped GUI files as assets and the new
     changes listed in `CHANGELOG.md` with
     [Git Release](https://github.com/marketplace/actions/git-release).
+    4. After some time, the bioconda package should get updated automatically.
