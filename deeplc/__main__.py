@@ -220,6 +220,20 @@ def run(file_pred="",
 
     logging.info("Using DeepLC version %s", __version__)
 
+    if len(file_cal) == 0:
+        fm_dict = {}
+        sel_group = ""
+        for fm in file_model:
+            if len(sel_group) == 0:
+                sel_group = "_".join(fm.split("_")[:-1])
+                fm_dict[sel_group][fm] = fm
+                continue
+            m_group = "_".join(fm.split("_")[:-1])
+            if m_group == sel_group:
+                fm_dict[m_group][fm] = fm
+        file_model = fm_dict
+
+
     # Read input files
     df_pred = pd.read_csv(file_pred)
     df_pred = df_pred.fillna("")
