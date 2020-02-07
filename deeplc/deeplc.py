@@ -275,6 +275,33 @@ class DeepLC():
         pool.join()
         return df
 
+    def calibration_core(self,uncal_preds,cal_dict,cal_min,cal_max):
+        cal_preds = []
+        for uncal_pred in uncal_preds:
+            try:
+                slope, intercept, x_correction = cal_dict[str(
+                    round(uncal_pred, self.bin_dist))]
+                cal_preds.append(
+                    slope * (uncal_pred - x_correction) + intercept)
+            except KeyError:
+                # outside of the prediction range ... use the last
+                # calibration curve
+                if uncal_pred <= cal_min:
+                    slope, intercept, x_correction = cal_dict[str(
+                        round(cal_min, self.bin_dist))]
+                    cal_preds.append(
+                        slope * (uncal_pred - x_correction) + intercept)
+                elif uncal_pred >= cal_max:
+                    slope, intercept, x_correction = cal_dict[str(
+                        round(cal_max, self.bin_dist))]
+                    cal_preds.append(
+                        slope * (uncal_pred - x_correction) + intercept)
+                else:
+                    slope, intercept, x_correction = cal_dict[str(
+                        round(cal_max, self.bin_dist))]
+                    cal_preds.append(
+                        slope * (uncal_pred - x_correction) + intercept)
+        return np.array(cal_preds)
 
     def make_preds_core(self,
                         seq_df=None,
@@ -374,45 +401,36 @@ class DeepLC():
             if self.verbose:
                 logging.debug("Predicting with calibration...")
 
-            cal_preds = []
+            
 
             # Load the model differently if we are going to use a CNN
             if self.cnn_model:
-                if not mod_name:
+                # TODO this is madness! Only allow dicts to come through this function...
+                if isinstance(self.model, dict):
+                    ret_preds = []
+                    for m_group_name,m_name in self.model.items():
+                        mod = load_model(m_name)
+                        uncal_preds = mod.predict(
+                            [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
+                        
+                        p = list(self.calibration_core(uncal_preds,self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
+                        ret_preds.append(p)
+                    ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
+                elif not mod_name:
                     mod = load_model(self.model)
+                    uncal_preds = mod.predict(
+                        [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
+                    ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
                 else:
                     mod = load_model(mod_name)
-                uncal_preds = mod.predict(
-                    [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
+                    uncal_preds = mod.predict(
+                        [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
+                    ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
             else:
                 # first get uncalibrated prediction
                 uncal_preds = self.model.predict(X) / correction_factor
 
-            for uncal_pred in uncal_preds:
-                try:
-                    slope, intercept, x_correction = self.calibrate_dict[str(
-                        round(uncal_pred, self.bin_dist))]
-                    cal_preds.append(
-                        slope * (uncal_pred - x_correction) + intercept)
-                except KeyError:
-                    # outside of the prediction range ... use the last
-                    # calibration curve
-                    if uncal_pred <= self.calibrate_min:
-                        slope, intercept, x_correction = self.calibrate_dict[str(
-                            round(self.calibrate_min, self.bin_dist))]
-                        cal_preds.append(
-                            slope * (uncal_pred - x_correction) + intercept)
-                    elif uncal_pred >= self.calibrate_max:
-                        slope, intercept, x_correction = self.calibrate_dict[str(
-                            round(self.calibrate_max, self.bin_dist))]
-                        cal_preds.append(
-                            slope * (uncal_pred - x_correction) + intercept)
-                    else:
-                        slope, intercept, x_correction = self.calibrate_dict[str(
-                            round(self.calibrate_max, self.bin_dist))]
-                        cal_preds.append(
-                            slope * (uncal_pred - x_correction) + intercept)
-            ret_preds = np.array(cal_preds)
+            
         else:
             if self.verbose:
                 logging.debug("Predicting without calibration...")
@@ -420,20 +438,43 @@ class DeepLC():
             # Load the model differently if we use CNN
             if self.cnn_model:
                 if not mod_name:
-                    if isinstance(self.model, list):
+                    if isinstance(self.model, dict):
+                        ret_preds = []
+                        for m_group_name,m_name in self.model.items():
+                            mod = load_model(m_name)
+                            p = mod.predict(
+                                [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
+                            ret_preds.append(p)
+                        ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
+                    elif isinstance(self.model, list):
                         mod_name = self.model[0]
+                        mod = load_model(mod_name)
+                        ret_preds = mod.predict([X,
+                                                X_sum,
+                                                X_global,
+                                                X_hc],
+                                                batch_size=5120,
+                                                verbose=cnn_verbose).flatten() / correction_factor
                     elif isinstance(self.model, str):
                         mod_name = self.model
+                        mod = load_model(mod_name)
+                        ret_preds = mod.predict([X,
+                                                X_sum,
+                                                X_global,
+                                                X_hc],
+                                                batch_size=5120,
+                                                verbose=cnn_verbose).flatten() / correction_factor
                     else:
                         logging.critical('No CNN model defined.')
                         exit(1)
-                mod = load_model(mod_name)
-                ret_preds = mod.predict([X,
-                                         X_sum,
-                                         X_global,
-                                         X_hc],
-                                        batch_size=5120,
-                                        verbose=cnn_verbose).flatten() / correction_factor
+                else:
+                    mod = load_model(mod_name)
+                    ret_preds = mod.predict([X,
+                                            X_sum,
+                                            X_global,
+                                            X_hc],
+                                            batch_size=5120,
+                                            verbose=cnn_verbose).flatten() / correction_factor
             else:
                 ret_preds = self.model.predict(X) / correction_factor
 
@@ -711,7 +752,12 @@ linear models between)"
         best_calibrate_min = 0.0
         best_calibrate_max = 0.0
         best_calibrate_dict = {}
-        best_model = ""
+        mod_calibrate_dict = {}
+        mod_calibrate_min_dict = {}
+        mod_calibrate_max_dict = {}
+        pred_dict = {}
+        mod_dict = {}
+        best_models = []
 
         for m in self.model:
             if self.verbose:
@@ -738,7 +784,30 @@ linear models between)"
                                     seq_df=seq_df,
                                     correction_factor=correction_factor,
                                     mod_name=m)
+            m_name = m.split("/")[-1]
+            m_group_name = "_".join(m_name.split("_")[:-1])
 
+            try:
+                pred_dict[m_group_name][m] = preds
+                mod_dict[m_group_name][m] = m
+                mod_calibrate_dict[m_group_name][m] = self.calibrate_dict
+                mod_calibrate_min_dict[m_group_name][m] = self.calibrate_min
+                mod_calibrate_max_dict[m_group_name][m] = self.calibrate_max
+            except:
+                pred_dict[m_group_name] = {}
+                mod_dict[m_group_name] = {}
+                mod_calibrate_dict[m_group_name] = {}
+                mod_calibrate_min_dict[m_group_name] = {}
+                mod_calibrate_max_dict[m_group_name] = {}
+
+                pred_dict[m_group_name][m] = preds
+                mod_dict[m_group_name][m] = m
+                mod_calibrate_dict[m_group_name][m] = self.calibrate_dict
+                mod_calibrate_min_dict[m_group_name][m] = self.calibrate_min
+                mod_calibrate_max_dict[m_group_name][m] = self.calibrate_max
+
+        for m_name in pred_dict.keys():
+            preds = [sum(a)/len(a) for a in zip(*list(pred_dict[m_name].values()))]
             if len(measured_tr) == 0:
                 perf = sum(abs(seq_df["tr"] - preds))
             else:
@@ -750,12 +819,14 @@ linear models between)"
                     (perf / len(preds)))
 
             if perf < best_perf:
+                m_group_name =  "_".join(m.split("_")[:-1]).split("/")[-1]
                 # TODO is deepcopy really required?
-                best_calibrate_dict = copy.deepcopy(self.calibrate_dict)
-                best_calibrate_min = copy.deepcopy(self.calibrate_min)
-                best_calibrate_max = copy.deepcopy(self.calibrate_max)
 
-                best_model = copy.deepcopy(m)
+                best_calibrate_dict = copy.deepcopy(mod_calibrate_dict[m_group_name])
+                best_calibrate_min = copy.deepcopy(mod_calibrate_min_dict[m_group_name])
+                best_calibrate_max = copy.deepcopy(mod_calibrate_max_dict[m_group_name])
+
+                best_model = copy.deepcopy(mod_dict[m_group_name])
                 best_perf = perf
 
         self.calibrate_dict = best_calibrate_dict
