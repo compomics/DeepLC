@@ -7,6 +7,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.7] - 2020-02-07
+- Support for averaging predictions of groups of models (ensemble)
+
 ## [0.1.6] - 2020-01-21
 - Fix the latest release
 
