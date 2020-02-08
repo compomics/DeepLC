@@ -21,6 +21,7 @@ DeepLC: Retention time prediction for (modified) peptides using Deep Learning.
   - [Python module](#python-module)
 - [Input files](#input-files)
 - [Prediction models](#prediction-models)
+- [Q&A](#Q&A)
 
 ---
 
@@ -145,3 +146,97 @@ settings:
 By default, DeepLC selects the best model based on the calibration dataset. If
 no calibration is performed, the first default model is selected. Always keep
 note of the used models and the DeepLC version.
+
+## Q&A
+
+**__Q: So DeepLC is able to predict the retention time for any modification?__**
+
+Yes, DeepLC can predict the retention time of any modification. However, if the 
+modification is **very** different from the peptides the model has seen during 
+training the accuracy might not be satisfactory for you. For example, if the model
+has never seen a phosphor atom before, the accuracy of the prediction is going to
+be low.
+
+**__Q: I have a graphics card, but DeepLC is not using the GPU. Why?__**
+
+For now DeepLC defaults to the CPU instead of the GPU. Clearly, because you want
+to use the GPU, you are a power user :-). If you want to make the most of that expensive
+GPU, you need to change or remove the following line (at the top) in __deeplc.py__:
+
+```
+# Set to force CPU calculations
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+```
+
+Also change the same line in the function __reset_keras()__:
+
+```
+# Set to force CPU calculations
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+```
+
+Either remove the line or change to (where the number indicates the number of GPUs):
+
+```
+# Set to force CPU calculations
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+```
+
+**__Q: What modification name should I use?__**
+
+The names from unimod are used. The PSI-MS name is used by default, but the Interim name
+is used as a fall-back if the PSI-MS name is not available. Please also see __unimod_to_formula.csv__
+in the folder __unimod/__ for the naming of specific modifications.
+
+**__Q: I have a modification that is not in unimod. How can I add the modification?__**
+
+In the folder __unimod/__ there is the file __unimod_to_formula.csv__ that can be used to
+add modifications. In the CSV file add a name (**that is unique and not present yet**) and
+the change in atomic composition. For example:
+
+```
+Met->Hse,O,H(-2) C(-1) S(-1)
+```
+
+Make sure to use negative signs for the atoms subtracted.
+
+**__Q: Help, all my predictions are between [0,10]. Why?__**
+
+It is likely you did not use calibration. No problem, but the retention times for training
+purposes were normalized between [0,10]. This means that you probably need to adjust the 
+retention time yourselve after analysis or use a calibration set as the input.
+
+**__Q: How does the ensemble part of DeepLC work?__**
+
+Models within the same directory are grouped if they overlap in their name. The overlap
+has to be in their full name, except for the last part of the name after a "_"-character.
+
+The following models will be grouped:
+
+```
+full_hc_dia_fixed_mods_a.hdf5
+full_hc_dia_fixed_mods_b.hdf5
+```
+
+None of the following models will not be grouped:
+
+```
+full_hc_dia_fixed_mods2_a.hdf5
+full_hc_dia_fixed_mods_b.hdf5
+full_hc_dia_fixed_mods_2_b.hdf5
+```
+
+**__Q: I would like to take the ensemble average of multiple models, even if they are trained on different datasets. How can I do this?__**
+
+Feel free to experiment! Models within the same directory are grouped if they overlap in
+their name. The overlap has to be in their full name, except for the last part of the 
+name after a "_"-character.
+
+The following models will be grouped:
+
+```
+model_dataset1.hdf5
+model_dataset2.hdf5
+```
+
+So you just need to rename you models.
