@@ -157,6 +157,26 @@ training the accuracy might not be satisfactory for you. For example, if the mod
 has never seen a phosphor atom before, the accuracy of the prediction is going to
 be low.
 
+**__Q: Installation fails. Why?__**
+
+Please make sure to install DeepLC in a path that does not contain spaces. Run
+the latest LTS version of Ubuntu or Windows 10. Make sure you have enough disk 
+space available, surprisingly TensorFlow needs quite a bit of disk space. If
+you are still not able to install DeepLC, please feel free to contact us:
+
+Robbin.Bouwmeester@ugent.be and Ralf.Gabriels@ugent.be
+
+**__Q: I have a special usecase that is not supported. Can you help?__**
+
+Ofcourse, please feel free to contact us:
+
+Robbin.Bouwmeester@ugent.be and Ralf.Gabriels@ugent.be
+
+**__Q: DeepLC runs out of memory. What can I do?__**
+
+You can try to reduce the batch size. DeepLC should be able to run if the batch size is low
+enough, even on machines with only 4 GB of RAM.
+
 **__Q: I have a graphics card, but DeepLC is not using the GPU. Why?__**
 
 For now DeepLC defaults to the CPU instead of the GPU. Clearly, because you want

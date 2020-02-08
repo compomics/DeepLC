@@ -1,7 +1,12 @@
 """
 Code used to run the retention time predictor
 """
+
+__author__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
+__credits__ = ["Robbin Bouwmeester", "Ralf Gabriels", "Prof. Lennart Martens", "Sven Degroeve"]
 __license__ = "Apache License, Version 2.0"
+__maintainer__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
+__email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
 
 # Standard library
 from collections import Counter
@@ -220,19 +225,18 @@ def run(file_pred="",
 
     logging.info("Using DeepLC version %s", __version__)
 
-    if len(file_cal) == 0:
+    if len(file_cal) == 0 and file_model != None:
         fm_dict = {}
         sel_group = ""
         for fm in file_model:
             if len(sel_group) == 0:
                 sel_group = "_".join(fm.split("_")[:-1])
-                fm_dict[sel_group][fm] = fm
+                fm_dict[sel_group]= fm
                 continue
             m_group = "_".join(fm.split("_")[:-1])
             if m_group == sel_group:
-                fm_dict[m_group][fm] = fm
+                fm_dict[m_group] = fm
         file_model = fm_dict
-
 
     # Read input files
     df_pred = pd.read_csv(file_pred)
