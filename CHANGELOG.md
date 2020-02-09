@@ -7,6 +7,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.8] - 2020-02-07
+- Fixed support for averaging predictions of groups of models (ensemble) when no models were passed
+- New models for ensemble
+
 ## [0.1.7] - 2020-02-07
 - Support for averaging predictions of groups of models (ensemble)
 
