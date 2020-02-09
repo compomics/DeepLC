@@ -1,17 +1,17 @@
 # Contributing
 
 This document briefly describes how to contribute to
-[DeepLC](https://github.com/HUPO-PSI/SpectralLibraryFormat).
+[DeepLC](https://github.com/compomics/DeepLC).
 
 ## Before you begin
 
 If you have an idea for a feature, use case to add or an approach for a bugfix,
 it is best to communicate with the community by creating an issue in
-[GitHub issues](https://github.com/HUPO-PSI/SpectralLibraryFormat/issues).
+[GitHub issues](https://github.com/compomics/DeepLC/issues).
 
 ## How to contribute
 
-- Fork [DeepLC](https://github.com/HUPO-PSI/SpectralLibraryFormat) on GitHub to
+- Fork [DeepLC](https://github.com/compomics/DeepLC) on GitHub to
 make your changes.
 - Commit and push your changes to your
 [fork](https://help.github.com/articles/pushing-to-a-remote/).
