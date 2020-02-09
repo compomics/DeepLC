@@ -50,6 +50,9 @@ import tensorflow as tf
 
 from tensorflow.keras.models import load_model
 
+# "Costum" activation function
+lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
+
 try: from tensorflow.compat.v1.keras.backend import set_session
 except ImportError: from tensorflow.keras.backend import set_session
 try: from tensorflow.compat.v1.keras.backend import clear_session
@@ -410,7 +413,8 @@ class DeepLC():
                 if isinstance(self.model, dict):
                     ret_preds = []
                     for m_group_name,m_name in self.model.items():
-                        mod = load_model(m_name)
+                        mod = load_model(m_name,
+                                         custom_objects = {'<lambda>': lrelu})
                         uncal_preds = mod.predict(
                             [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                         
@@ -418,12 +422,14 @@ class DeepLC():
                         ret_preds.append(p)
                     ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
                 elif not mod_name:
-                    mod = load_model(self.model)
+                    mod = load_model(self.model,
+                                     custom_objects = {'<lambda>': lrelu})
                     uncal_preds = mod.predict(
                         [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                     ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
                 else:
-                    mod = load_model(mod_name)
+                    mod = load_model(mod_name,
+                                     custom_objects = {'<lambda>': lrelu})
                     uncal_preds = mod.predict(
                         [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                     ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
@@ -442,14 +448,16 @@ class DeepLC():
                     if isinstance(self.model, dict):
                         ret_preds = []
                         for m_group_name,m_name in self.model.items():
-                            mod = load_model(m_name)
+                            mod = load_model(m_name,
+                                            custom_objects = {'<lambda>': lrelu})
                             p = mod.predict(
                                 [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                             ret_preds.append(p)
                         ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
                     elif isinstance(self.model, list):
                         mod_name = self.model[0]
-                        mod = load_model(mod_name)
+                        mod = load_model(mod_name,
+                                         custom_objects = {'<lambda>': lrelu})
                         ret_preds = mod.predict([X,
                                                 X_sum,
                                                 X_global,
@@ -458,7 +466,8 @@ class DeepLC():
                                                 verbose=cnn_verbose).flatten() / correction_factor
                     elif isinstance(self.model, str):
                         mod_name = self.model
-                        mod = load_model(mod_name)
+                        mod = load_model(mod_name,
+                                         custom_objects = {'<lambda>': lrelu})
                         ret_preds = mod.predict([X,
                                                 X_sum,
                                                 X_global,
@@ -469,7 +478,8 @@ class DeepLC():
                         logging.critical('No CNN model defined.')
                         exit(1)
                 else:
-                    mod = load_model(mod_name)
+                    mod = load_model(mod_name,
+                                    custom_objects = {'<lambda>': lrelu})
                     ret_preds = mod.predict([X,
                                             X_sum,
                                             X_global,
