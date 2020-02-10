@@ -28,17 +28,14 @@ with these changes. You pull request message ideally should include:
 
 ## Development workflow
 
-- Main development happens on the `master` branch.
-
 - When a new version is ready to be published:
 
-    1. Merge into the `releases` branch.
-    2. Change the version number in `setup.py` using
+    1. Change the version number in `setup.py` using
     [semantic versioning](https://semver.org/).
-    3. Update the changelog (if not already done) in `CHANGELOG.md` according to
+    2. Update the changelog (if not already done) in `CHANGELOG.md` according to
     [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-    4. Set a new tag with the version number, e.g. `git tag v0.1.5`.
-    5. Push to GitHub, with the tag: `git push; git push --tags`.
+    3. Set a new tag with the version number, e.g. `git tag v0.1.5`.
+    4. Push to GitHub, with the tag: `git push; git push --tags`.
 
 - When a new tag is pushed to (or made on) GitHub that matches `v*`, the
 following GitHub Actions are triggered:
