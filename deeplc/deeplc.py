@@ -19,10 +19,7 @@ deeplc_dir = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_MODELS = [
     "mods/full_hc_dia_fixed_mods_1fd8363d9af9dcad3be7553c39396960.hdf5", 
     "mods/full_hc_dia_fixed_mods_cb975cfdd4105f97efa0b3afffe075cc.hdf5", 
-    "mods/full_hc_dia_fixed_mods_8c22d89667368f2f02ad996469ba157e.hdf5", 
-    "mods/full_hc_PXD005573_mcp_1fd8363d9af9dcad3be7553c39396960.hdf5",
-    "mods/full_hc_PXD005573_mcp_cb975cfdd4105f97efa0b3afffe075cc.hdf5", 
-    "mods/full_hc_PXD005573_mcp_8c22d89667368f2f02ad996469ba157e.hdf5",
+    "mods/full_hc_dia_fixed_mods_8c22d89667368f2f02ad996469ba157e.hdf5"
 ]
 DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
 
