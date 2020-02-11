@@ -240,10 +240,14 @@ def run(file_pred="",
 
     # Read input files
     df_pred = pd.read_csv(file_pred)
+    if len(df_pred.columns) < 2:
+        df_pred = pd.read_csv(file_pred,sep=" ")
     df_pred = df_pred.fillna("")
 
     if len(file_cal) > 1:
         df_cal = pd.read_csv(file_cal)
+        if len(df_cal.columns) < 2:
+            df_cal = pd.read_csv(df_cal,sep=" ")
         df_cal = df_cal.fillna("")
 
     # Make a feature extraction object; you can skip this if you do not want to
