@@ -354,7 +354,7 @@ public class MainController {
     /**
      * DeepLC Swing worker for running moFF.
      */
-    private class DeepLcSwingWorker extends SwingWorker<Void, Void> {
+    private class DeepLcSwingWorker extends SwingWorker<Integer, Void> {
 
         /**
          * No-arg constructor.
@@ -364,7 +364,7 @@ public class MainController {
         }
 
         @Override
-        protected Void doInBackground() throws Exception {
+        protected Integer doInBackground() throws Exception {
             LOGGER.info("Starting to run DeepLC...");
 
             // start the waiting animation
@@ -405,16 +405,20 @@ public class MainController {
 
             // stop the waiting animation
             logTextAreaAppender.setLoading(false);
-            return null;
+            return process.exitValue();
         }
 
         @Override
         protected void done() {
             try {
-                get();
+                Integer exitValue = get();
                 LOGGER.info("Finished DeepLC run.");
                 List<String> messages = new ArrayList<>();
-                messages.add("The DeepLC run has finished successfully.");
+                if (exitValue == 0) {
+                    messages.add("The DeepLC run has finished successfully.");
+                } else {
+                    messages.add("The DeepLC run has finished with errors.");
+                }
                 showMessageDialog("DeepLC run completed", messages, JOptionPane.INFORMATION_MESSAGE);
             } catch (CancellationException ex) {
                 LOGGER.info("The DeepLC run was cancelled.");
@@ -462,6 +466,8 @@ public class MainController {
                 command.append(" --dict_divider ").append(mainFrame.getDictionaryDividerTextField().getText());
                 command.append(" --batch_num ").append(mainFrame.getBatchNumberTextField().getText());
 
+                LOGGER.info(command.toString());
+
                 printWriter.println(command);
             }
 
@@ -476,14 +482,14 @@ public class MainController {
                     PrintWriter printWriter = new PrintWriter(streamWriter)) {
 
                 StringBuilder command = new StringBuilder();
-                command.append("call ");
+                command.append("call \"");
                 String condaEnvLocation = ConfigHolder.getInstance().getString("conda_env_location_windows");
                 if (!new File(condaEnvLocation).isAbsolute()) {
                     Path currentRelativePath = Paths.get("");
                     String currentAbsolutePath = currentRelativePath.toAbsolutePath().toString();
                     command.append(currentAbsolutePath).append("/");
                 }
-                command.append("\"").append(condaEnvLocation).append("/Scripts/activate.bat deeplc_gui & ^python\" ");
+                command.append(condaEnvLocation).append("/Scripts/activate.bat\" deeplc_gui & ^python ");
                 command.append("-m deeplc");
 
                 //command.append(" --file_pred ").append(deepLcLocation).append("/datasets/test_pred.csv");
@@ -507,6 +513,8 @@ public class MainController {
                 command.append(" --split_cal ").append(mainFrame.getSplitCalibrationTextField().getText());
                 command.append(" --dict_divider ").append(mainFrame.getDictionaryDividerTextField().getText());
                 command.append(" --dict_divider ").append(mainFrame.getBatchNumberTextField().getText());
+
+                LOGGER.info(command.toString());
 
                 printWriter.print(command);
             }

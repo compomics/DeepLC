@@ -5,7 +5,16 @@
  */
 package com.compomics.deeplc_gui.view;
 
+import com.compomics.deeplc_gui.config.ResourceUtils;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -42,6 +51,10 @@ public class MainFrame extends javax.swing.JFrame {
      * No-arg constructor.
      */
     public MainFrame() {
+        URL url = ClassLoader.getSystemClassLoader().getResource("deeplc.png");
+        //            ImageIcon logo = new ImageIcon(ImageIO.read(new File("src/main/resources/deeplc.png")));
+        this.setIconImage(new ImageIcon(url).getImage());
+
         initComponents();
     }
 
@@ -103,12 +116,12 @@ public class MainFrame extends javax.swing.JFrame {
 
     public JTextField getSplitCalibrationTextField() {
         return splitCalibrationTextField;
-    }        
-  
+    }
+
     public JButton getCancelButton() {
         return cancelButton;
     }
-    
+
     public JButton getStartButton() {
         return startButton;
     }
@@ -119,7 +132,7 @@ public class MainFrame extends javax.swing.JFrame {
 
     public JLabel getInfoLabel() {
         return infoLabel;
-    } 
+    }
 
     public JTextArea getLogTextArea() {
         return logTextArea;
@@ -128,18 +141,17 @@ public class MainFrame extends javax.swing.JFrame {
 //    public Console getConsole() {
 //        return console;
 //    }        
-
     public JButton getClearButton() {
         return clearButton;
-    }  
+    }
 
     public JTextField getDictionaryDividerTextField() {
         return DictionaryDividerTextField;
-    }   
+    }
 
     public JTextField getBatchNumberTextField() {
         return batchNumberTextField;
-    }        
+    }
 
     /**
      * This method is called from within the constructor to initialize the form.

@@ -7,6 +7,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.5] - 2020-02-13
+- Fixes in GUI
+
 ## [0.1.4] - 2020-01-17
 - Fix the latest release
 
