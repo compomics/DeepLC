@@ -6,35 +6,44 @@ on:
     - 'v*'
 
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
+
     - name: Set up Python
       uses: actions/setup-python@v1
       with:
         python-version: '3.7'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install setuptools wheel twine
+
+    - name: Copy models to GUI directory
+      run: |
+        cp -r deeplc/mods deeplc_gui
+
     - name: Zip GUI directory
       uses: thedoctor0/zip-release@master
       with:
         filename: 'deeplc_gui.zip'
         exclusions: '/*src/*'
         path: 'deeplc_gui/*'
-    - name: GitHub Release
+
+    - name: Create GitHub Release
       uses: docker://antonyurchenko/git-release:v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        DRAFT_RELEASE: "true"
+        DRAFT_RELEASE: "false"
         PRE_RELEASE: "false"
         CHANGELOG_FILE: "CHANGELOG.md"
       with:
         args: |
           deeplc_gui.zip
-    - name: Build and publish
+
+    - name: Build and publish to PyPI
       env:
         TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}

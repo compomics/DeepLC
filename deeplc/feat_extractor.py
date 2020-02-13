@@ -5,12 +5,11 @@ if required).
 For the library versions see the .yml file
 """
 
-__author__ = "Robbin Bouwmeester"
-__copyright__ = "Copyright 2019"
-__credits__ = ["Robbin Bouwmeester", "Prof. Lennart Martens", "Sven Degroeve"]
+__author__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
+__credits__ = ["Robbin Bouwmeester", "Ralf Gabriels", "Prof. Lennart Martens", "Sven Degroeve"]
 __license__ = "Apache License, Version 2.0"
-__maintainer__ = "Robbin Bouwmeester"
-__email__ = "Robbin.Bouwmeester@ugent.be"
+__maintainer__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
+__email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
 
 # Native imports
 import os

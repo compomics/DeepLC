@@ -5,7 +5,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.11] - 2020-02-13
+- Fixes in GUI
+
+## [0.1.10] - 2020-02-10
+- Include less models in package to meet PyPI 60MB size limitation
+
+## [0.1.9] - 2020-02-09
+- Bugfix: Pass custom activation function
+
+## [0.1.8] - 2020-02-07
+- Fixed support for averaging predictions of groups of models (ensemble) when no models were passed
+- New models for ensemble
+
+## [0.1.7] - 2020-02-07
+- Support for averaging predictions of groups of models (ensemble)
+
+## [0.1.6] - 2020-01-21
+- Fix the latest release
+
+## [0.1.5] - 2020-01-21
+- Spaces in paths to files and installation allowed
+- References to other CompOmics tools removed in GUI
 
 ## [0.1.5] - 2020-02-13
 - Fixes in GUI
