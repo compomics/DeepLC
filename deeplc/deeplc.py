@@ -199,7 +199,8 @@ class DeepLC():
     def do_f_extraction(self,
                         seqs,
                         mods,
-                        identifiers):
+                        identifiers,
+                        charges=[]):
         """
         Extract all features we can extract; without parallelization; use if you
         want to run feature extraction with a single core
@@ -218,7 +219,10 @@ class DeepLC():
         pd.DataFrame
             feature matrix
         """
-        return self.f_extractor.full_feat_extract(seqs, mods, identifiers)
+        if len(charges) > 0:
+            return self.f_extractor.full_feat_extract(seqs, mods, identifiers,charges=charges)
+        else:
+            return self.f_extractor.full_feat_extract(seqs, mods, identifiers)
 
 
     def do_f_extraction_pd(self,
@@ -239,10 +243,19 @@ class DeepLC():
         pd.DataFrame
             feature matrix
         """
-        return self.f_extractor.full_feat_extract(
-            df_instances["seq"],
-            df_instances["modifications"],
-            df_instances.index)
+        if "charges" in df_instances.columns:
+            return self.f_extractor.full_feat_extract(
+                df_instances["seq"],
+                df_instances["modifications"],
+                df_instances.index,
+                charges=df_instances["charges"]
+                )
+        else:
+            return self.f_extractor.full_feat_extract(
+                df_instances["seq"],
+                df_instances["modifications"],
+                df_instances)
+
 
 
     def do_f_extraction_pd_parallel(self,

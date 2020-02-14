@@ -830,6 +830,7 @@ class FeatExtractor():
                      seqs,
                      mods_all,
                      indexes,
+                     charges=[],
                      padding_length=60,
                      positions=set([0, 1, 2, 3, -1, -2, -3, -4]),
                      positions_pos=set([0, 1, 2, 3]),
@@ -926,8 +927,11 @@ class FeatExtractor():
         look_up_mod_subtract = {}
         look_up_mod_add = {}
 
+        if len(charges) == 0:
+            charges = [-1] * len(indexes)
+
         # Iterate over all instances
-        for row_index, seq, mods in zip(indexes, seqs, mods_all):
+        for row_index, seq, mods, charge in zip(indexes, seqs, mods_all, charges):
             # For now anything longer than padding length is cut away
             # (C-terminal cutting)
             seq_len = len(seq)
@@ -983,6 +987,12 @@ class FeatExtractor():
             if len(mods) == 0:
                 matrix_all = np.sum(matrix, axis=0)
                 matrix_all = np.append(matrix_all, seq_len)
+                if charge != -1:
+                    matrix_all = np.append(matrix_all,(seq.count("H"))/float(seq_len))
+                    matrix_all = np.append(matrix_all,(seq.count("F")+seq.count("W")+seq.count("Y"))/float(seq_len))
+                    matrix_all = np.append(matrix_all,(seq.count("D")+seq.count("E"))/float(seq_len))
+                    matrix_all = np.append(matrix_all,(seq.count("K")+seq.count("R"))/float(seq_len))
+                    matrix_all = np.append(matrix_all,charge)
                 matrix_sum = rolling_sum(matrix.T, n=2)[:, ::2].T
                 ret_list[row_index] = {
                     "index_name": row_index, "matrix": matrix}
@@ -1078,6 +1088,12 @@ class FeatExtractor():
 
             matrix_all = np.sum(matrix, axis=0)
             matrix_all = np.append(matrix_all, seq_len)
+            if charge != -1:
+                matrix_all = np.append(matrix_all,(seq.count("H"))/float(seq_len))
+                matrix_all = np.append(matrix_all,(seq.count("F")+seq.count("W")+seq.count("Y"))/float(seq_len))
+                matrix_all = np.append(matrix_all,(seq.count("D")+seq.count("E"))/float(seq_len))
+                matrix_all = np.append(matrix_all,(seq.count("K")+seq.count("R"))/float(seq_len))
+                matrix_all = np.append(matrix_all,charge)
             matrix_sum = rolling_sum(matrix.T, n=2)[:, ::2].T
 
             ret_list[row_index] = {"index_name": row_index, "matrix": matrix}
@@ -1105,6 +1121,7 @@ class FeatExtractor():
     def full_feat_extract(self,
                           seqs,
                           mods,
+                          charges=[],
                           identifiers):
         """
         Extract all features we can extract... Probably the function your want to call by default
@@ -1167,7 +1184,7 @@ class FeatExtractor():
             if self.verbose:
                 logging.debug("Extracting CNN features")
             X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc = self.encode_atoms(
-                seqs, mods, identifiers)
+                seqs, mods, identifiers, charges=charge)
             X_cnn = pd.concat(
                 [X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc], axis=1)
 
