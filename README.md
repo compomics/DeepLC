@@ -149,6 +149,10 @@ note of the used models and the DeepLC version.
 
 ## Q&A
 
+**__Q: Is it required to indicate fixed modifications in the input file?__**
+
+Yes, even modifications like carbamidomethyl should be in the input file.
+
 **__Q: So DeepLC is able to predict the retention time for any modification?__**
 
 Yes, DeepLC can predict the retention time of any modification. However, if the 
