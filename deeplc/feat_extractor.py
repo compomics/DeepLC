@@ -902,6 +902,8 @@ class FeatExtractor():
             index position of atom for overall compositional features
         dict_index : dict
             index position of atom for compositional features for the whole peptide (each position)
+        charges : list
+            optional list with charges, keep emtpy if these will not effect the predicted value
 
         Returns
         -------
@@ -1121,8 +1123,8 @@ class FeatExtractor():
     def full_feat_extract(self,
                           seqs,
                           mods,
-                          charges=[],
-                          identifiers):
+                          identifiers,
+                          charges=[]):
         """
         Extract all features we can extract... Probably the function your want to call by default
 
@@ -1134,6 +1136,8 @@ class FeatExtractor():
             naming of the mods; should correspond to seqs and identifiers
         identifiers : str
             identifiers of the peptides; should correspond to seqs and mods
+        charges : list
+            optional list with charges, keep emtpy if these will not effect the predicted value
 
         Returns
         -------
