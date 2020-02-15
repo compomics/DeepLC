@@ -254,7 +254,7 @@ class DeepLC():
             return self.f_extractor.full_feat_extract(
                 df_instances["seq"],
                 df_instances["modifications"],
-                df_instances)
+                df_instances.index)
 
 
 

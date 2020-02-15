@@ -33,7 +33,9 @@ f_extractor = FeatExtractor(
 )
 # Initiate a DeepLC instance that will perform the calibration and predictions
 dlc = DeepLC(
-    path_model=["deeplc/mods/full_hc_dia_fixed_mods_a.hdf5","deeplc/mods/full_hc_dia_fixed_mods_b.hdf5"],
+    path_model=["deeplc/mods/full_hc_dia_fixed_mods_1fd8363d9af9dcad3be7553c39396960.hdf5",
+                "deeplc/mods/full_hc_dia_fixed_mods_8c22d89667368f2f02ad996469ba157e.hdf5",
+                "deeplc/mods/full_hc_dia_fixed_mods_cb975cfdd4105f97efa0b3afffe075cc.hdf5"],
     cnn_model=True,
     f_extractor=f_extractor,
     verbose=False
