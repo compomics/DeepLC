@@ -1188,7 +1188,7 @@ class FeatExtractor():
             if self.verbose:
                 logging.debug("Extracting CNN features")
             X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc = self.encode_atoms(
-                seqs, mods, identifiers, charges=charge)
+                seqs, mods, identifiers, charges=charges)
             X_cnn = pd.concat(
                 [X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc], axis=1)
 
