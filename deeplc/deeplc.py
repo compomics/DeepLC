@@ -367,7 +367,11 @@ class DeepLC():
         # Only run on unique peptides, defined by seq+mod
         # TODO sort the mods in the peprec on both position and alphabet mod;
         # to not let duplicates through!
-        seq_df["idents"] = seq_df["seq"] + "|" + seq_df["modifications"]
+        if "charges" in seq_df.columns:
+            seq_df["idents"] = seq_df["seq"] + "|" + seq_df["modifications"] + "|" + seq_df["charges"].astype(str)
+        else:
+            seq_df["idents"] = seq_df["seq"] + "|" + seq_df["modifications"]
+
         identifiers = list(seq_df.index)
 
         # Save a row identifier to seq+mod mapper so output has expected return
