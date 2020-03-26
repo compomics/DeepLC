@@ -32,6 +32,7 @@ import copy
 import gc
 import logging
 import multiprocessing
+import multiprocessing.dummy
 import os
 import pickle
 import sys
@@ -278,7 +279,11 @@ class DeepLC():
             feature matrix
         """
         df_instances_split = np.array_split(df_instances, self.n_jobs)
-        pool = multiprocessing.Pool(self.n_jobs)
+        if multiprocessing.current_process().daemon:
+            logging.warn("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
+            pool = multiprocessing.dummy.Pool(1)
+        else:
+            pool = multiprocessing.Pool(self.n_jobs)
         if self.n_jobs == 1:
             df = self.do_f_extraction_pd(df_instances)
         else:
