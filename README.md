@@ -1,13 +1,12 @@
 <img src="https://github.com/compomics/DeepLC/raw/master/img/deeplc_logo.png"
 width="150" height="150" /> <br/><br/>
 
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/deeplc?style=flat-square)
-[![PyPI](https://img.shields.io/pypi/v/deeplc?style=flat-square)](https://pypi.org/project/deeplc/)
+[![GitHub release](https://flat.badgen.net/github/release/compomics/deeplc)](https://github.com/compomics/DeepLC/releases/latest/)
+[![PyPI](https://flat.badgen.net/pypi/v/deeplc)](https://pypi.org/project/deeplc/)
 [![Conda](https://img.shields.io/conda/vn/bioconda/deeplc?style=flat-square)](https://bioconda.github.io/recipes/deeplc/README.html)
-[![GitHub release](https://img.shields.io/github/v/release/compomics/DeepLC?include_prereleases&style=flat-square)](https://github.com/compomics/DeepLC/releases/latest/)
-[![Build Status](https://img.shields.io/github/workflow/status/compomics/DeepLC/Python%20package%20test?style=flat-square)](https://github.com/compomics/DeepLC/actions?query=workflow%3A%22Python+package+test%22)
-[![GitHub issues](https://img.shields.io/github/issues/compomics/DeepLC?style=flat-square)](https://github.com/compomics/DeepLC/issues)
-[![GitHub](https://img.shields.io/github/license/compomics/DeepLC.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
+[![GitHub Workflow Status](https://flat.badgen.net/github/checks/compomics/deeplc/releases)](https://github.com/compomics/deeplc/actions/)
+[![License](https://flat.badgen.net/github/license/compomics/deeplc)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Twitter](https://flat.badgen.net/twitter/follow/compomics?icon=twitter)](https://twitter.com/compomics)
 
 DeepLC: Retention time prediction for (modified) peptides using Deep Learning.
 
@@ -21,6 +20,7 @@ DeepLC: Retention time prediction for (modified) peptides using Deep Learning.
   - [Python module](#python-module)
 - [Input files](#input-files)
 - [Prediction models](#prediction-models)
+- [Citation](#citation)
 - [Q&A](#qa)
 
 ---
@@ -36,10 +36,11 @@ DeepLC can be run with a graphical user interface (GUI) or as a Python package.
 In the latter case, DeepLC can be used from the command line, or as a python
 module.
 
+
 ## Graphical user interface
 ### Installation
 
-[![Download GUI](https://img.shields.io/badge/download-GUI-green?style=flat-square)](https://github.com/compomics/DeepLC/releases/latest/)
+[![Download GUI](https://flat.badgen.net/badge/download/GUI/green)](https://github.com/compomics/DeepLC/releases/latest/)
 
 1. Download `deeplc_gui.zip` from the
 [latest release](https://github.com/compomics/DeepLC/releases/latest/) and
@@ -53,9 +54,9 @@ depending on your operating system.
 
 ### Installation
 
-[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat-square)](http://bioconda.github.io/recipes/deeplc/README.html)
-[![install with pip](https://img.shields.io/badge/install%20with-pip-blue.svg?style=flat-square)](http://bioconda.github.io/recipes/deeplc/README.html)
-[![container](https://img.shields.io/badge/pull&nbsp;docker-biocontainers-green?style=flat-square)](https://quay.io/repository/biocontainers/deeplc)
+[![install with bioconda](https://flat.badgen.net/badge/install%20with/bioconda/green)](http://bioconda.github.io/recipes/deeplc/README.html)
+[![install with pip](https://flat.badgen.net/badge/install%20with/pip/green)](http://bioconda.github.io/recipes/deeplc/README.html)
+[![container](https://flat.badgen.net/badge/pull/biocontainer/green)](https://quay.io/repository/biocontainers/deeplc)
 
 Install with conda, using the bioconda and conda-forge channels:  
 `conda install -c bioconda -c conda-forge deeplc`
@@ -146,6 +147,15 @@ settings:
 By default, DeepLC selects the best model based on the calibration dataset. If
 no calibration is performed, the first default model is selected. Always keep
 note of the used models and the DeepLC version.
+
+
+## Citation
+
+If you use DeepLC for your research, please use the following citation:
+>**DeepLC can predict retention times for peptides that carry as-yet unseen modifications**  
+>Robbin Bouwmeester, Ralf Gabriels, Niels Hulstaert, Lennart Martens, Sven Degroeve  
+>bioRxiv 2020.03.28.013003; [doi: 10.1101/2020.03.28.013003](https://doi.org/10.1101/2020.03.28.013003)
+
 
 ## Q&A
 
