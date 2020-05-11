@@ -134,7 +134,7 @@ class DeepLC():
                  main_path=os.path.dirname(os.path.realpath(__file__)),
                  path_model=None,
                  verbose=True,
-                 bin_dist=1,
+                 bin_dist=100,
                  dict_cal_divider=100,
                  split_cal=25,
                  n_jobs=None,
@@ -601,7 +601,7 @@ class DeepLC():
                              measured_tr=[],
                              correction_factor=1.0,
                              seq_df=None,
-                             use_median=True,
+                             use_median=False,
                              mod_name=None):
         """
         Make calibration curve for predictions
@@ -727,7 +727,7 @@ linear models between)"
                     calibrate_min = v
                 if v > calibrate_max:
                     calibrate_max = v
-                calibrate_dict[str(round(v, 1))] = [
+                calibrate_dict[str(round(v, self.bin_dist))] = [
                     slope, intercept, x_correction]
 
         return calibrate_min, calibrate_max, calibrate_dict
