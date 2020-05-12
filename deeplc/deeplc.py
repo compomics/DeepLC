@@ -134,7 +134,7 @@ class DeepLC():
                  main_path=os.path.dirname(os.path.realpath(__file__)),
                  path_model=None,
                  verbose=True,
-                 bin_dist=100,
+                 bin_dist=5,
                  dict_cal_divider=100,
                  split_cal=25,
                  n_jobs=None,
