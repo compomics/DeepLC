@@ -134,7 +134,7 @@ class DeepLC():
                  main_path=os.path.dirname(os.path.realpath(__file__)),
                  path_model=None,
                  verbose=True,
-                 bin_dist=5,
+                 bin_dist=2,
                  dict_cal_divider=100,
                  split_cal=25,
                  n_jobs=None,
@@ -226,7 +226,6 @@ class DeepLC():
         else:
             return self.f_extractor.full_feat_extract(seqs, mods, identifiers)
 
-
     def do_f_extraction_pd(self,
                            df_instances):
         """
@@ -257,8 +256,6 @@ class DeepLC():
                 df_instances["seq"],
                 df_instances["modifications"],
                 df_instances.index)
-
-
 
     def do_f_extraction_pd_parallel(self,
                                     df_instances):
@@ -299,28 +296,28 @@ class DeepLC():
         cal_preds = []
         for uncal_pred in uncal_preds:
             try:
-                slope, intercept, x_correction = cal_dict[str(
+                slope, intercept = cal_dict[str(
                     round(uncal_pred, self.bin_dist))]
                 cal_preds.append(
-                    slope * (uncal_pred - x_correction) + intercept)
+                    slope * (uncal_pred) + intercept)
             except KeyError:
                 # outside of the prediction range ... use the last
                 # calibration curve
                 if uncal_pred <= cal_min:
-                    slope, intercept, x_correction = cal_dict[str(
+                    slope, intercept = cal_dict[str(
                         round(cal_min, self.bin_dist))]
                     cal_preds.append(
-                        slope * (uncal_pred - x_correction) + intercept)
+                        slope * (uncal_pred) + intercept)
                 elif uncal_pred >= cal_max:
-                    slope, intercept, x_correction = cal_dict[str(
+                    slope, intercept = cal_dict[str(
                         round(cal_max, self.bin_dist))]
                     cal_preds.append(
-                        slope * (uncal_pred - x_correction) + intercept)
+                        slope * (uncal_pred) + intercept)
                 else:
-                    slope, intercept, x_correction = cal_dict[str(
+                    slope, intercept = cal_dict[str(
                         round(cal_max, self.bin_dist))]
                     cal_preds.append(
-                        slope * (uncal_pred - x_correction) + intercept)
+                        slope * (uncal_pred) + intercept)
         return np.array(cal_preds)
 
     def make_preds_core(self,
@@ -593,7 +590,6 @@ class DeepLC():
                     (len(ret_preds), len(seq_df)))
             return ret_preds
 
-
     def calibrate_preds_func(self,
                              seqs=[],
                              mods=[],
@@ -601,7 +597,7 @@ class DeepLC():
                              measured_tr=[],
                              correction_factor=1.0,
                              seq_df=None,
-                             use_median=False,
+                             use_median=True,
                              mod_name=None):
         """
         Make calibration curve for predictions
@@ -663,8 +659,8 @@ class DeepLC():
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [(mtr, ptr) for mtr, ptr in sorted(
             zip(measured_tr, predicted_tr), key=lambda pair: pair[0])]
-        measured_tr = [mtr for mtr, ptr in tr_sort]
-        predicted_tr = [ptr for mtr, ptr in tr_sort]
+        measured_tr = np.array([mtr for mtr, ptr in tr_sort])
+        predicted_tr = np.array([ptr for mtr, ptr in tr_sort])
 
         mtr_mean = []
         ptr_mean = []
@@ -680,10 +676,19 @@ linear models between)"
             )
 
         # smooth between observed and predicted
-        for mtr, ptr in zip(
-            self.split_seq(
-                measured_tr, self.split_cal), self.split_seq(
-                predicted_tr, self.split_cal)):
+        split_val = predicted_tr[-1]/self.split_cal
+        for range_calib_number in np.arange(0.0,predicted_tr[-1],split_val):
+            ptr_index_start = np.argmax(predicted_tr>=range_calib_number)
+            ptr_index_end = np.argmax(predicted_tr>=range_calib_number+split_val)
+            
+            # no points so no cigar... use previous points
+            if ptr_index_start >= ptr_index_end:
+                logging.error("Skipping calibration step, due to no points in the predicted range (are you sure about the split size?): %s,%s" % (range_calib_number,range_calib_number+split_val))
+                continue
+
+            mtr = measured_tr[ptr_index_start:ptr_index_end]
+            ptr = predicted_tr[ptr_index_start:ptr_index_end]
+
             if use_median:
                 mtr_mean.append(np.median(mtr))
                 ptr_mean.append(np.median(ptr))
@@ -713,8 +718,7 @@ linear models between)"
             delta_mtr = mtr_mean[i + 1] - mtr_mean[i]
 
             slope = delta_mtr / delta_ptr
-            intercept = mtr_mean[i]
-            x_correction = ptr_mean[i]
+            intercept = (-1*(ptr_mean[i]*slope))+mtr_mean[i]
 
             # optimized predictions using a dict to find calibration curve very
             # fast
@@ -727,8 +731,8 @@ linear models between)"
                     calibrate_min = v
                 if v > calibrate_max:
                     calibrate_max = v
-                calibrate_dict[str(round(v, self.bin_dist))] = [
-                    slope, intercept, x_correction]
+                calibrate_dict[str(round(v, self.bin_dist))] = [slope, intercept]
+                print(v)
 
         return calibrate_min, calibrate_max, calibrate_dict
 
