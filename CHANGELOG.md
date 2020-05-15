@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.15] - 2020-05-15
+- Different calibration function, should not contain gaps anymore
+- Changed to more accurate rounding
+- Changed to splitting in groups of retention time instead of groups of peptides
+
 ## [0.1.14] - 2020-02-21
 - Changed default model to a different data set
 
