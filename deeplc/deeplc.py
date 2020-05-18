@@ -658,7 +658,7 @@ class DeepLC():
 
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [(mtr, ptr) for mtr, ptr in sorted(
-            zip(measured_tr, predicted_tr), key=lambda pair: pair[0])]
+            zip(measured_tr, predicted_tr), key=lambda pair: pair[1])]
         measured_tr = np.array([mtr for mtr, ptr in tr_sort])
         predicted_tr = np.array([ptr for mtr, ptr in tr_sort])
 
@@ -732,7 +732,6 @@ linear models between)"
                 if v > calibrate_max:
                     calibrate_max = v
                 calibrate_dict[str(round(v, self.bin_dist))] = [slope, intercept]
-                print(v)
 
         return calibrate_min, calibrate_max, calibrate_dict
 
