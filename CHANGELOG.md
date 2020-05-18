@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to 
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.16] - 2020-05-18
+- Bug fix in the calibration function
+- Had to order the predicted instead of observed retention times of the calibration analytes
+- Thanks to @courcelm for both finding and fixing the issue
+
 ## [0.1.15] - 2020-05-15
 - Different calibration function, should not contain gaps anymore
 - Changed to more accurate rounding
