@@ -2,8 +2,12 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to 
+and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.17] - 2020-08-07
+- Support for Python 3.8
+
 
 ## [0.1.16] - 2020-05-18
 - Bug fix in the calibration function
@@ -19,7 +23,7 @@ and this project adheres to
 - Changed default model to a different data set
 
 ## [0.1.13] - 2020-02-21
-- Duplicate peptides charge fix 
+- Duplicate peptides charge fix
 
 ## [0.1.12] - 2020-02-15
 - Support for charges and spaces in peprec
