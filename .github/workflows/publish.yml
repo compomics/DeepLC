@@ -33,12 +33,13 @@ jobs:
         path: 'deeplc_gui/*'
 
     - name: Create GitHub Release
-      uses: docker://antonyurchenko/git-release:v1
+      uses: docker://antonyurchenko/git-release:v3.4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         DRAFT_RELEASE: "false"
         PRE_RELEASE: "false"
         CHANGELOG_FILE: "CHANGELOG.md"
+        ALLOW_TAG_PREFIX: "true"
       with:
         args: |
           deeplc_gui.zip
