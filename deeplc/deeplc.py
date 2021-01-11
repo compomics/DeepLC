@@ -170,6 +170,9 @@ class DeepLC():
         elif self.n_jobs > max_threads:
             self.n_jobs = max_threads
 
+        tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
+        tf.config.threading.set_inter_op_parallelism_threads(n_jobs)
+
         if path_model:
             if self.cnn_model:
                 self.model = path_model
