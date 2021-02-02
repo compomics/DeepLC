@@ -39,9 +39,9 @@ setup(
     ],
     install_requires=[
         'setuptools>=42.0.1',
-        'tensorflow~=2.3',  # Pinned to prevent future scipy/numpy version conflicts
-        'scipy==1.4.1',  # Pinned for Tensorflow and shabby pip dependency  resolver...
-        'numpy>=1.17,<1.19',  # Idem
+        'tensorflow>=2.2,<3',
+        'scipy>=1.4.1,<2',
+        'numpy>=1.17,<2',
         'pandas>=0.25,<2',
         'matplotlib>=3,<4',
     ],
