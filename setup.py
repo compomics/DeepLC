@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='deeplc',
-    version='0.1.18',
+    version='0.1.19-dev.1',
     license='apache-2.0',
     description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
     long_description=LONG_DESCRIPTION,
@@ -39,9 +39,9 @@ setup(
     ],
     install_requires=[
         'setuptools>=42.0.1',
-        'tensorflow~=2.3',  # Pinned to prevent future scipy/numpy version conflicts
-        'scipy==1.4.1',  # Pinned for Tensorflow and shabby pip dependency  resolver...
-        'numpy>=1.17,<1.19',  # Idem
+        'tensorflow>=2.2,<3',
+        'scipy>=1.4.1,<2',
+        'numpy>=1.17,<2',
         'pandas>=0.25,<2',
         'matplotlib>=3,<4',
     ],
