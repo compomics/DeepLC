@@ -172,6 +172,9 @@ class DeepLC():
 
         tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
         tf.config.threading.set_inter_op_parallelism_threads(n_jobs)
+        
+        if "NUMEXPR_MAX_THREADS" not in os.environ:
+            os.environ['NUMEXPR_MAX_THREADS'] = str(n_jobs)
 
         if path_model:
             if self.cnn_model:
