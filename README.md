@@ -49,6 +49,11 @@ unzip.
 depending on your operating system.
 3. Run DeepLC GUI by running the `deeplc_gui.jar`.
 
+### Run parameters
+
+Dictionary divider - this parameter defines the precision to use for fast-lookup of retention times for calibration. A value of 10 means a precision of 0.1 (and 100 a precision of 0.01) between the calibration anchor points. This parameter does not influence the precision of the calibration, but setting it too high might mean that there is bad selection of the models between anchor points. A save value is usually higher than 10.
+
+Split calibration - the number of divisions for the chromatogram. If the value is set to 10 the chromatogram is split up into 10 equidistant parts. For each part the median value of the calibration peptides is selected. These are the anchor points. Between each anchor point a linear fit is made.
 
 ## Python package
 
