@@ -5,8 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.20] - 2021-02-12
+## [0.1.20] - 2021-02-19
 - Describe hyperparameters and limit CPU threads
+- Additional modfications, including those exclusive to pFind
+- Change calibration error to warning (since it is a warning if it is out of range...)
 
 ## [0.1.18] - 2021-01-11
 - Limit CPU usage by tensorflow by connecting to n_jobs
