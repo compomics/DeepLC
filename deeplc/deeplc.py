@@ -689,7 +689,7 @@ linear models between)"
             
             # no points so no cigar... use previous points
             if ptr_index_start >= ptr_index_end:
-                logging.error("Skipping calibration step, due to no points in the predicted range (are you sure about the split size?): %s,%s" % (range_calib_number,range_calib_number+split_val))
+                logging.warning("Skipping calibration step, due to no points in the predicted range (are you sure about the split size?): %s,%s" % (range_calib_number,range_calib_number+split_val))
                 continue
 
             mtr = measured_tr[ptr_index_start:ptr_index_end]
