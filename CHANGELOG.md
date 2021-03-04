@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.21] - 2021-03-04
+- Add library functionality that allows for storing and retrieving predictions (without running the model)
+
 ## [0.1.20] - 2021-02-19
 - Describe hyperparameters and limit CPU threads
 - Additional modfications, including those exclusive to pFind
