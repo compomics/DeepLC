@@ -141,7 +141,10 @@ class DeepLC():
                  config_file=None,
                  f_extractor=None,
                  cnn_model=False,
-                 batch_num=350000):
+                 batch_num=350000,
+                 write_library=False,
+                 use_library=""
+                 ):
         
         # if a config file is defined overwrite standard parameters
         if config_file:
@@ -169,6 +172,13 @@ class DeepLC():
             self.n_jobs = max_threads
         elif self.n_jobs > max_threads:
             self.n_jobs = max_threads
+
+        self.use_library = use_library
+        self.write_library = write_library
+        self.library = {}
+
+        if len(self.use_library) > 0 :
+            self.read_library()
 
         tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
         tf.config.threading.set_inter_op_parallelism_threads(n_jobs)
@@ -203,6 +213,17 @@ class DeepLC():
                   | |
                   |_|
               """)
+
+    def read_library(self):
+        try:
+            library_file = open(self.use_library)
+        except:
+            logging.error("Could not open library file: ", self.use_library)
+            return 
+        
+        for line_num,line in enumerate(library_file):
+            split_line = line.strip().split(",")
+            self.library[split_line[0]] = float(split_line[1])
 
     def do_f_extraction(self,
                         seqs,
@@ -382,6 +403,41 @@ class DeepLC():
             seq_df["idents"] = seq_df["seq"] + "|" + seq_df["modifications"]
 
         identifiers = list(seq_df.index)
+        rem_idents = []
+        keep_idents = []
+        if isinstance(self.model, dict):
+            all_mods = [m_name for m_group_name,m_name in self.model.items()]
+
+        # TODO check if .keys() object is the same as set (or at least for set operations)
+        idents_in_lib = set(self.library.keys())
+        
+        if len(self.use_library) > 0:
+            for ident in seq_df["idents"]:
+                if isinstance(self.model, dict):
+                    spec_ident = all_mods
+                elif mod_name != None:
+                    spec_ident = [ident+"|"+mod_name]
+                else:
+                    spec_ident = [ident]
+                
+                if isinstance(self.model, dict):
+                    if len([m for m in self.model.values() if ident+"|"+m in idents_in_lib]) == len(self.model.values()):
+                        rem_idents.append(ident)
+                    else:
+                        keep_idents.append(ident)
+                else:
+                    if len([si for si in spec_ident if si in idents_in_lib]) > 0:
+                        rem_idents.append(ident)
+                    else:
+                        keep_idents.append(ident)
+        else:
+            keep_idents = seq_df["idents"]
+
+        keep_idents = set(keep_idents)
+        rem_idents = set(rem_idents)
+
+        #print("Keeping this amount of identifiers:",len(keep_idents))
+        #print("Removing this amount of identifiers:",len(rem_idents))
 
         # Save a row identifier to seq+mod mapper so output has expected return
         # shapes
@@ -389,6 +445,9 @@ class DeepLC():
 
         # Drop duplicated seq+mod
         seq_df.drop_duplicates(subset=["idents"], inplace=True)
+        
+        if len(self.use_library) > 0:
+            seq_df = seq_df[seq_df["idents"].isin(keep_idents)]
 
         if self.verbose:
             cnn_verbose = 1
@@ -396,34 +455,36 @@ class DeepLC():
             cnn_verbose = 0
 
         # If we need to apply deep NN
-        if self.cnn_model:
-            if self.verbose:
-                logging.debug("Extracting features for the CNN model ...")
-            X = self.do_f_extraction_pd_parallel(seq_df)
-            X = X.loc[seq_df.index]
+        if len(seq_df.index) > 0:
+            if self.cnn_model:
+                if self.verbose:
+                    logging.debug("Extracting features for the CNN model ...")
+                X = self.do_f_extraction_pd_parallel(seq_df)
+                X = X.loc[seq_df.index]
 
-            X_sum = np.stack(X["matrix_sum"])
-            X_global = np.concatenate((np.stack(X["matrix_all"]),
-                                       np.stack(X["pos_matrix"])),
-                                      axis=1)
-            X_hc = np.stack(X["matrix_hc"])
-            X = np.stack(X["matrix"])
-        else:
-            if self.verbose:
-                logging.debug(
-                    "Extracting features for the predictive model ...")
-            seq_df.index
-            X = self.do_f_extraction_pd_parallel(seq_df)
-            X = X.loc[seq_df.index]
+                X_sum = np.stack(X["matrix_sum"])
+                X_global = np.concatenate((np.stack(X["matrix_all"]),
+                                        np.stack(X["pos_matrix"])),
+                                        axis=1)
+                X_hc = np.stack(X["matrix_hc"])
+                X = np.stack(X["matrix"])
+            else:
+                if self.verbose:
+                    logging.debug(
+                        "Extracting features for the predictive model ...")
+                seq_df.index
+                X = self.do_f_extraction_pd_parallel(seq_df)
+                X = X.loc[seq_df.index]
 
-            X = X[self.model.feature_names]
+                X = X[self.model.feature_names]
 
         ret_preds = []
+        ret_preds2 = []
 
         # If we need to calibrate
         if calibrate:
             assert self.calibrate_dict, "DeepLC instance is not yet calibrated.\
- Calibrate before making predictions, or use calibrate=False"
+                                        Calibrate before making predictions, or use calibrate=False"
 
             if self.verbose:
                 logging.debug("Predicting with calibration...")
@@ -436,14 +497,37 @@ class DeepLC():
                 if isinstance(self.model, dict):
                     ret_preds = []
                     for m_group_name,m_name in self.model.items():
-                        mod = load_model(m_name,
-                                         custom_objects = {'<lambda>': lrelu})
-                        uncal_preds = mod.predict(
-                            [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
+                        try:
+                            X
+                            mod = load_model(m_name,
+                                            custom_objects = {'<lambda>': lrelu})
+                            uncal_preds = mod.predict(
+                                [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
+                        except UnboundLocalError:
+                            logging.debug("X is empty, skipping...")
+                            uncal_preds = []
+                            pass
+
                         
+                        if self.write_library:
+                            try:
+                                lib_file = open(self.use_library,"a")
+                            except:
+                                logging.debug("Could not append to the library file")
+                                break
+                            for up, mn, sd in zip(uncal_preds, m_name, seq_df["idents"]):
+                                lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
+                            lib_file.close()
+                            self.read_library()
+
                         p = list(self.calibration_core(uncal_preds,self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds.append(p)
+                        
+                        p2 = list(self.calibration_core([self.library[ri+"|"+m_name] for ri  in rem_idents],self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
+                        ret_preds2.append(p2)
+
                     ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
+                    ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
                 elif not mod_name:
                     mod = load_model(self.model,
                                      custom_objects = {'<lambda>': lrelu})
@@ -453,14 +537,35 @@ class DeepLC():
                 else:
                     mod = load_model(mod_name,
                                      custom_objects = {'<lambda>': lrelu})
-                    uncal_preds = mod.predict(
-                        [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
+                    try:
+                        X
+                        uncal_preds = mod.predict(
+                            [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
+                    except UnboundLocalError:
+                        logging.debug("X is empty, skipping...")
+                        uncal_preds = []
+                        pass
+
+                    
+
+                    if self.write_library:
+                        try:
+                            lib_file = open(self.use_library,"a")
+                        except:
+                            logging.debug("Could not append to the library file")
+                            
+                        for up, sd in zip(uncal_preds, seq_df["idents"]):
+                            lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
+                        lib_file.close()
+                        self.read_library()
+
                     ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
+
+                    p2 = list(self.calibration_core([self.library[ri+"|"+mod_name] for ri  in rem_idents],self.calibrate_dict,self.calibrate_min,self.calibrate_max))
+                    ret_preds2.extend(p2)
             else:
                 # first get uncalibrated prediction
                 uncal_preds = self.model.predict(X) / correction_factor
-
-            
         else:
             if self.verbose:
                 logging.debug("Predicting without calibration...")
@@ -470,13 +575,25 @@ class DeepLC():
                 if not mod_name:
                     if isinstance(self.model, dict):
                         ret_preds = []
+                        ret_preds2 = []
                         for m_group_name,m_name in self.model.items():
-                            mod = load_model(m_name,
-                                            custom_objects = {'<lambda>': lrelu})
-                            p = mod.predict(
-                                [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
-                            ret_preds.append(p)
+                            try:
+                                X
+                                mod = load_model(m_name,
+                                                custom_objects = {'<lambda>': lrelu})
+                                p = mod.predict(
+                                    [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
+                                ret_preds.append(p)
+                            except UnboundLocalError:
+                                logging.debug("X is empty, skipping...")
+                                ret_preds.append([])
+                                pass
+                            
+                            p2 = [self.library[ri+"|"+m_name] for ri  in rem_idents]
+                            ret_preds2.append(p2)
+
                         ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
+                        ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
                     elif isinstance(self.model, list):
                         mod_name = self.model[0]
                         mod = load_model(mod_name,
@@ -503,16 +620,26 @@ class DeepLC():
                 else:
                     mod = load_model(mod_name,
                                     custom_objects = {'<lambda>': lrelu})
-                    ret_preds = mod.predict([X,
-                                            X_sum,
-                                            X_global,
-                                            X_hc],
-                                            batch_size=5120,
-                                            verbose=cnn_verbose).flatten() / correction_factor
+                    try:
+                        ret_preds = mod.predict([X,
+                                                X_sum,
+                                                X_global,
+                                                X_hc],
+                                                batch_size=5120,
+                                                verbose=cnn_verbose).flatten() / correction_factor
+                    except:
+                        pass
+                    
+                    ret_preds2 = [self.library[ri+"|"+mod_name] for ri  in rem_idents]
+                    
             else:
                 ret_preds = self.model.predict(X) / correction_factor
 
         pred_dict = dict(zip(seq_df["idents"], ret_preds))
+
+        if len(ret_preds2) > 0:
+            pred_dict.update(dict(zip(rem_idents, ret_preds2)))
+
 
         # Map from unique peptide identifiers to the original dataframe
         ret_preds_shape = []
@@ -525,7 +652,10 @@ class DeepLC():
         # Below can cause freezing on some systems
         # It is meant to clear any remaining vars in memory
         reset_keras()
-        del mod
+        try:
+            del mod
+        except UnboundLocalError:
+            logging.debug("Variable mod not defined, so will not be deleted")
 
         return ret_preds_shape
 

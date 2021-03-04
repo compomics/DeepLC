@@ -114,6 +114,23 @@ def parse_arguments():
         help="Logging level (debug, info, warning, error, or critical; default=info)"
     )
 
+    parser.add_argument(
+        "--use_library",
+        type=str,
+        dest="use_library",
+        default="",
+        help="Use a library with previously predicted retention times, argument takes a string with the location to the library"
+    )
+
+    parser.add_argument(
+        "--write_library",
+        dest="write_library",
+        action='store_true',
+        default=False,
+        help="Append to a library with predicted retention times, will write to the file specified by --use_library"
+    )
+
+
     parser.add_argument("--version", action="version", version=__version__)
 
     results = parser.parse_args()
@@ -177,7 +194,10 @@ def main():
         split_cal=argu.split_cal,
         dict_divider=argu.dict_divider,
         batch_num=argu.batch_num,
-        plot_predictions=argu.plot_predictions)
+        plot_predictions=argu.plot_predictions,
+        write_library=argu.write_library,
+        use_library=argu.use_library
+        )
 
 
 def run(file_pred="",
@@ -189,7 +209,10 @@ def run(file_pred="",
         split_cal=50,
         dict_divider=50,
         batch_num=50000,
-        plot_predictions=False):
+        plot_predictions=False,
+        write_library=False,
+        use_library=""
+        ):
     """
     Main function to run the DeepLC code
 
@@ -270,7 +293,9 @@ def run(file_pred="",
                  cnn_model=True,
                  n_jobs=n_threads,
                  verbose=verbose,
-                 batch_num=batch_num)
+                 batch_num=batch_num,
+                 write_library=write_library,
+                 use_library=use_library)
 
     # Calibrate the original model based on the new retention times
     if len(file_cal) > 1:
