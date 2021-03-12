@@ -436,8 +436,8 @@ class DeepLC():
         keep_idents = set(keep_idents)
         rem_idents = set(rem_idents)
 
-        logging.warning("Going to predict retention times for this amount of identifiers:",len(keep_idents))
-        logging.warning("Using this amount of identifiers from the library:",len(rem_idents))
+        logging.warning("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
+        logging.warning("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
 
         # Save a row identifier to seq+mod mapper so output has expected return
         # shapes

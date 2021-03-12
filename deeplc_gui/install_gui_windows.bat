@@ -17,6 +17,6 @@ call Miniconda3/Scripts/activate.bat deeplc_gui
 call conda config --add channels defaults
 call conda config --add channels bioconda
 call conda config --add channels conda-forge
-call conda install --yes deeplc
+call pip install deeplc
 echo done installing environment in miniconda . . .
 pause
