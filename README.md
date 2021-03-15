@@ -153,6 +153,18 @@ By default, DeepLC selects the best model based on the calibration dataset. If
 no calibration is performed, the first default model is selected. Always keep
 note of the used models and the DeepLC version.
 
+The table above is for an old version of DeepLC, the current version comes with:
+
+| Model filename | Experimental settings | Publication |
+| - | - | - |
+| full_hc_hela_hf_psms_aligned_1fd8363d9af9dcad3be7553c39396960.hdf5 | Reverse phase | [Kelstrup et al. 2018](https://doi.org/10.1021/acs.jproteome.7b006021) |
+| full_hc_hela_hf_psms_aligned_8c22d89667368f2f02ad996469ba157e.hdf5 | Reverse phase | [Kelstrup et al. 2018](https://doi.org/10.1021/acs.jproteome.7b00602) |
+| full_hc_hela_hf_psms_aligned_cb975cfdd4105f97efa0b3afffe075cc.hdf5 | Reverse phase | [Kelstrup et al. 2018](https://doi.org/10.1021/acs.jproteome.7b00602) |
+| full_hc_PXD005573_mcp_cb975cfdd4105f97efa0b3afffe075cc.hdf5 | Reverse phase | [Bruderer et al. 2017](https://pubmed.ncbi.nlm.nih.gov/29070702/) |
+
+For all the full models that can be used in DeepLC (including some TMT models!) please see:
+
+[https://github.com/RobbinBouwmeester/DeepLCModels](https://github.com/RobbinBouwmeester/DeepLCModels)
 
 ## Citation
 
