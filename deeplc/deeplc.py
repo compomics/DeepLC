@@ -529,6 +529,7 @@ class DeepLC():
                     ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
                     ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
                 elif not mod_name:
+                    # No library write!
                     mod = load_model(self.model,
                                      custom_objects = {'<lambda>': lrelu})
                     uncal_preds = mod.predict(
@@ -566,6 +567,17 @@ class DeepLC():
             else:
                 # first get uncalibrated prediction
                 uncal_preds = self.model.predict(X) / correction_factor
+
+                if self.write_library:
+                    try:
+                        lib_file = open(self.use_library,"a")
+                    except:
+                        logging.debug("Could not append to the library file")
+                        
+                    for up, sd in zip(uncal_preds, seq_df["idents"]):
+                        lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
+                    lib_file.close()
+                    self.read_library()
         else:
             if self.verbose:
                 logging.debug("Predicting without calibration...")
@@ -588,6 +600,17 @@ class DeepLC():
                                 logging.debug("X is empty, skipping...")
                                 ret_preds.append([])
                                 pass
+
+                            if self.write_library:
+                                try:
+                                    lib_file = open(self.use_library,"a")
+                                except:
+                                    logging.debug("Could not append to the library file")
+                                    
+                                for up, sd in zip(ret_preds, seq_df["idents"]):
+                                    lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
+                                lib_file.close()
+                                self.read_library()
                             
                             p2 = [self.library[ri+"|"+m_name] for ri  in rem_idents]
                             ret_preds2.append(p2)
@@ -604,7 +627,20 @@ class DeepLC():
                                                 X_hc],
                                                 batch_size=5120,
                                                 verbose=cnn_verbose).flatten() / correction_factor
+                        if self.write_library:
+                            try:
+                                lib_file = open(self.use_library,"a")
+                            except:
+                                logging.debug("Could not append to the library file")
+                                
+                            for up, sd in zip(ret_preds, seq_df["idents"]):
+                                lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
+                            lib_file.close()
+                            self.read_library()
+
+                        ret_preds2 = np.array([self.library[ri+"|"+mod_name] for ri  in rem_idents])
                     elif isinstance(self.model, str):
+                        # No library write!
                         mod_name = self.model
                         mod = load_model(mod_name,
                                          custom_objects = {'<lambda>': lrelu})
@@ -614,10 +650,24 @@ class DeepLC():
                                                 X_hc],
                                                 batch_size=5120,
                                                 verbose=cnn_verbose).flatten() / correction_factor
+                        
+                        if self.write_library:
+                            try:
+                                lib_file = open(self.use_library,"a")
+                            except:
+                                logging.debug("Could not append to the library file")
+                                
+                            for up, sd in zip(ret_preds, seq_df["idents"]):
+                                lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
+                            lib_file.close()
+                            self.read_library()
+
+                        ret_preds2 = np.array([self.library[ri+"|"+mod_name] for ri  in rem_idents])
                     else:
                         logging.critical('No CNN model defined.')
                         exit(1)
                 else:
+                    # No library write!
                     mod = load_model(mod_name,
                                     custom_objects = {'<lambda>': lrelu})
                     try:
@@ -627,12 +677,23 @@ class DeepLC():
                                                 X_hc],
                                                 batch_size=5120,
                                                 verbose=cnn_verbose).flatten() / correction_factor
+                        if self.write_library:
+                            try:
+                                lib_file = open(self.use_library,"a")
+                            except:
+                                logging.debug("Could not append to the library file")
+                                
+                            for up, sd in zip(ret_preds, seq_df["idents"]):
+                                lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
+                            lib_file.close()
+
+                        self.read_library()
                     except:
                         pass
-                    
                     ret_preds2 = [self.library[ri+"|"+mod_name] for ri  in rem_idents]
                     
             else:
+                # No library write!
                 ret_preds = self.model.predict(X) / correction_factor
 
         pred_dict = dict(zip(seq_df["idents"], ret_preds))
