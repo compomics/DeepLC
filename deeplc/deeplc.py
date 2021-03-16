@@ -215,9 +215,12 @@ class DeepLC():
               """)
 
     def read_library(self):
+        if len(self.use_library) == 0:
+            logging.warning("Trying to read library, but no library file was provided.")
+            return
         try:
             library_file = open(self.use_library)
-        except:
+        except IOError:
             logging.error("Could not open library file: ", self.use_library)
             return 
         
@@ -304,7 +307,7 @@ class DeepLC():
         """
         df_instances_split = np.array_split(df_instances, self.n_jobs)
         if multiprocessing.current_process().daemon:
-            logging.warn("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
+            logging.warning("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
             pool = multiprocessing.dummy.Pool(1)
         else:
             pool = multiprocessing.Pool(self.n_jobs)
@@ -687,7 +690,7 @@ class DeepLC():
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                             lib_file.close()
 
-                        self.read_library()
+                            self.read_library()
                     except:
                         pass
                     ret_preds2 = [self.library[ri+"|"+mod_name] for ri  in rem_idents]
