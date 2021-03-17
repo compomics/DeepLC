@@ -55,6 +55,8 @@ Dictionary divider - this parameter defines the precision to use for fast-lookup
 
 Split calibration - the number of divisions for the chromatogram. If the value is set to 10 the chromatogram is split up into 10 equidistant parts. For each part the median value of the calibration peptides is selected. These are the anchor points. Between each anchor point a linear fit is made.
 
+Batch number - define the numer of peptides to make predictions for in a single go (reduce to fit into memory, increase for faster prediction speeds).
+
 ## Python package
 
 ### Installation
