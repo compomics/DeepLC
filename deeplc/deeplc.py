@@ -143,7 +143,8 @@ class DeepLC():
                  cnn_model=False,
                  batch_num=350000,
                  write_library=False,
-                 use_library=""
+                 use_library="",
+                 reload_library=False
                  ):
         
         # if a config file is defined overwrite standard parameters
@@ -179,6 +180,8 @@ class DeepLC():
 
         if len(self.use_library) > 0 :
             self.read_library()
+
+        self.reload_library = reload_library
 
         tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
         tf.config.threading.set_inter_op_parallelism_threads(n_jobs)
@@ -226,7 +229,10 @@ class DeepLC():
         
         for line_num,line in enumerate(library_file):
             split_line = line.strip().split(",")
-            self.library[split_line[0]] = float(split_line[1])
+            try:
+                self.library[split_line[0]] = float(split_line[1])
+            except:
+                logging.warning("Could not use this library entry due to an error:",line)
 
     def do_f_extraction(self,
                         seqs,
@@ -521,7 +527,7 @@ class DeepLC():
                             for up, mn, sd in zip(uncal_preds, m_name, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
                             lib_file.close()
-                            self.read_library()
+                            if self.reload_library: self.read_library()
 
                         p = list(self.calibration_core(uncal_preds,self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds.append(p)
@@ -561,7 +567,7 @@ class DeepLC():
                         for up, sd in zip(uncal_preds, seq_df["idents"]):
                             lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                         lib_file.close()
-                        self.read_library()
+                        if self.reload_library: self.read_library()
 
                     ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
 
@@ -580,7 +586,7 @@ class DeepLC():
                     for up, sd in zip(uncal_preds, seq_df["idents"]):
                         lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                     lib_file.close()
-                    self.read_library()
+                    if self.reload_library: self.read_library()
         else:
             if self.verbose:
                 logging.debug("Predicting without calibration...")
@@ -610,10 +616,10 @@ class DeepLC():
                                 except:
                                     logging.debug("Could not append to the library file")
                                     
-                                for up, sd in zip(ret_preds, seq_df["idents"]):
+                                for up, sd in zip(ret_preds[-1], seq_df["idents"]):
                                     lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
                                 lib_file.close()
-                                self.read_library()
+                                if self.reload_library: self.read_library()
                             
                             p2 = [self.library[ri+"|"+m_name] for ri  in rem_idents]
                             ret_preds2.append(p2)
@@ -639,7 +645,7 @@ class DeepLC():
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                             lib_file.close()
-                            self.read_library()
+                            if self.reload_library: self.read_library()
 
                         ret_preds2 = np.array([self.library[ri+"|"+mod_name] for ri  in rem_idents])
                     elif isinstance(self.model, str):
@@ -663,7 +669,7 @@ class DeepLC():
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                             lib_file.close()
-                            self.read_library()
+                            if self.reload_library: self.read_library()
 
                         ret_preds2 = np.array([self.library[ri+"|"+mod_name] for ri  in rem_idents])
                     else:
@@ -690,7 +696,7 @@ class DeepLC():
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                             lib_file.close()
 
-                            self.read_library()
+                            if self.reload_library: self.read_library()
                     except:
                         pass
                     ret_preds2 = [self.library[ri+"|"+mod_name] for ri  in rem_idents]
