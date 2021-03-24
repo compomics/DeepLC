@@ -524,9 +524,14 @@ class DeepLC():
                             except:
                                 logging.debug("Could not append to the library file")
                                 break
-                            for up, mn, sd in zip(uncal_preds, m_name, seq_df["idents"]):
-                                lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
-                            lib_file.close()
+                            if type(m_name) == str:
+                                for up, mn, sd in zip(uncal_preds, [m_name]*len(uncal_preds), seq_df["idents"]):
+                                    lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
+                                lib_file.close()
+                            else:
+                                for up, mn, sd in zip(uncal_preds, m_name, seq_df["idents"]):
+                                    lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
+                                lib_file.close()
                             if self.reload_library: self.read_library()
 
                         p = list(self.calibration_core(uncal_preds,self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
