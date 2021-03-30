@@ -1,0 +1,5 @@
+streamlit
+deeplc
+pandas>=1,<2
+plotly>=4,<5
+statsmodels
