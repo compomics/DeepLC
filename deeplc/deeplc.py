@@ -17,8 +17,8 @@ __email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
 import os
 deeplc_dir = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_MODELS = [
-    "mods/full_hc_hela_hf_psms_aligned_1fd8363d9af9dcad3be7553c39396960.hdf5", 
-    "mods/full_hc_hela_hf_psms_aligned_8c22d89667368f2f02ad996469ba157e.hdf5", 
+    "mods/full_hc_hela_hf_psms_aligned_1fd8363d9af9dcad3be7553c39396960.hdf5",
+    "mods/full_hc_hela_hf_psms_aligned_8c22d89667368f2f02ad996469ba157e.hdf5",
     "mods/full_hc_hela_hf_psms_aligned_cb975cfdd4105f97efa0b3afffe075cc.hdf5",
     "mods/full_hc_PXD005573_mcp_cb975cfdd4105f97efa0b3afffe075cc.hdf5"
 ]
@@ -146,7 +146,7 @@ class DeepLC():
                  use_library="",
                  reload_library=False
                  ):
-        
+
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()
@@ -185,7 +185,7 @@ class DeepLC():
 
         tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
         tf.config.threading.set_inter_op_parallelism_threads(n_jobs)
-        
+
         if "NUMEXPR_MAX_THREADS" not in os.environ:
             os.environ['NUMEXPR_MAX_THREADS'] = str(n_jobs)
 
@@ -225,8 +225,8 @@ class DeepLC():
             library_file = open(self.use_library)
         except IOError:
             logging.error("Could not open library file: ", self.use_library)
-            return 
-        
+            return
+
         for line_num,line in enumerate(library_file):
             split_line = line.strip().split(",")
             try:
@@ -419,7 +419,7 @@ class DeepLC():
 
         # TODO check if .keys() object is the same as set (or at least for set operations)
         idents_in_lib = set(self.library.keys())
-        
+
         if len(self.use_library) > 0:
             for ident in seq_df["idents"]:
                 if isinstance(self.model, dict):
@@ -428,7 +428,7 @@ class DeepLC():
                     spec_ident = [ident+"|"+mod_name]
                 else:
                     spec_ident = [ident]
-                
+
                 if isinstance(self.model, dict):
                     if len([m for m in self.model.values() if ident+"|"+m in idents_in_lib]) == len(self.model.values()):
                         rem_idents.append(ident)
@@ -454,7 +454,7 @@ class DeepLC():
 
         # Drop duplicated seq+mod
         seq_df.drop_duplicates(subset=["idents"], inplace=True)
-        
+
         if len(self.use_library) > 0:
             seq_df = seq_df[seq_df["idents"].isin(keep_idents)]
 
@@ -498,7 +498,7 @@ class DeepLC():
             if self.verbose:
                 logging.debug("Predicting with calibration...")
 
-            
+
 
             # Load the model differently if we are going to use a CNN
             if self.cnn_model:
@@ -517,7 +517,7 @@ class DeepLC():
                             uncal_preds = []
                             pass
 
-                        
+
                         if self.write_library:
                             try:
                                 lib_file = open(self.use_library,"a")
@@ -536,7 +536,7 @@ class DeepLC():
 
                         p = list(self.calibration_core(uncal_preds,self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds.append(p)
-                        
+
                         p2 = list(self.calibration_core([self.library[ri+"|"+m_name] for ri  in rem_idents],self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds2.append(p2)
 
@@ -561,14 +561,14 @@ class DeepLC():
                         uncal_preds = []
                         pass
 
-                    
+
 
                     if self.write_library:
                         try:
                             lib_file = open(self.use_library,"a")
                         except:
                             logging.debug("Could not append to the library file")
-                            
+
                         for up, sd in zip(uncal_preds, seq_df["idents"]):
                             lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                         lib_file.close()
@@ -587,7 +587,7 @@ class DeepLC():
                         lib_file = open(self.use_library,"a")
                     except:
                         logging.debug("Could not append to the library file")
-                        
+
                     for up, sd in zip(uncal_preds, seq_df["idents"]):
                         lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                     lib_file.close()
@@ -620,12 +620,12 @@ class DeepLC():
                                     lib_file = open(self.use_library,"a")
                                 except:
                                     logging.debug("Could not append to the library file")
-                                    
+
                                 for up, sd in zip(ret_preds[-1], seq_df["idents"]):
                                     lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
                                 lib_file.close()
                                 if self.reload_library: self.read_library()
-                            
+
                             p2 = [self.library[ri+"|"+m_name] for ri  in rem_idents]
                             ret_preds2.append(p2)
 
@@ -646,7 +646,7 @@ class DeepLC():
                                 lib_file = open(self.use_library,"a")
                             except:
                                 logging.debug("Could not append to the library file")
-                                
+
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                             lib_file.close()
@@ -664,13 +664,13 @@ class DeepLC():
                                                 X_hc],
                                                 batch_size=5120,
                                                 verbose=cnn_verbose).flatten() / correction_factor
-                        
+
                         if self.write_library:
                             try:
                                 lib_file = open(self.use_library,"a")
                             except:
                                 logging.debug("Could not append to the library file")
-                                
+
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                             lib_file.close()
@@ -696,7 +696,7 @@ class DeepLC():
                                 lib_file = open(self.use_library,"a")
                             except:
                                 logging.debug("Could not append to the library file")
-                                
+
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                             lib_file.close()
@@ -705,7 +705,7 @@ class DeepLC():
                     except:
                         pass
                     ret_preds2 = [self.library[ri+"|"+mod_name] for ri  in rem_idents]
-                    
+
             else:
                 # No library write!
                 ret_preds = self.model.predict(X) / correction_factor
@@ -891,7 +891,7 @@ linear models between)"
         for range_calib_number in np.arange(0.0,predicted_tr[-1],split_val):
             ptr_index_start = np.argmax(predicted_tr>=range_calib_number)
             ptr_index_end = np.argmax(predicted_tr>=range_calib_number+split_val)
-            
+
             # no points so no cigar... use previous points
             if ptr_index_start >= ptr_index_end:
                 logging.warning("Skipping calibration step, due to no points in the predicted range (are you sure about the split size?): %s,%s" % (range_calib_number,range_calib_number+split_val))
@@ -909,7 +909,7 @@ linear models between)"
 
         if self.verbose:
             logging.debug("Fitting the linear models between the points")
-        
+
         if self.split_cal >= len(measured_tr):
             logging.error("There are not enough measured tr (%s) for the number of splits chosen (%s)" % (len(measured_tr),self.split_cal))
             logging.error("Choose a smaller split_cal parameter or provide more peptides for fitting the calibration curve")
