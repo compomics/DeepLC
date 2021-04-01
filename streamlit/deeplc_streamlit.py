@@ -135,7 +135,11 @@ class StreamlitUI:
                     reload_library=True if use_lib else False,
                 )
                 if calibrate:
+                    config["input_df_calibration"]["modifications"].fillna(
+                        "", inplace=True
+                    )
                     dlc.calibrate_preds(seq_df=config["input_df_calibration"])
+                config["input_df"]["modifications"].fillna("", inplace=True)
                 preds = dlc.make_preds(seq_df=config["input_df"], calibrate=calibrate)
         except Exception as e:
             status_placeholder.error(":x: DeepLC ran into a problem")
@@ -163,14 +167,18 @@ class StreamlitUI:
     @staticmethod
     def get_example_input():
         """Return example DataFrame for input."""
-        return pd.DataFrame(
-            [
-                ["AAGPSLSHTSGGTQSK", "", 12.1645],
-                ["AAINQKLIETGER", "6|Acetyl", 34.095],
-                ["AANDAGYFNDEMAPIEVKTK", "12|Oxidation|18|Acetyl", 37.3765],
-            ],
-            columns=["seq", "modifications", "tr"],
-        )
+        if os.path.isfile("example_data.csv"):
+            example_df = pd.read_csv("example_data.csv")
+        else:
+            example_df = pd.DataFrame(
+                [
+                    ["AAGPSLSHTSGGTQSK", ""],
+                    ["AAINQKLIETGER", "6|Acetyl"],
+                    ["AANDAGYFNDEMAPIEVKTK", "12|Oxidation|18|Acetyl"],
+                ],
+                columns=["seq", "modifications"],
+            )
+        return example_df
 
     def _parse_user_config(self, user_input):
         """Validate and parse user input."""
@@ -187,7 +195,6 @@ class StreamlitUI:
         elif user_input["input_csv"]:
             config["input_filename"] = user_input["input_csv"].name
             config["input_df"] = pd.read_csv(user_input["input_csv"])
-            config["input_df"]["modifications"].fillna("", inplace=True)
         else:
             raise MissingPeptideCSV
 
@@ -204,7 +211,6 @@ class StreamlitUI:
                 config["input_df_calibration"] = pd.read_csv(
                     user_input["input_csv_calibration"]
                 )
-                config["input_df_calibration"]["modifications"].fillna("", inplace=True)
 
         return config
 
@@ -268,7 +274,7 @@ class WebpageTexts:
 
             DeepLC can be run with a
             [graphical user interface](https://github.com/compomics/DeepLC#graphical-user-interface),
-            as a[Python package](https://github.com/compomics/DeepLC#python-package)
+            as a [Python package](https://github.com/compomics/DeepLC#python-package)
             (both CLI and Python API), or through this web application.
 
             If you use DeepLC for your research, please use the following citation:
