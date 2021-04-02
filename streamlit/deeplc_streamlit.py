@@ -35,6 +35,11 @@ class StreamlitUI:
         self.texts = WebpageTexts
         self.user_input = dict()
 
+        if "DEEPLC_LIBRARY_PATH" in os.environ:
+            self.library_path = os.environ["DEEPLC_LIBRARY_PATH"]
+        else:
+            self.library_path = "deeplc_library.txt"
+
         st.set_page_config(
             page_title="DeepLC web server",
             page_icon=":rocket:",
@@ -130,7 +135,7 @@ class StreamlitUI:
                 dlc = DeepLC(
                     dict_cal_divider=self.user_input["dict_cal_divider"],
                     split_cal=self.user_input["split_cal"],
-                    use_library="deeplc_library.txt" if use_lib else "",
+                    use_library=self.library_path if use_lib else None,
                     write_library=True if use_lib else False,
                     reload_library=True if use_lib else False,
                 )
