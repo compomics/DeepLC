@@ -1,15 +1,17 @@
 """
-Main code used to generate LC retention time predictions. This provides the main
-interface.
+Main code used to generate LC retention time predictions.
 
-For the library versions see the .yml file
+This provides the main interface. For the library versions see the .yml file
 """
 
+
 __author__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
-__credits__ = ["Robbin Bouwmeester", "Ralf Gabriels", "Prof. Lennart Martens", "Sven Degroeve"]
 __license__ = "Apache License, Version 2.0"
 __maintainer__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
 __email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
+__credits__ = [
+    "Robbin Bouwmeester", "Ralf Gabriels", "Lennart Martens", "Sven Degroeve"
+]
 
 
 # Default models, will be used if no other is specified. If no best model is
@@ -17,39 +19,31 @@ __email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
 import os
 deeplc_dir = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_MODELS = [
-    "mods/full_hc_hela_hf_psms_aligned_1fd8363d9af9dcad3be7553c39396960.hdf5", 
-    "mods/full_hc_hela_hf_psms_aligned_8c22d89667368f2f02ad996469ba157e.hdf5", 
+    "mods/full_hc_hela_hf_psms_aligned_1fd8363d9af9dcad3be7553c39396960.hdf5",
+    "mods/full_hc_hela_hf_psms_aligned_8c22d89667368f2f02ad996469ba157e.hdf5",
     "mods/full_hc_hela_hf_psms_aligned_cb975cfdd4105f97efa0b3afffe075cc.hdf5",
     "mods/full_hc_PXD005573_mcp_cb975cfdd4105f97efa0b3afffe075cc.hdf5"
 ]
 DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
 
-
-# Native imports
-from configparser import ConfigParser
-from operator import itemgetter
 import copy
 import gc
 import logging
 import multiprocessing
 import multiprocessing.dummy
-import os
 import pickle
-import sys
-import time
+from configparser import ConfigParser
 
-# Pandas
-import pandas as pd
-
-# Numpy
 import numpy as np
-
-# Keras
+import pandas as pd
 import tensorflow as tf
+
+from deeplc._exceptions import CalibrationError, DeepLCError
+
 
 from tensorflow.keras.models import load_model
 
-# "Costum" activation function
+# "Custom" activation function
 lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
 
 try: from tensorflow.compat.v1.keras.backend import set_session
@@ -62,6 +56,7 @@ except ImportError: from tensorflow.keras.backend import get_session
 
 # Set to force CPU calculations
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 
 # Set for TF V1.0 (counters some memory problems of nvidia 20 series GPUs)
 #config = tf.ConfigProto()
@@ -76,17 +71,18 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 # Feature extraction
 from deeplc.feat_extractor import FeatExtractor
 
+
 def warn(*args, **kwargs):
     pass
 import warnings
 warnings.warn = warn
 
-# Reset Keras Session
+
 def reset_keras():
+    """Reset Keras session."""
     sess = get_session()
     clear_session()
     sess.close()
-    #sess = get_session()
     gc.collect()
     # Set to force CPU calculations
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -107,9 +103,17 @@ class DeepLC():
     bin_dist : float
         TODO
     dict_cal_divider : int
-        TODO
+        Dictionary divider - this parameter defines the precision to use for fast-lookup
+        of retention times for calibration. A value of 10 means a precision of 0.1
+        (and 100 a precision of 0.01) between the calibration anchor points. This
+        parameter does not influence the precision of the calibration, but setting it
+        too high might mean that there is bad selection of the models between anchor
+        points. A safe value is usually higher than 10.
     split_cal : int
-        TODO
+        Split calibration - the number of divisions for the chromatogram. If the value
+        is set to 10 the chromatogram is split up into 10 equidistant parts. For each
+        part the median value of the calibration peptides is selected. These are the
+        anchor points. Between each anchor point a linear fit is made.
     n_jobs : int or None
         number of threads to use; if None, use maximum available
     config_file : str or None
@@ -120,6 +124,12 @@ class DeepLC():
         use CNN model or not
     batch_num : int
         number of peptides per batch; lower for lower memory footprint
+    write_library : bool
+        write predictions to library file for reuse in later prediction runs
+    use_library : str or None
+        path to prediction library file
+    reload_library : bool
+        reload prediction library
 
     Methods
     -------
@@ -140,13 +150,13 @@ class DeepLC():
                  n_jobs=None,
                  config_file=None,
                  f_extractor=None,
-                 cnn_model=False,
+                 cnn_model=True,
                  batch_num=350000,
                  write_library=False,
-                 use_library="",
+                 use_library=None,
                  reload_library=False
                  ):
-        
+
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()
@@ -178,14 +188,14 @@ class DeepLC():
         self.write_library = write_library
         self.library = {}
 
-        if len(self.use_library) > 0 :
+        if self.use_library:
             self.read_library()
 
         self.reload_library = reload_library
 
         tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
         tf.config.threading.set_inter_op_parallelism_threads(n_jobs)
-        
+
         if "NUMEXPR_MAX_THREADS" not in os.environ:
             os.environ['NUMEXPR_MAX_THREADS'] = str(n_jobs)
 
@@ -218,21 +228,23 @@ class DeepLC():
               """)
 
     def read_library(self):
-        if len(self.use_library) == 0:
+        if not self.use_library:
             logging.warning("Trying to read library, but no library file was provided.")
             return
         try:
             library_file = open(self.use_library)
         except IOError:
-            logging.error("Could not open library file: ", self.use_library)
-            return 
-        
+            logging.error("Could not open library file: %s", self.use_library)
+            return
+
         for line_num,line in enumerate(library_file):
             split_line = line.strip().split(",")
             try:
                 self.library[split_line[0]] = float(split_line[1])
             except:
-                logging.warning("Could not use this library entry due to an error:",line)
+                logging.warning(
+                    "Could not use this library entry due to an error: %s", line
+                )
 
     def do_f_extraction(self,
                         seqs,
@@ -419,8 +431,8 @@ class DeepLC():
 
         # TODO check if .keys() object is the same as set (or at least for set operations)
         idents_in_lib = set(self.library.keys())
-        
-        if len(self.use_library) > 0:
+
+        if self.use_library:
             for ident in seq_df["idents"]:
                 if isinstance(self.model, dict):
                     spec_ident = all_mods
@@ -428,7 +440,7 @@ class DeepLC():
                     spec_ident = [ident+"|"+mod_name]
                 else:
                     spec_ident = [ident]
-                
+
                 if isinstance(self.model, dict):
                     if len([m for m in self.model.values() if ident+"|"+m in idents_in_lib]) == len(self.model.values()):
                         rem_idents.append(ident)
@@ -454,8 +466,8 @@ class DeepLC():
 
         # Drop duplicated seq+mod
         seq_df.drop_duplicates(subset=["idents"], inplace=True)
-        
-        if len(self.use_library) > 0:
+
+        if self.use_library:
             seq_df = seq_df[seq_df["idents"].isin(keep_idents)]
 
         if self.verbose:
@@ -498,7 +510,7 @@ class DeepLC():
             if self.verbose:
                 logging.debug("Predicting with calibration...")
 
-            
+
 
             # Load the model differently if we are going to use a CNN
             if self.cnn_model:
@@ -508,8 +520,10 @@ class DeepLC():
                     for m_group_name,m_name in self.model.items():
                         try:
                             X
-                            mod = load_model(m_name,
-                                            custom_objects = {'<lambda>': lrelu})
+                            mod = load_model(
+                                m_name,
+                                custom_objects={'<lambda>': lrelu}
+                            )
                             uncal_preds = mod.predict(
                                 [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                         except UnboundLocalError:
@@ -517,7 +531,7 @@ class DeepLC():
                             uncal_preds = []
                             pass
 
-                        
+
                         if self.write_library:
                             try:
                                 lib_file = open(self.use_library,"a")
@@ -536,7 +550,7 @@ class DeepLC():
 
                         p = list(self.calibration_core(uncal_preds,self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds.append(p)
-                        
+
                         p2 = list(self.calibration_core([self.library[ri+"|"+m_name] for ri  in rem_idents],self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds2.append(p2)
 
@@ -544,14 +558,18 @@ class DeepLC():
                     ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
                 elif not mod_name:
                     # No library write!
-                    mod = load_model(self.model,
-                                     custom_objects = {'<lambda>': lrelu})
+                    mod = load_model(
+                        self.model,
+                        custom_objects={'<lambda>': lrelu}
+                    )
                     uncal_preds = mod.predict(
                         [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                     ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
                 else:
-                    mod = load_model(mod_name,
-                                     custom_objects = {'<lambda>': lrelu})
+                    mod = load_model(
+                        mod_name,
+                        custom_objects={'<lambda>': lrelu}
+                    )
                     try:
                         X
                         uncal_preds = mod.predict(
@@ -561,14 +579,14 @@ class DeepLC():
                         uncal_preds = []
                         pass
 
-                    
+
 
                     if self.write_library:
                         try:
                             lib_file = open(self.use_library,"a")
                         except:
                             logging.debug("Could not append to the library file")
-                            
+
                         for up, sd in zip(uncal_preds, seq_df["idents"]):
                             lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                         lib_file.close()
@@ -587,7 +605,7 @@ class DeepLC():
                         lib_file = open(self.use_library,"a")
                     except:
                         logging.debug("Could not append to the library file")
-                        
+
                     for up, sd in zip(uncal_preds, seq_df["idents"]):
                         lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                     lib_file.close()
@@ -605,8 +623,10 @@ class DeepLC():
                         for m_group_name,m_name in self.model.items():
                             try:
                                 X
-                                mod = load_model(m_name,
-                                                custom_objects = {'<lambda>': lrelu})
+                                mod = load_model(
+                                    m_name,
+                                    custom_objects={'<lambda>': lrelu}
+                                )
                                 p = mod.predict(
                                     [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                                 ret_preds.append(p)
@@ -620,12 +640,12 @@ class DeepLC():
                                     lib_file = open(self.use_library,"a")
                                 except:
                                     logging.debug("Could not append to the library file")
-                                    
+
                                 for up, sd in zip(ret_preds[-1], seq_df["idents"]):
                                     lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
                                 lib_file.close()
                                 if self.reload_library: self.read_library()
-                            
+
                             p2 = [self.library[ri+"|"+m_name] for ri  in rem_idents]
                             ret_preds2.append(p2)
 
@@ -633,8 +653,10 @@ class DeepLC():
                         ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
                     elif isinstance(self.model, list):
                         mod_name = self.model[0]
-                        mod = load_model(mod_name,
-                                         custom_objects = {'<lambda>': lrelu})
+                        mod = load_model(
+                            mod_name,
+                            custom_objects={'<lambda>': lrelu}
+                        )
                         ret_preds = mod.predict([X,
                                                 X_sum,
                                                 X_global,
@@ -646,7 +668,7 @@ class DeepLC():
                                 lib_file = open(self.use_library,"a")
                             except:
                                 logging.debug("Could not append to the library file")
-                                
+
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                             lib_file.close()
@@ -656,21 +678,23 @@ class DeepLC():
                     elif isinstance(self.model, str):
                         # No library write!
                         mod_name = self.model
-                        mod = load_model(mod_name,
-                                         custom_objects = {'<lambda>': lrelu})
+                        mod = load_model(
+                            mod_name,
+                            custom_objects={'<lambda>': lrelu}
+                        )
                         ret_preds = mod.predict([X,
                                                 X_sum,
                                                 X_global,
                                                 X_hc],
                                                 batch_size=5120,
                                                 verbose=cnn_verbose).flatten() / correction_factor
-                        
+
                         if self.write_library:
                             try:
                                 lib_file = open(self.use_library,"a")
                             except:
                                 logging.debug("Could not append to the library file")
-                                
+
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                             lib_file.close()
@@ -678,12 +702,13 @@ class DeepLC():
 
                         ret_preds2 = np.array([self.library[ri+"|"+mod_name] for ri  in rem_idents])
                     else:
-                        logging.critical('No CNN model defined.')
-                        exit(1)
+                        raise DeepLCError('No CNN model defined.')
                 else:
                     # No library write!
-                    mod = load_model(mod_name,
-                                    custom_objects = {'<lambda>': lrelu})
+                    mod = load_model(
+                        mod_name,
+                        custom_objects={'<lambda>': lrelu}
+                    )
                     try:
                         ret_preds = mod.predict([X,
                                                 X_sum,
@@ -696,7 +721,7 @@ class DeepLC():
                                 lib_file = open(self.use_library,"a")
                             except:
                                 logging.debug("Could not append to the library file")
-                                
+
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
                             lib_file.close()
@@ -705,7 +730,7 @@ class DeepLC():
                     except:
                         pass
                     ret_preds2 = [self.library[ri+"|"+mod_name] for ri  in rem_idents]
-                    
+
             else:
                 # No library write!
                 ret_preds = self.model.predict(X) / correction_factor
@@ -891,7 +916,7 @@ linear models between)"
         for range_calib_number in np.arange(0.0,predicted_tr[-1],split_val):
             ptr_index_start = np.argmax(predicted_tr>=range_calib_number)
             ptr_index_end = np.argmax(predicted_tr>=range_calib_number+split_val)
-            
+
             # no points so no cigar... use previous points
             if ptr_index_start >= ptr_index_end:
                 logging.warning("Skipping calibration step, due to no points in the predicted range (are you sure about the split size?): %s,%s" % (range_calib_number,range_calib_number+split_val))
@@ -909,17 +934,23 @@ linear models between)"
 
         if self.verbose:
             logging.debug("Fitting the linear models between the points")
-        
+
         if self.split_cal >= len(measured_tr):
-            logging.error("There are not enough measured tr (%s) for the number of splits chosen (%s)" % (len(measured_tr),self.split_cal))
-            logging.error("Choose a smaller split_cal parameter or provide more peptides for fitting the calibration curve")
-            sys.exit(1)
+            raise CalibrationError(
+                "Not enough measured tr ({}) for the chosen number of splits ({}). "
+                "Choose a smaller split_cal parameter or provide more peptides for "
+                "fitting the calibration curve.".format(
+                    len(measured_tr), self.split_cal
+                )
+            )
         if len(mtr_mean) == 0:
-            logging.error("The measured tr list is empty, not able to calibrate")
-            sys.exit(1)
+            raise CalibrationError(
+                "The measured tr list is empty, not able to calibrate"
+            )
         if len(ptr_mean) == 0:
-            logging.error("The predicted tr list is empty, not able to calibrate")
-            sys.exit(1)
+            raise CalibrationError(
+                "The predicted tr list is empty, not able to calibrate"
+            )
 
         # calculate calibration curves
         for i in range(0, len(ptr_mean)):

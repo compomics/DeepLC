@@ -8,27 +8,20 @@ __license__ = "Apache License, Version 2.0"
 __maintainer__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
 __email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
 
-# Standard library
-from collections import Counter
 import argparse
-import itertools
 import logging
 import multiprocessing
 import os
-import pickle
 import pkg_resources
-import random
-import re
 import sys
 
-# Third party
-import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-# DeepLC
 from deeplc import DeepLC
 from deeplc import FeatExtractor
+from deeplc._exceptions import DeepLCError
+
 
 __version__ = pkg_resources.require("deeplc")[0].version
 
@@ -94,7 +87,7 @@ def parse_arguments():
     parser.add_argument(
         "--plot_predictions",
         dest='plot_predictions',
-		action='store_true',
+        action='store_true',
         default=False,
         help='Save scatter plot of predictions vs observations (default=False)'
     )
@@ -146,27 +139,27 @@ def parse_arguments():
 
 
 def setup_logging(passed_level):
-	log_mapping = {
-		'critical': logging.CRITICAL,
-		'error': logging.ERROR,
-		'warning': logging.WARNING,
-		'info': logging.INFO,
-		'debug': logging.DEBUG,
-	}
+    log_mapping = {
+        'critical': logging.CRITICAL,
+        'error': logging.ERROR,
+        'warning': logging.WARNING,
+        'info': logging.INFO,
+        'debug': logging.DEBUG,
+    }
 
-	if passed_level.lower() not in log_mapping:
-		print(
-			"Invalid log level. Should be one of the following: ",
-			', '.join(log_mapping.keys())
-		)
-		exit(1)
+    if passed_level.lower() not in log_mapping:
+        print(
+            "Invalid log level. Should be one of the following: ",
+            ', '.join(log_mapping.keys())
+        )
+        exit(1)
 
-	logging.basicConfig(
-		stream=sys.stdout,
-		format='%(asctime)s - %(levelname)s - %(message)s',
-		datefmt='%Y-%m-%d %H:%M:%S',
-		level=log_mapping[passed_level.lower()]
-	)
+    logging.basicConfig(
+        stream=sys.stdout,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=log_mapping[passed_level.lower()]
+    )
 
 
 def main():
@@ -185,19 +178,23 @@ def main():
     elif argu.n_threads > max_threads:
         argu.n_threads = max_threads
 
-    run(file_pred=argu.file_pred,
-        file_cal=argu.file_cal,
-        file_pred_out=argu.file_pred_out,
-        file_model=argu.file_model,
-        n_threads=argu.n_threads,
-        verbose=True,
-        split_cal=argu.split_cal,
-        dict_divider=argu.dict_divider,
-        batch_num=argu.batch_num,
-        plot_predictions=argu.plot_predictions,
-        write_library=argu.write_library,
-        use_library=argu.use_library
-        )
+    try:
+        run(file_pred=argu.file_pred,
+            file_cal=argu.file_cal,
+            file_pred_out=argu.file_pred_out,
+            file_model=argu.file_model,
+            n_threads=argu.n_threads,
+            verbose=True,
+            split_cal=argu.split_cal,
+            dict_divider=argu.dict_divider,
+            batch_num=argu.batch_num,
+            plot_predictions=argu.plot_predictions,
+            write_library=argu.write_library,
+            use_library=argu.use_library
+            )
+    except DeepLCError as e:
+        logging.exception(e)
+        sys.exit(1)
 
 
 def run(file_pred="",

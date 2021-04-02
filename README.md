@@ -28,7 +28,7 @@ DeepLC: Retention time prediction for (modified) peptides using Deep Learning.
 ## Introduction
 
 DeepLC is a retention time predictor for (modified) peptides that employs Deep
-Learning. It's strength lies in the fact that it can accurately predict
+Learning. Its strength lies in the fact that it can accurately predict
 retention times for modified peptides, even if hasn't seen said modification
 during training.
 
@@ -51,11 +51,11 @@ depending on your operating system.
 
 ### Run parameters
 
-Dictionary divider - this parameter defines the precision to use for fast-lookup of retention times for calibration. A value of 10 means a precision of 0.1 (and 100 a precision of 0.01) between the calibration anchor points. This parameter does not influence the precision of the calibration, but setting it too high might mean that there is bad selection of the models between anchor points. A save value is usually higher than 10.
+Dictionary divider - this parameter defines the precision to use for fast-lookup of retention times for calibration. A value of 10 means a precision of 0.1 (and 100 a precision of 0.01) between the calibration anchor points. This parameter does not influence the precision of the calibration, but setting it too high might mean that there is bad selection of the models between anchor points. A safe value is usually higher than 10.
 
 Split calibration - the number of divisions for the chromatogram. If the value is set to 10 the chromatogram is split up into 10 equidistant parts. For each part the median value of the calibration peptides is selected. These are the anchor points. Between each anchor point a linear fit is made.
 
-Batch number - define the numer of peptides to make predictions for in a single go (reduce to fit into memory, increase for faster prediction speeds).
+Batch number - define the number of peptides to make predictions for in a single go (reduce to fit into memory, increase for faster prediction speeds).
 
 ## Python package
 
@@ -65,10 +65,10 @@ Batch number - define the numer of peptides to make predictions for in a single 
 [![install with pip](https://flat.badgen.net/badge/install%20with/pip/green)](http://bioconda.github.io/recipes/deeplc/README.html)
 [![container](https://flat.badgen.net/badge/pull/biocontainer/green)](https://quay.io/repository/biocontainers/deeplc)
 
-Install with conda, using the bioconda and conda-forge channels:  
+Install with conda, using the bioconda and conda-forge channels:
 `conda install -c bioconda -c conda-forge deeplc`
 
-Or install with pip:  
+Or install with pip:
 `pip install deeplc`
 
 ### Command line interface
@@ -184,8 +184,8 @@ Yes, even modifications like carbamidomethyl should be in the input file.
 
 **__Q: So DeepLC is able to predict the retention time for any modification?__**
 
-Yes, DeepLC can predict the retention time of any modification. However, if the 
-modification is **very** different from the peptides the model has seen during 
+Yes, DeepLC can predict the retention time of any modification. However, if the
+modification is **very** different from the peptides the model has seen during
 training the accuracy might not be satisfactory for you. For example, if the model
 has never seen a phosphor atom before, the accuracy of the prediction is going to
 be low.
@@ -193,7 +193,7 @@ be low.
 **__Q: Installation fails. Why?__**
 
 Please make sure to install DeepLC in a path that does not contain spaces. Run
-the latest LTS version of Ubuntu or Windows 10. Make sure you have enough disk 
+the latest LTS version of Ubuntu or Windows 10. Make sure you have enough disk
 space available, surprisingly TensorFlow needs quite a bit of disk space. If
 you are still not able to install DeepLC, please feel free to contact us:
 
@@ -256,7 +256,7 @@ Make sure to use negative signs for the atoms subtracted.
 **__Q: Help, all my predictions are between [0,10]. Why?__**
 
 It is likely you did not use calibration. No problem, but the retention times for training
-purposes were normalized between [0,10]. This means that you probably need to adjust the 
+purposes were normalized between [0,10]. This means that you probably need to adjust the
 retention time yourselve after analysis or use a calibration set as the input.
 
 **__Q: How does the ensemble part of DeepLC work?__**
@@ -282,7 +282,7 @@ full_hc_dia_fixed_mods_2_b.hdf5
 **__Q: I would like to take the ensemble average of multiple models, even if they are trained on different datasets. How can I do this?__**
 
 Feel free to experiment! Models within the same directory are grouped if they overlap in
-their name. The overlap has to be in their full name, except for the last part of the 
+their name. The overlap has to be in their full name, except for the last part of the
 name after a "_"-character.
 
 The following models will be grouped:

@@ -71,7 +71,7 @@ class _StreamlitLoggingStream:
             self.message_list.append(message)
         else:
             self.message_list = [message]
-        self.placeholder.info("\n".join(self.message_list))
+        self.placeholder.markdown("```\n" + "".join(self.message_list) + "\n```")
 
 
 def hide_streamlit_menu():
