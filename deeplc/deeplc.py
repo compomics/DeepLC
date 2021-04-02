@@ -54,14 +54,6 @@ try: from tensorflow.compat.v1.keras.backend import get_session
 except ImportError: from tensorflow.keras.backend import get_session
 
 
-try:
-    from tensorflow.compat.v1.keras.backend import clear_session
-    from tensorflow.compat.v1.keras.backend import get_session
-except ImportError:
-    from tensorflow.keras.backend import clear_session
-    from tensorflow.keras.backend import get_session
-
-
 # Set to force CPU calculations
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
