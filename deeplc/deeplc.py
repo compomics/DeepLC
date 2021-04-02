@@ -41,20 +41,17 @@ import tensorflow as tf
 from deeplc._exceptions import CalibrationError, DeepLCError
 
 
-deeplc_dir = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_MODELS = [
-    "mods/full_hc_hela_hf_psms_aligned_1fd8363d9af9dcad3be7553c39396960.hdf5",
-    "mods/full_hc_hela_hf_psms_aligned_8c22d89667368f2f02ad996469ba157e.hdf5",
-    "mods/full_hc_hela_hf_psms_aligned_cb975cfdd4105f97efa0b3afffe075cc.hdf5",
-    "mods/full_hc_PXD005573_mcp_cb975cfdd4105f97efa0b3afffe075cc.hdf5"
-]
-DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
-
 from tensorflow.keras.models import load_model
 
 # "Custom" activation function
-LRELU = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
+lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
 
+try: from tensorflow.compat.v1.keras.backend import set_session
+except ImportError: from tensorflow.keras.backend import set_session
+try: from tensorflow.compat.v1.keras.backend import clear_session
+except ImportError: from tensorflow.keras.backend import clear_session
+try: from tensorflow.compat.v1.keras.backend import get_session
+except ImportError: from tensorflow.keras.backend import get_session
 
 
 try:
@@ -66,8 +63,7 @@ except ImportError:
 
 
 # Set to force CPU calculations
-if "CUDA_VISIBLE_DEVICES" not in os.environ:
-    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 # Set for TF V1.0 (counters some memory problems of nvidia 20 series GPUs)
@@ -97,8 +93,7 @@ def reset_keras():
     sess.close()
     gc.collect()
     # Set to force CPU calculations
-    if "CUDA_VISIBLE_DEVICES" not in os.environ:
-        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 class DeepLC():
@@ -247,7 +242,7 @@ class DeepLC():
         try:
             library_file = open(self.use_library)
         except IOError:
-            logging.error("Could not open library file: ", self.use_library)
+            logging.error("Could not open library file: %s", self.use_library)
             return
 
         for line_num,line in enumerate(library_file):
@@ -255,7 +250,9 @@ class DeepLC():
             try:
                 self.library[split_line[0]] = float(split_line[1])
             except:
-                logging.warning("Could not use this library entry due to an error:",line)
+                logging.warning(
+                    "Could not use this library entry due to an error: %s", line
+                )
 
     def do_f_extraction(self,
                         seqs,
@@ -531,8 +528,10 @@ class DeepLC():
                     for m_group_name,m_name in self.model.items():
                         try:
                             X
-                            mod = load_model(m_name,
-                                            custom_objects = {'<lambda>': LRELU})
+                            mod = load_model(
+                                m_name,
+                                custom_objects={'<lambda>': lrelu}
+                            )
                             uncal_preds = mod.predict(
                                 [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                         except UnboundLocalError:
@@ -567,14 +566,18 @@ class DeepLC():
                     ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
                 elif not mod_name:
                     # No library write!
-                    mod = load_model(self.model,
-                                     custom_objects = {'<lambda>': LRELU})
+                    mod = load_model(
+                        self.model,
+                        custom_objects={'<lambda>': lrelu}
+                    )
                     uncal_preds = mod.predict(
                         [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                     ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
                 else:
-                    mod = load_model(mod_name,
-                                     custom_objects = {'<lambda>': LRELU})
+                    mod = load_model(
+                        mod_name,
+                        custom_objects={'<lambda>': lrelu}
+                    )
                     try:
                         X
                         uncal_preds = mod.predict(
@@ -628,8 +631,10 @@ class DeepLC():
                         for m_group_name,m_name in self.model.items():
                             try:
                                 X
-                                mod = load_model(m_name,
-                                                custom_objects = {'<lambda>': LRELU})
+                                mod = load_model(
+                                    m_name,
+                                    custom_objects={'<lambda>': lrelu}
+                                )
                                 p = mod.predict(
                                     [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                                 ret_preds.append(p)
@@ -656,8 +661,10 @@ class DeepLC():
                         ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
                     elif isinstance(self.model, list):
                         mod_name = self.model[0]
-                        mod = load_model(mod_name,
-                                         custom_objects = {'<lambda>': LRELU})
+                        mod = load_model(
+                            mod_name,
+                            custom_objects={'<lambda>': lrelu}
+                        )
                         ret_preds = mod.predict([X,
                                                 X_sum,
                                                 X_global,
@@ -679,8 +686,10 @@ class DeepLC():
                     elif isinstance(self.model, str):
                         # No library write!
                         mod_name = self.model
-                        mod = load_model(mod_name,
-                                         custom_objects = {'<lambda>': LRELU})
+                        mod = load_model(
+                            mod_name,
+                            custom_objects={'<lambda>': lrelu}
+                        )
                         ret_preds = mod.predict([X,
                                                 X_sum,
                                                 X_global,
@@ -704,8 +713,10 @@ class DeepLC():
                         raise DeepLCError('No CNN model defined.')
                 else:
                     # No library write!
-                    mod = load_model(mod_name,
-                                    custom_objects = {'<lambda>': LRELU})
+                    mod = load_model(
+                        mod_name,
+                        custom_objects={'<lambda>': lrelu}
+                    )
                     try:
                         ret_preds = mod.predict([X,
                                                 X_sum,
