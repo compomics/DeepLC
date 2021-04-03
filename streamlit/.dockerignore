@@ -1,0 +1,5 @@
+.dockerignore
+Dockerfile
+__pycache__/
+.venv/
+deeplc_library.txt
