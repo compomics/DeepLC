@@ -2,6 +2,7 @@
 
 import base64
 import os
+import pathlib
 
 import pandas as pd
 import plotly.express as px
@@ -35,10 +36,7 @@ class StreamlitUI:
         self.texts = WebpageTexts
         self.user_input = dict()
 
-        if "DEEPLC_LIBRARY_PATH" in os.environ:
-            self.library_path = os.environ["DEEPLC_LIBRARY_PATH"]
-        else:
-            self.library_path = "deeplc_library.txt"
+        self._set_library_path()
 
         st.set_page_config(
             page_title="DeepLC web server",
@@ -135,7 +133,7 @@ class StreamlitUI:
                 dlc = DeepLC(
                     dict_cal_divider=self.user_input["dict_cal_divider"],
                     split_cal=self.user_input["split_cal"],
-                    use_library=self.library_path if use_lib else None,
+                    use_library=self.library_path if use_lib else "",
                     write_library=True if use_lib else False,
                     reload_library=True if use_lib else False,
                 )
@@ -168,6 +166,16 @@ class StreamlitUI:
             st.subheader("Download predictions")
             filename = os.path.splitext(config["input_filename"])[0]
             self._df_download_href(result_df, filename + "_deeplc_predictions.csv")
+
+    def _set_library_path(self):
+        if "DEEPLC_LIBRARY_PATH" in os.environ:
+            try:
+                pathlib.Path(os.environ["DEEPLC_LIBRARY_PATH"], exist_ok=True).touch()
+                self.library_path = os.environ["DEEPLC_LIBRARY_PATH"]
+            except OSError:
+                self.library_path = "deeplc_library.txt"
+        else:
+            self.library_path = "deeplc_library.txt"
 
     @staticmethod
     def get_example_input():
