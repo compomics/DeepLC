@@ -5,6 +5,7 @@ import logging
 import os
 import pathlib
 from datetime import datetime
+from importlib.metadata import version
 
 import pandas as pd
 import plotly.express as px
@@ -308,7 +309,7 @@ class WebpageTexts:
             [![Twitter](https://flat.badgen.net/twitter/follow/compomics?icon=twitter)](https://twitter.com/compomics)
             """
 
-        about = """
+        about = f"""
             DeepLC is a retention time predictor for (modified) peptides that employs
             Deep Learning. Its strength lies in the fact that it can accurately predict
             retention times for modified peptides, even if hasn't seen said modification
@@ -326,16 +327,23 @@ class WebpageTexts:
             Degroeve<br>
             >_bioRxiv (2020)_<br>
             >[doi:10.1101/2020.03.28.013003](https://doi.org/10.1101/2020.03.28.013003)
+
+            ---
+
+            Currently using the following package versions:
+
+            [![DeepLC](https://flat.badgen.net/badge/deeplc/{version('deeplc')}/grey?icon=pypi)](https://github.com/compomics/deeplc)
+            [![Tensorflow](https://flat.badgen.net/badge/tensorflow/{version('tensorflow')}/grey?icon=pypi)](https://github.com/tensorflow/tensorflow)
+            [![Streamlit](https://flat.badgen.net/badge/streamlit/{version('streamlit')}/grey?icon=pypi)](https://github.com/streamlit/streamlit)
             """
 
     class Help:
-        peptide_csv = """
-            CSV with peptides for which to predict retention times. Click below on _Info
-            about peptide CSV formatting_ for more info.
+        peptide_csv = """CSV with peptides for which to predict retention times. Click
+            below on _Info about peptide CSV formatting_ for more info.
             """
-        calibration_peptide_csv = """
-            CSV with peptides with known retention times to be used for calibration.
-            Click below on _Info about peptide CSV formatting_ for more info.
+        calibration_peptide_csv = """CSV with peptides with known retention times to be
+            used for calibration. Click below on _Info about peptide CSV formatting_ for
+            more info.
             """
         example_data = "Use example data instead of uploaded CSV files."
         csv_formatting = """
@@ -364,33 +372,30 @@ class WebpageTexts:
             [examples/datasets](https://github.com/compomics/DeepLC/tree/master/examples/datasets)
             for more examples.
             """
-        calibration_source = """
-            DeepLC can calibrate its predictions based on set of known peptide retention
-            times. Calibration also ensures that the best-fitting DeepLC model is used.
+        calibration_source = """DeepLC can calibrate its predictions based on set of
+            known peptide retention times. Calibration also ensures that the
+            best-fitting DeepLC model is used.
             """
-        dict_cal_divider = """
-            This parameter defines the precision to use for fast-lookup of retention
-            times for calibration. A value of 10 means a precision of 0.1 (and 100 a
-            precision of 0.01) between the calibration anchor points. This parameter
-            does not influence the precision of the calibration, but setting it too
-            high results in mean that there is bad selection of the models between
-            anchor points. A safe value is usually higher than 10.
+        dict_cal_divider = """This parameter defines the precision to use for
+            fast-lookup of retention times for calibration. A value of 10 means a
+            precision of 0.1 (and 100 a precision of 0.01) between the calibration
+            anchor points. This parameter does not influence the precision of the
+            calibration, but setting it too high results in mean that there is bad
+            selection of the models between anchor points. A safe value is usually
+            higher than 10.
             """
-        split_cal = """
-            The number of splits for the chromatogram. If the value is set to 10 the
-            chromatogram is split up into 10 equidistant parts. For each part the median
-            value of the calibration peptides is selected. These are the anchor points.
-            Between each anchor point a linear model is fit.
+        split_cal = """The number of splits for the chromatogram. If the value is set
+            to 10 the chromatogram is split up into 10 equidistant parts. For each part
+            the median value of the calibration peptides is selected. These are the
+            anchor points. Between each anchor point a linear model is fit.
             """
-        use_library = """
-            DeepLC can fetch previously predicted retention times from a library,
-            instead predicting retention times for the same (modified) peptide again.
-            This feature will not change any of the predicted retention time values. It
-            can, however, significantly speed up DeepLC.
+        use_library = """DeepLC can fetch previously predicted retention times from a
+            library, instead predicting retention times for the same (modified) peptide
+            again. This feature will not change any of the predicted retention time
+            values. It can, however, significantly speed up DeepLC.
             """
-        use_library_agreement = """
-            _By selecting this box, you allow us to store the uploaded peptide sequences
-            and modifications on this server indefinitely._
+        use_library_agreement = """_By selecting this box, you allow us to store the
+            uploaded peptide sequences and modifications on this server indefinitely._
             """
 
     class Errors:

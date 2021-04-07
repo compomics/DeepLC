@@ -14,8 +14,7 @@ Streamlit can be further configured using environment variables:
 ```sh
 docker run \
     -p 8501 \
-    -e STREAMLIT_SERVER_MAXUPLOADSIZE="200" \
-    -e STREAMLIT_SERVER_BASEURLPATH="deeplc" \
+    -e STREAMLIT_SERVER_MAX_UPLOAD_SIZE=200 \
     ghcr.io/compomics/deeplc-streamlit
 ```
 See
