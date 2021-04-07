@@ -9,7 +9,7 @@ import plotly.express as px
 import streamlit as st
 from deeplc import DeepLC
 
-from streamlit_utils import StreamlitLogger, hide_streamlit_menu
+from streamlit_utils import hide_streamlit_menu
 
 
 class DeepLCStreamlitError(Exception):
@@ -123,27 +123,25 @@ class StreamlitUI:
         use_lib = self.user_input["use_library"]
         calibrate = isinstance(config["input_df_calibration"], pd.DataFrame)
 
-        # Run DeepLC and send logs to front end
+        # Run DeepLC
         st.header("Running DeepLC")
         status_placeholder = st.empty()
-        logger_placeholder = st.empty()
         status_placeholder.info(":hourglass_flowing_sand: Running DeepLC...")
         try:
-            with StreamlitLogger(logger_placeholder):
-                dlc = DeepLC(
-                    dict_cal_divider=self.user_input["dict_cal_divider"],
-                    split_cal=self.user_input["split_cal"],
-                    use_library=self.library_path if use_lib else "",
-                    write_library=True if use_lib else False,
-                    reload_library=True if use_lib else False,
+            dlc = DeepLC(
+                dict_cal_divider=self.user_input["dict_cal_divider"],
+                split_cal=self.user_input["split_cal"],
+                use_library=self.library_path if use_lib else "",
+                write_library=True if use_lib else False,
+                reload_library=True if use_lib else False,
+            )
+            if calibrate:
+                config["input_df_calibration"]["modifications"].fillna(
+                    "", inplace=True
                 )
-                if calibrate:
-                    config["input_df_calibration"]["modifications"].fillna(
-                        "", inplace=True
-                    )
-                    dlc.calibrate_preds(seq_df=config["input_df_calibration"])
-                config["input_df"]["modifications"].fillna("", inplace=True)
-                preds = dlc.make_preds(seq_df=config["input_df"], calibrate=calibrate)
+                dlc.calibrate_preds(seq_df=config["input_df_calibration"])
+            config["input_df"]["modifications"].fillna("", inplace=True)
+            preds = dlc.make_preds(seq_df=config["input_df"], calibrate=calibrate)
         except Exception as e:
             status_placeholder.error(":x: DeepLC ran into a problem")
             st.exception(e)
