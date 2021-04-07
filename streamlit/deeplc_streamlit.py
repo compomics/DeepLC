@@ -1,15 +1,20 @@
 """Streamlit-based web interface for DeepLC."""
 
 import base64
+import logging
 import os
 import pathlib
+from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from deeplc import DeepLC
 
-from streamlit_utils import hide_streamlit_menu
+from streamlit_utils import hide_streamlit_menu, styled_download_button
+
+
+logger = logging.getLogger(__name__)
 
 
 class DeepLCStreamlitError(Exception):
@@ -17,6 +22,14 @@ class DeepLCStreamlitError(Exception):
 
 
 class MissingPeptideCSV(DeepLCStreamlitError):
+    pass
+
+
+class InvalidPeptideCSV(DeepLCStreamlitError):
+    pass
+
+
+class InvalidCalibrationPeptideCSV(DeepLCStreamlitError):
     pass
 
 
@@ -105,6 +118,10 @@ class StreamlitUI:
                 st.error(self.texts.Errors.missing_calibration_peptide_csv)
             except MissingCalibrationColumn:
                 st.error(self.texts.Errors.missing_calibration_column)
+            except InvalidPeptideCSV:
+                st.error(self.texts.Errors.invalid_peptide_csv)
+            except InvalidCalibrationPeptideCSV:
+                st.error(self.texts.Errors.invalid_calibration_peptide_csv)
 
     def _sidebar(self):
         """Format sidebar."""
@@ -118,10 +135,15 @@ class StreamlitUI:
 
     def _run_deeplc(self):
         """Run DeepLC given user input, and show results."""
-        # Parse user configconfig
+        # Parse user config
         config = self._parse_user_config(self.user_input)
         use_lib = self.user_input["use_library"]
         calibrate = isinstance(config["input_df_calibration"], pd.DataFrame)
+
+        logger.info(
+            "Run requested // %s // peptides %i / use_library %r / calibrate %r",
+            datetime.now(), len(config["input_df"]), use_lib, calibrate
+        )
 
         # Run DeepLC
         st.header("Running DeepLC")
@@ -205,7 +227,10 @@ class StreamlitUI:
             config["input_df"] = self.get_example_input()
         elif user_input["input_csv"]:
             config["input_filename"] = user_input["input_csv"].name
-            config["input_df"] = pd.read_csv(user_input["input_csv"])
+            try:
+                config["input_df"] = pd.read_csv(user_input["input_csv"])
+            except (ValueError, pd.errors.ParserError) as e:
+                raise InvalidPeptideCSV(e)
         else:
             raise MissingPeptideCSV
 
@@ -219,9 +244,12 @@ class StreamlitUI:
             if not user_input["input_csv_calibration"]:
                 raise MissingCalibrationPeptideCSV
             else:
-                config["input_df_calibration"] = pd.read_csv(
-                    user_input["input_csv_calibration"]
-                )
+                try:
+                    config["input_df_calibration"] = pd.read_csv(
+                        user_input["input_csv_calibration"]
+                    )
+                except (ValueError, pd.errors.ParserError) as e:
+                    raise InvalidPeptideCSV(e)
 
         return config
 
@@ -265,8 +293,11 @@ class StreamlitUI:
         """Get download href for pd.DataFrame CSV."""
         csv = df.to_csv(index=False)
         b64 = base64.b64encode(csv.encode()).decode()
-        href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">Download CSV file</a>'
-        st.markdown(href, unsafe_allow_html=True)
+        styled_download_button(
+            "data:file/csv;base64," + b64,
+            "Download results",
+            download_filename=filename,
+        )
 
 
 class WebpageTexts:
@@ -373,6 +404,14 @@ class WebpageTexts:
         missing_calibration_column = """
             Upload a peptide CSV file with a `tr` column or select another _Calibration
             peptides_ option.
+            """
+        invalid_peptide_csv = """
+            Uploaded peptide CSV file could not be read. Click on _Info about peptide
+            CSV formatting_ for more info on the correct input format.
+            """
+        invalid_calibration_peptide_csv = """
+            Uploaded calibration peptide CSV file could not be read. Click on _Info
+            about peptide CSV formatting_ for more info on the correct input format.
             """
 
 
