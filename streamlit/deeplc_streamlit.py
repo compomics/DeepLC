@@ -1,15 +1,21 @@
 """Streamlit-based web interface for DeepLC."""
 
 import base64
+import logging
 import os
 import pathlib
+from datetime import datetime
+from importlib.metadata import version
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from deeplc import DeepLC
 
-from streamlit_utils import StreamlitLogger, hide_streamlit_menu
+from streamlit_utils import hide_streamlit_menu, styled_download_button
+
+
+logger = logging.getLogger(__name__)
 
 
 class DeepLCStreamlitError(Exception):
@@ -17,6 +23,14 @@ class DeepLCStreamlitError(Exception):
 
 
 class MissingPeptideCSV(DeepLCStreamlitError):
+    pass
+
+
+class InvalidPeptideCSV(DeepLCStreamlitError):
+    pass
+
+
+class InvalidCalibrationPeptideCSV(DeepLCStreamlitError):
     pass
 
 
@@ -105,6 +119,10 @@ class StreamlitUI:
                 st.error(self.texts.Errors.missing_calibration_peptide_csv)
             except MissingCalibrationColumn:
                 st.error(self.texts.Errors.missing_calibration_column)
+            except InvalidPeptideCSV:
+                st.error(self.texts.Errors.invalid_peptide_csv)
+            except InvalidCalibrationPeptideCSV:
+                st.error(self.texts.Errors.invalid_calibration_peptide_csv)
 
     def _sidebar(self):
         """Format sidebar."""
@@ -118,32 +136,35 @@ class StreamlitUI:
 
     def _run_deeplc(self):
         """Run DeepLC given user input, and show results."""
-        # Parse user configconfig
+        # Parse user config
         config = self._parse_user_config(self.user_input)
         use_lib = self.user_input["use_library"]
         calibrate = isinstance(config["input_df_calibration"], pd.DataFrame)
 
-        # Run DeepLC and send logs to front end
+        logger.info(
+            "Run requested // %s // peptides %i / use_library %r / calibrate %r",
+            datetime.now(), len(config["input_df"]), use_lib, calibrate
+        )
+
+        # Run DeepLC
         st.header("Running DeepLC")
         status_placeholder = st.empty()
-        logger_placeholder = st.empty()
         status_placeholder.info(":hourglass_flowing_sand: Running DeepLC...")
         try:
-            with StreamlitLogger(logger_placeholder):
-                dlc = DeepLC(
-                    dict_cal_divider=self.user_input["dict_cal_divider"],
-                    split_cal=self.user_input["split_cal"],
-                    use_library=self.library_path if use_lib else "",
-                    write_library=True if use_lib else False,
-                    reload_library=True if use_lib else False,
+            dlc = DeepLC(
+                dict_cal_divider=self.user_input["dict_cal_divider"],
+                split_cal=self.user_input["split_cal"],
+                use_library=self.library_path if use_lib else "",
+                write_library=True if use_lib else False,
+                reload_library=True if use_lib else False,
+            )
+            if calibrate:
+                config["input_df_calibration"]["modifications"].fillna(
+                    "", inplace=True
                 )
-                if calibrate:
-                    config["input_df_calibration"]["modifications"].fillna(
-                        "", inplace=True
-                    )
-                    dlc.calibrate_preds(seq_df=config["input_df_calibration"])
-                config["input_df"]["modifications"].fillna("", inplace=True)
-                preds = dlc.make_preds(seq_df=config["input_df"], calibrate=calibrate)
+                dlc.calibrate_preds(seq_df=config["input_df_calibration"])
+            config["input_df"]["modifications"].fillna("", inplace=True)
+            preds = dlc.make_preds(seq_df=config["input_df"], calibrate=calibrate)
         except Exception as e:
             status_placeholder.error(":x: DeepLC ran into a problem")
             st.exception(e)
@@ -207,7 +228,10 @@ class StreamlitUI:
             config["input_df"] = self.get_example_input()
         elif user_input["input_csv"]:
             config["input_filename"] = user_input["input_csv"].name
-            config["input_df"] = pd.read_csv(user_input["input_csv"])
+            try:
+                config["input_df"] = pd.read_csv(user_input["input_csv"])
+            except (ValueError, pd.errors.ParserError) as e:
+                raise InvalidPeptideCSV(e)
         else:
             raise MissingPeptideCSV
 
@@ -221,9 +245,12 @@ class StreamlitUI:
             if not user_input["input_csv_calibration"]:
                 raise MissingCalibrationPeptideCSV
             else:
-                config["input_df_calibration"] = pd.read_csv(
-                    user_input["input_csv_calibration"]
-                )
+                try:
+                    config["input_df_calibration"] = pd.read_csv(
+                        user_input["input_csv_calibration"]
+                    )
+                except (ValueError, pd.errors.ParserError) as e:
+                    raise InvalidPeptideCSV(e)
 
         return config
 
@@ -267,8 +294,11 @@ class StreamlitUI:
         """Get download href for pd.DataFrame CSV."""
         csv = df.to_csv(index=False)
         b64 = base64.b64encode(csv.encode()).decode()
-        href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">Download CSV file</a>'
-        st.markdown(href, unsafe_allow_html=True)
+        styled_download_button(
+            "data:file/csv;base64," + b64,
+            "Download results",
+            download_filename=filename,
+        )
 
 
 class WebpageTexts:
@@ -279,7 +309,7 @@ class WebpageTexts:
             [![Twitter](https://flat.badgen.net/twitter/follow/compomics?icon=twitter)](https://twitter.com/compomics)
             """
 
-        about = """
+        about = f"""
             DeepLC is a retention time predictor for (modified) peptides that employs
             Deep Learning. Its strength lies in the fact that it can accurately predict
             retention times for modified peptides, even if hasn't seen said modification
@@ -297,16 +327,23 @@ class WebpageTexts:
             Degroeve<br>
             >_bioRxiv (2020)_<br>
             >[doi:10.1101/2020.03.28.013003](https://doi.org/10.1101/2020.03.28.013003)
+
+            ---
+
+            Currently using the following package versions:
+
+            [![DeepLC](https://flat.badgen.net/badge/deeplc/{version('deeplc')}/grey?icon=pypi)](https://github.com/compomics/deeplc)
+            [![Tensorflow](https://flat.badgen.net/badge/tensorflow/{version('tensorflow')}/grey?icon=pypi)](https://github.com/tensorflow/tensorflow)
+            [![Streamlit](https://flat.badgen.net/badge/streamlit/{version('streamlit')}/grey?icon=pypi)](https://github.com/streamlit/streamlit)
             """
 
     class Help:
-        peptide_csv = """
-            CSV with peptides for which to predict retention times. Click below on _Info
-            about peptide CSV formatting_ for more info.
+        peptide_csv = """CSV with peptides for which to predict retention times. Click
+            below on _Info about peptide CSV formatting_ for more info.
             """
-        calibration_peptide_csv = """
-            CSV with peptides with known retention times to be used for calibration.
-            Click below on _Info about peptide CSV formatting_ for more info.
+        calibration_peptide_csv = """CSV with peptides with known retention times to be
+            used for calibration. Click below on _Info about peptide CSV formatting_ for
+            more info.
             """
         example_data = "Use example data instead of uploaded CSV files."
         csv_formatting = """
@@ -335,33 +372,30 @@ class WebpageTexts:
             [examples/datasets](https://github.com/compomics/DeepLC/tree/master/examples/datasets)
             for more examples.
             """
-        calibration_source = """
-            DeepLC can calibrate its predictions based on set of known peptide retention
-            times. Calibration also ensures that the best-fitting DeepLC model is used.
+        calibration_source = """DeepLC can calibrate its predictions based on set of
+            known peptide retention times. Calibration also ensures that the
+            best-fitting DeepLC model is used.
             """
-        dict_cal_divider = """
-            This parameter defines the precision to use for fast-lookup of retention
-            times for calibration. A value of 10 means a precision of 0.1 (and 100 a
-            precision of 0.01) between the calibration anchor points. This parameter
-            does not influence the precision of the calibration, but setting it too
-            high results in mean that there is bad selection of the models between
-            anchor points. A safe value is usually higher than 10.
+        dict_cal_divider = """This parameter defines the precision to use for
+            fast-lookup of retention times for calibration. A value of 10 means a
+            precision of 0.1 (and 100 a precision of 0.01) between the calibration
+            anchor points. This parameter does not influence the precision of the
+            calibration, but setting it too high results in mean that there is bad
+            selection of the models between anchor points. A safe value is usually
+            higher than 10.
             """
-        split_cal = """
-            The number of splits for the chromatogram. If the value is set to 10 the
-            chromatogram is split up into 10 equidistant parts. For each part the median
-            value of the calibration peptides is selected. These are the anchor points.
-            Between each anchor point a linear model is fit.
+        split_cal = """The number of splits for the chromatogram. If the value is set
+            to 10 the chromatogram is split up into 10 equidistant parts. For each part
+            the median value of the calibration peptides is selected. These are the
+            anchor points. Between each anchor point a linear model is fit.
             """
-        use_library = """
-            DeepLC can fetch previously predicted retention times from a library,
-            instead predicting retention times for the same (modified) peptide again.
-            This feature will not change any of the predicted retention time values. It
-            can, however, significantly speed up DeepLC.
+        use_library = """DeepLC can fetch previously predicted retention times from a
+            library, instead predicting retention times for the same (modified) peptide
+            again. This feature will not change any of the predicted retention time
+            values. It can, however, significantly speed up DeepLC.
             """
-        use_library_agreement = """
-            _By selecting this box, you allow us to store the uploaded peptide sequences
-            and modifications on this server indefinitely._
+        use_library_agreement = """_By selecting this box, you allow us to store the
+            uploaded peptide sequences and modifications on this server indefinitely._
             """
 
     class Errors:
@@ -375,6 +409,14 @@ class WebpageTexts:
         missing_calibration_column = """
             Upload a peptide CSV file with a `tr` column or select another _Calibration
             peptides_ option.
+            """
+        invalid_peptide_csv = """
+            Uploaded peptide CSV file could not be read. Click on _Info about peptide
+            CSV formatting_ for more info on the correct input format.
+            """
+        invalid_calibration_peptide_csv = """
+            Uploaded calibration peptide CSV file could not be read. Click on _Info
+            about peptide CSV formatting_ for more info on the correct input format.
             """
 
 

@@ -4,9 +4,13 @@ import base64
 import io
 import logging
 import os
+import re
 import tempfile
+import uuid
 import zipfile
 from typing import BinaryIO
+
+from typing_extensions import get_origin
 
 import streamlit as st
 
@@ -101,8 +105,76 @@ def zip_files(file_list):
     return bytesio.read()
 
 
-def get_zipfile_href(file_list, filename="download.zip"):
+def get_zipfile_href(file_list):
+    """Generate href for zip download of file list."""
     zipf = zip_files(file_list)
     b64 = base64.b64encode(zipf).decode()
-    href = f'<a href="data:file/zip;base64,{b64}" download="{filename}">Download results</a>'
+    href = f'data:file/zip;base64,{b64}'
     return href
+
+
+def encode_object_for_url(object_to_download):
+    try:
+        b64 = base64.b64encode(object_to_download.encode()).decode()
+    except AttributeError:
+        b64 = base64.b64encode(object_to_download).decode()
+    return b64
+
+
+def styled_download_button(
+    href, button_text, download_filename=None,
+):
+    """
+    Generates a styled button with any given href.
+
+    From: https://discuss.streamlit.io/t/a-download-button-with-custom-css/4220
+
+    Params
+    ------
+    href
+        Link to place in HTML `<a>` href field
+    button_text, str
+        Text to display on download button (e.g. 'click here to download file')
+    download_filename, str (optional)
+        If download is a file, add its filename and extension. e.g. mydata.csv,
+        some_txt_output.txt
+
+    """
+    button_uuid = str(uuid.uuid4()).replace("-", "")
+    button_id = re.sub(r"\d+", "", button_uuid)
+
+    custom_css = f"""
+        <style>
+            #{button_id} {{
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background-color: {st.config.get_option("theme.backgroundColor")};
+                color: {st.config.get_option("theme.textColor")};
+                padding: .25rem .75rem;
+                position: relative;
+                text-decoration: none;
+                border-radius: 4px;
+                border-width: 1px;
+                border-style: solid;
+                border-color: rgb(230, 234, 241);
+                border-image: initial;
+            }}
+            #{button_id}:hover {{
+                border-color: {st.config.get_option("theme.primaryColor")};
+                color: {st.config.get_option("theme.primaryColor")};
+            }}
+            #{button_id}:active {{
+                box-shadow: none;
+                background-color: {st.config.get_option("theme.primaryColor")};
+                color: white;
+                }}
+        </style> """
+
+    dl_string = f'download="{download_filename}"' if download_filename else ''
+    dl_link = (
+        custom_css
+        + f'<a {dl_string} id="{button_id}" href="{href}">{button_text}</a><br><br>'
+    )
+
+    st.markdown(dl_link, unsafe_allow_html=True)
