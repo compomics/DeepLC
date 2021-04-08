@@ -87,8 +87,8 @@ class StreamlitUI:
         self.user_input["calibration_source"] = st.radio(
             "Calibration peptides",
             [
-                "Use `tr` column in peptide CSV",
                 "Use calibration peptide CSV",
+                "Use `tr` column in peptide CSV",
                 "Do not calibrate predictions",
             ],
             help=self.texts.Help.calibration_source,
@@ -222,11 +222,15 @@ class StreamlitUI:
             "input_df_calibration": None,
         }
 
-        # Get peptide dataframe
+        # Load example if use_example was selected
         if user_input["use_example"]:
             config["input_filename"] = "example.csv"
             config["input_df"] = self.get_example_input()
-        elif user_input["input_csv"]:
+            config["input_df_calibration"] = config["input_df"]
+            return config
+
+        # Get peptide dataframe
+        if user_input["input_csv"]:
             config["input_filename"] = user_input["input_csv"].name
             try:
                 config["input_df"] = pd.read_csv(user_input["input_csv"])
@@ -268,6 +272,7 @@ class StreamlitUI:
                 opacity=0.25,
                 color_discrete_sequence=["#763737"],
             )
+            fig.update_traces(marker=dict(size=4))
             fig.update_layout(
                 xaxis_title_text="Input retention time",
                 yaxis_title_text="Predicted retention time",
