@@ -13,13 +13,15 @@ DeepLC: Retention time prediction for (modified) peptides using Deep Learning.
 ---
 
 - [Introduction](#introduction)
-- [Graphical user interface](#graphical-user-interface)
-- [Python package](#python-package)
-  - [Installation](#installation)
-  - [Command line interface](#command-line-interface)
-  - [Python module](#python-module)
-- [Input files](#input-files)
-- [Prediction models](#prediction-models)
+- [Usage](#usage)
+  - [Web application](#web-application)
+  - [Graphical user interface](#graphical-user-interface)
+  - [Python package](#python-package)
+    - [Installation](#installation)
+    - [Command line interface](#command-line-interface)
+    - [Python module](#python-module)
+  - [Input files](#input-files)
+  - [Prediction models](#prediction-models)
 - [Citation](#citation)
 - [Q&A](#qa)
 
@@ -32,13 +34,21 @@ Learning. Its strength lies in the fact that it can accurately predict
 retention times for modified peptides, even if hasn't seen said modification
 during training.
 
-DeepLC can be run with a graphical user interface (GUI) or as a Python package.
-In the latter case, DeepLC can be used from the command line, or as a python
-module.
+DeepLC can be used through the
+[web application](https://iomics.ugent.be/deeplc/),
+locally with a graphical user interface (GUI), or as a Python package. In the
+latter case, DeepLC can be used from the command line, or as a Python module.
+
+## Usage
+
+### Web application
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://iomics.ugent.be/deeplc/)
+
+Just go to [iomics.ugent.be/deeplc](https://iomics.ugent.be/deeplc/) and get started!
 
 
-## Graphical user interface
-### Installation
+### Graphical user interface
+#### Installation
 
 [![Download GUI](https://flat.badgen.net/badge/download/GUI/green)](https://github.com/compomics/DeepLC/releases/latest/)
 
@@ -49,7 +59,7 @@ unzip.
 depending on your operating system.
 3. Run DeepLC GUI by running the `deeplc_gui.jar`.
 
-### Run parameters
+#### Run parameters
 
 Dictionary divider - this parameter defines the precision to use for fast-lookup of retention times for calibration. A value of 10 means a precision of 0.1 (and 100 a precision of 0.01) between the calibration anchor points. This parameter does not influence the precision of the calibration, but setting it too high might mean that there is bad selection of the models between anchor points. A safe value is usually higher than 10.
 
@@ -57,9 +67,9 @@ Split calibration - the number of divisions for the chromatogram. If the value i
 
 Batch number - define the number of peptides to make predictions for in a single go (reduce to fit into memory, increase for faster prediction speeds).
 
-## Python package
+### Python package
 
-### Installation
+#### Installation
 
 [![install with bioconda](https://flat.badgen.net/badge/install%20with/bioconda/green)](http://bioconda.github.io/recipes/deeplc/README.html)
 [![install with pip](https://flat.badgen.net/badge/install%20with/pip/green)](http://bioconda.github.io/recipes/deeplc/README.html)
@@ -71,7 +81,7 @@ Install with conda, using the bioconda and conda-forge channels:
 Or install with pip:
 `pip install deeplc`
 
-### Command line interface
+#### Command line interface
 
 To use the DeepLC CLI, run:
 
@@ -88,7 +98,7 @@ deeplc --file_pred  <path/to/peptide_file.csv> --file_cal <path/to/peptide_file_
 
 For an overview of all CLI arguments, run `deeplc --help`.
 
-### Python module
+#### Python module
 
 Minimal example:
 
@@ -114,7 +124,7 @@ For a more elaborate example, see
 [examples/deeplc_example.py](https://github.com/compomics/DeepLC/blob/master/examples/deeplc_example.py)
 .
 
-## Input files
+### Input files
 
 DeepLC expects comma-separated values (CSV) with the following columns:
 
@@ -139,7 +149,7 @@ See
 [examples/datasets](https://github.com/compomics/DeepLC/tree/master/examples/datasets)
 for more examples.
 
-## Prediction models
+### Prediction models
 
 DeepLC comes with multiple CNN models trained on data from various experimental
 settings:
