@@ -73,6 +73,6 @@ jobs:
       with:
         context: streamlit
         push: true
-        tags:
-          - ghcr.io/compomics/deeplc-streamlit:${{ steps.latest_release.outputs.release }}
-          - ghcr.io/compomics/deeplc-streamlit:latest
+        tags: |
+          ghcr.io/compomics/deeplc-streamlit:${{ steps.latest_release.outputs.release }}
+          ghcr.io/compomics/deeplc-streamlit:latest
