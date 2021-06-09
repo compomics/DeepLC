@@ -6,7 +6,10 @@ and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.30] - 2021-06-09
-- Fix small font through starting jar with cmd to increase font size
+- GUI: Fix small font through starting jar with cmd to increase font size
+- Added testing for Python 3.9
+- Relax h5py requirement to allow v3
+- Fixed GitHub Action workflow for Streamlit docker image build
 
 ## [0.1.29] - 2021-03-24
 - Bug in writing library where a list was assumed so library only partially filled
