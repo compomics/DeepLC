@@ -1,0 +1,1 @@
+java -Dsun.java2d.uiScale=2.5 -jar deeplc_gui.jar
