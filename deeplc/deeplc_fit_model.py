@@ -41,6 +41,9 @@ from numpy import logspace
 import numpy as np
 
 
+logger = logging.getLogger(__name__)
+
+
 def fit_lasso(X_train,
               y_train,
               X_test,
@@ -266,7 +269,7 @@ def fit_xgb(X_train, y_train, X_test, y_test, config_file="config.ini"):
     model = xgb.XGBRegressor(**random_search.best_params_)
 
     if verbose > 0:
-        logging.debug("Predicting tR with CV now...")
+        logger.debug("Predicting tR with CV now...")
     train_cross_preds = cross_val_predict(model, X_train, y_train, cv=cv)
 
     random_search.feats = X_train.columns
@@ -274,9 +277,9 @@ def fit_xgb(X_train, y_train, X_test, y_test, config_file="config.ini"):
     test_preds = xgb_model.predict(X_test)
 
     if verbose > 0:
-        logging.debug("=====")
-        logging.debug(random_search.best_params_)
-        logging.debug(random_search.best_score_)
-        logging.debug("=====")
+        logger.debug("=====")
+        logger.debug(random_search.best_params_)
+        logger.debug(random_search.best_score_)
+        logger.debug("=====")
 
     return train_preds, train_cross_preds, test_preds, random_search

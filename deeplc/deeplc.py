@@ -78,6 +78,9 @@ import warnings
 warnings.warn = warn
 
 
+logger = logging.getLogger(__name__)
+
+
 def reset_keras():
     """Reset Keras session."""
     sess = get_session()
@@ -229,12 +232,12 @@ class DeepLC():
 
     def read_library(self):
         if not self.use_library:
-            logging.warning("Trying to read library, but no library file was provided.")
+            logger.warning("Trying to read library, but no library file was provided.")
             return
         try:
             library_file = open(self.use_library)
         except IOError:
-            logging.error("Could not open library file: %s", self.use_library)
+            logger.error("Could not open library file: %s", self.use_library)
             return
 
         for line_num,line in enumerate(library_file):
@@ -242,7 +245,7 @@ class DeepLC():
             try:
                 self.library[split_line[0]] = float(split_line[1])
             except:
-                logging.warning(
+                logger.warning(
                     "Could not use this library entry due to an error: %s", line
                 )
 
@@ -325,7 +328,7 @@ class DeepLC():
         """
         df_instances_split = np.array_split(df_instances, self.n_jobs)
         if multiprocessing.current_process().daemon:
-            logging.warning("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
+            logger.warning("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
             pool = multiprocessing.dummy.Pool(1)
         else:
             pool = multiprocessing.Pool(self.n_jobs)
@@ -457,8 +460,8 @@ class DeepLC():
         keep_idents = set(keep_idents)
         rem_idents = set(rem_idents)
 
-        logging.warning("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
-        logging.warning("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
+        logger.warning("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
+        logger.warning("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
 
         # Save a row identifier to seq+mod mapper so output has expected return
         # shapes
@@ -479,7 +482,7 @@ class DeepLC():
         if len(seq_df.index) > 0:
             if self.cnn_model:
                 if self.verbose:
-                    logging.debug("Extracting features for the CNN model ...")
+                    logger.debug("Extracting features for the CNN model ...")
                 X = self.do_f_extraction_pd_parallel(seq_df)
                 X = X.loc[seq_df.index]
 
@@ -491,7 +494,7 @@ class DeepLC():
                 X = np.stack(X["matrix"])
             else:
                 if self.verbose:
-                    logging.debug(
+                    logger.debug(
                         "Extracting features for the predictive model ...")
                 seq_df.index
                 X = self.do_f_extraction_pd_parallel(seq_df)
@@ -508,7 +511,7 @@ class DeepLC():
                                         Calibrate before making predictions, or use calibrate=False"
 
             if self.verbose:
-                logging.debug("Predicting with calibration...")
+                logger.debug("Predicting with calibration...")
 
 
 
@@ -527,7 +530,7 @@ class DeepLC():
                             uncal_preds = mod.predict(
                                 [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                         except UnboundLocalError:
-                            logging.debug("X is empty, skipping...")
+                            logger.debug("X is empty, skipping...")
                             uncal_preds = []
                             pass
 
@@ -536,7 +539,7 @@ class DeepLC():
                             try:
                                 lib_file = open(self.use_library,"a")
                             except:
-                                logging.debug("Could not append to the library file")
+                                logger.debug("Could not append to the library file")
                                 break
                             if type(m_name) == str:
                                 for up, mn, sd in zip(uncal_preds, [m_name]*len(uncal_preds), seq_df["idents"]):
@@ -575,7 +578,7 @@ class DeepLC():
                         uncal_preds = mod.predict(
                             [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                     except UnboundLocalError:
-                        logging.debug("X is empty, skipping...")
+                        logger.debug("X is empty, skipping...")
                         uncal_preds = []
                         pass
 
@@ -585,7 +588,7 @@ class DeepLC():
                         try:
                             lib_file = open(self.use_library,"a")
                         except:
-                            logging.debug("Could not append to the library file")
+                            logger.debug("Could not append to the library file")
 
                         for up, sd in zip(uncal_preds, seq_df["idents"]):
                             lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
@@ -604,7 +607,7 @@ class DeepLC():
                     try:
                         lib_file = open(self.use_library,"a")
                     except:
-                        logging.debug("Could not append to the library file")
+                        logger.debug("Could not append to the library file")
 
                     for up, sd in zip(uncal_preds, seq_df["idents"]):
                         lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
@@ -612,7 +615,7 @@ class DeepLC():
                     if self.reload_library: self.read_library()
         else:
             if self.verbose:
-                logging.debug("Predicting without calibration...")
+                logger.debug("Predicting without calibration...")
 
             # Load the model differently if we use CNN
             if self.cnn_model:
@@ -631,7 +634,7 @@ class DeepLC():
                                     [X, X_sum, X_global, X_hc], batch_size=5120).flatten() / correction_factor
                                 ret_preds.append(p)
                             except UnboundLocalError:
-                                logging.debug("X is empty, skipping...")
+                                logger.debug("X is empty, skipping...")
                                 ret_preds.append([])
                                 pass
 
@@ -639,7 +642,7 @@ class DeepLC():
                                 try:
                                     lib_file = open(self.use_library,"a")
                                 except:
-                                    logging.debug("Could not append to the library file")
+                                    logger.debug("Could not append to the library file")
 
                                 for up, sd in zip(ret_preds[-1], seq_df["idents"]):
                                     lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
@@ -667,7 +670,7 @@ class DeepLC():
                             try:
                                 lib_file = open(self.use_library,"a")
                             except:
-                                logging.debug("Could not append to the library file")
+                                logger.debug("Could not append to the library file")
 
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
@@ -693,7 +696,7 @@ class DeepLC():
                             try:
                                 lib_file = open(self.use_library,"a")
                             except:
-                                logging.debug("Could not append to the library file")
+                                logger.debug("Could not append to the library file")
 
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
@@ -720,7 +723,7 @@ class DeepLC():
                             try:
                                 lib_file = open(self.use_library,"a")
                             except:
-                                logging.debug("Could not append to the library file")
+                                logger.debug("Could not append to the library file")
 
                             for up, sd in zip(ret_preds, seq_df["idents"]):
                                 lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
@@ -747,7 +750,7 @@ class DeepLC():
             ret_preds_shape.append(pred_dict[identifiers_to_seqmod[ident]])
 
         if self.verbose:
-            logging.debug("Predictions done ...")
+            logger.debug("Predictions done ...")
 
         # Below can cause freezing on some systems
         # It is meant to clear any remaining vars in memory
@@ -755,7 +758,7 @@ class DeepLC():
         try:
             del mod
         except UnboundLocalError:
-            logging.debug("Variable mod not defined, so will not be deleted")
+            logger.debug("Variable mod not defined, so will not be deleted")
 
         return ret_preds_shape
 
@@ -821,7 +824,7 @@ class DeepLC():
                 ret_preds.extend(temp_preds)
 
                 # if self.verbose:
-                logging.debug(
+                logger.debug(
                     "Finished predicting retention time for: %s/%s" %
                     (len(ret_preds), len(seq_df)))
             return ret_preds
@@ -906,7 +909,7 @@ class DeepLC():
         calibrate_max = 0
 
         if self.verbose:
-            logging.debug(
+            logger.debug(
                 "Selecting the data points for calibration (used to fit the\
 linear models between)"
             )
@@ -919,7 +922,7 @@ linear models between)"
 
             # no points so no cigar... use previous points
             if ptr_index_start >= ptr_index_end:
-                logging.warning("Skipping calibration step, due to no points in the predicted range (are you sure about the split size?): %s,%s" % (range_calib_number,range_calib_number+split_val))
+                logger.warning("Skipping calibration step, due to no points in the predicted range (are you sure about the split size?): %s,%s" % (range_calib_number,range_calib_number+split_val))
                 continue
 
             mtr = measured_tr[ptr_index_start:ptr_index_end]
@@ -933,7 +936,7 @@ linear models between)"
                 ptr_mean.append(sum(ptr) / len(ptr))
 
         if self.verbose:
-            logging.debug("Fitting the linear models between the points")
+            logger.debug("Fitting the linear models between the points")
 
         if self.split_cal >= len(measured_tr):
             raise CalibrationError(
@@ -1018,9 +1021,9 @@ linear models between)"
             self.model = [self.model]
 
         if self.verbose:
-            logging.debug("Start to calibrate predictions ...")
+            logger.debug("Start to calibrate predictions ...")
         if self.verbose:
-            logging.debug(
+            logger.debug(
                 "Ready to find the best model out of: %s" %
                 (self.model))
 
@@ -1037,7 +1040,7 @@ linear models between)"
 
         for m in self.model:
             if self.verbose:
-                logging.debug("Trying out the following model: %s" % (m))
+                logger.debug("Trying out the following model: %s" % (m))
             calibrate_output = self.calibrate_preds_func(
                 seqs=seqs,
                 mods=mods,
@@ -1090,7 +1093,7 @@ linear models between)"
                 perf = sum(abs(measured_tr - preds))
 
             if self.verbose:
-                logging.debug(
+                logger.debug(
                     "For current model got a performance of: %s" %
                     (perf / len(preds)))
 
@@ -1110,7 +1113,7 @@ linear models between)"
         self.calibrate_max = best_calibrate_max
         self.model = best_model
 
-        logging.debug("Model with the best performance got selected: %s" %(best_model))
+        logger.debug("Model with the best performance got selected: %s" %(best_model))
 
 
     def split_seq(self,
