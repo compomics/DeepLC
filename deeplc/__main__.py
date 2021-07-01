@@ -25,6 +25,8 @@ from deeplc._exceptions import DeepLCError
 
 __version__ = pkg_resources.require("deeplc")[0].version
 
+logger = logging.getLogger(__name__)
+
 
 def parse_arguments():
     """Read arguments from the command line."""
@@ -193,7 +195,7 @@ def main():
             use_library=argu.use_library
             )
     except DeepLCError as e:
-        logging.exception(e)
+        logger.exception(e)
         sys.exit(1)
 
 
@@ -243,7 +245,7 @@ def run(file_pred="",
     None
     """
 
-    logging.info("Using DeepLC version %s", __version__)
+    logger.info("Using DeepLC version %s", __version__)
 
     if len(file_cal) == 0 and file_model != None:
         fm_dict = {}
@@ -296,24 +298,24 @@ def run(file_pred="",
 
     # Calibrate the original model based on the new retention times
     if len(file_cal) > 1:
-        logging.info("Selecting best model and calibrating predictions...")
+        logger.info("Selecting best model and calibrating predictions...")
         dlc.calibrate_preds(seq_df=df_cal)
 
     # Make predictions; calibrated or uncalibrated
-    logging.info("Making predictions using model: %s", dlc.model)
+    logger.info("Making predictions using model: %s", dlc.model)
     if len(file_cal) > 1:
         preds = dlc.make_preds(seq_df=df_pred)
     else:
         preds = dlc.make_preds(seq_df=df_pred, calibrate=False)
 
     df_pred["predicted_tr"] = preds
-    logging.debug("Writing predictions to file: %s", file_pred_out)
+    logger.debug("Writing predictions to file: %s", file_pred_out)
     df_pred.to_csv(file_pred_out)
 
     if plot_predictions:
         if len(file_cal) > 1 and "tr" in df_pred.columns:
             file_pred_figure = os.path.splitext(file_pred_out)[0] + '.png'
-            logging.debug("Saving scatterplot of predictions to file: %s", file_pred_figure)
+            logger.debug("Saving scatterplot of predictions to file: %s", file_pred_figure)
             plt.figure(figsize=(11.5, 9))
             plt.scatter(df_pred["tr"], df_pred["predicted_tr"], s=3)
             plt.title("DeepLC predictions")
@@ -321,10 +323,10 @@ def run(file_pred="",
             plt.ylabel("Predicted retention times")
             plt.savefig(file_pred_figure, dpi=300)
         else:
-            logging.warning('No observed retention time in input data. Cannot \
+            logger.warning('No observed retention time in input data. Cannot \
 plot predictions')
 
-    logging.info("DeepLC finished!")
+    logger.info("DeepLC finished!")
 
 
 if __name__ == "__main__":
