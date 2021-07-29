@@ -4,8 +4,9 @@ channels:
 dependencies:
   - python=3.8
   - pip
-  - tensorflow=2
-  - plotly>=4,<5
-  - pandas>=1,<2
+  - tensorflow
+  - plotly
+  - pandas
   - statsmodels
   - streamlit
+  - deeplc
