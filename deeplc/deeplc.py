@@ -479,7 +479,7 @@ class DeepLC():
             cnn_verbose = 0
 
         # If we need to apply deep NN
-        del self.library
+        self.library = {}
         if len(seq_df.index) > 0:
             if self.cnn_model:
                 if self.verbose:
