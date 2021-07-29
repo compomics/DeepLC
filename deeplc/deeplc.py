@@ -243,7 +243,7 @@ class DeepLC():
         for line_num,line in enumerate(library_file):
             split_line = line.strip().split(",")
             try:
-                DeepLC.library[split_line[0]] = float(split_line[1])
+                self.library[split_line[0]] = float(split_line[1])
             except:
                 logger.warning(
                     "Could not use this library entry due to an error: %s", line
@@ -433,7 +433,7 @@ class DeepLC():
             all_mods = [m_name for m_group_name,m_name in self.model.items()]
 
         # TODO check if .keys() object is the same as set (or at least for set operations)
-        idents_in_lib = set(DeepLC.library.keys())
+        idents_in_lib = set(self.library.keys())
 
         if self.use_library:
             for ident in seq_df["idents"]:
@@ -559,7 +559,7 @@ class DeepLC():
                         p = list(self.calibration_core(uncal_preds,self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds.append(p)
 
-                        p2 = list(self.calibration_core([DeepLC.library[ri+"|"+m_name] for ri  in rem_idents],self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
+                        p2 = list(self.calibration_core([self.library[ri+"|"+m_name] for ri  in rem_idents],self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds2.append(p2)
 
                     ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
@@ -602,7 +602,7 @@ class DeepLC():
 
                     ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
 
-                    p2 = list(self.calibration_core([DeepLC.library[ri+"|"+mod_name] for ri  in rem_idents],self.calibrate_dict,self.calibrate_min,self.calibrate_max))
+                    p2 = list(self.calibration_core([self.library[ri+"|"+mod_name] for ri  in rem_idents],self.calibrate_dict,self.calibrate_min,self.calibrate_max))
                     ret_preds2.extend(p2)
             else:
                 # first get uncalibrated prediction
@@ -654,7 +654,7 @@ class DeepLC():
                                 lib_file.close()
                                 if self.reload_library: self.read_library()
 
-                            p2 = [DeepLC.library[ri+"|"+m_name] for ri  in rem_idents]
+                            p2 = [self.library[ri+"|"+m_name] for ri  in rem_idents]
                             ret_preds2.append(p2)
 
                         ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
@@ -682,7 +682,7 @@ class DeepLC():
                             lib_file.close()
                             if self.reload_library: self.read_library()
 
-                        ret_preds2 = np.array([DeepLC.library[ri+"|"+mod_name] for ri  in rem_idents])
+                        ret_preds2 = np.array([self.library[ri+"|"+mod_name] for ri  in rem_idents])
                     elif isinstance(self.model, str):
                         # No library write!
                         mod_name = self.model
@@ -708,7 +708,7 @@ class DeepLC():
                             lib_file.close()
                             if self.reload_library: self.read_library()
 
-                        ret_preds2 = np.array([DeepLC.library[ri+"|"+mod_name] for ri  in rem_idents])
+                        ret_preds2 = np.array([self.library[ri+"|"+mod_name] for ri  in rem_idents])
                     else:
                         raise DeepLCError('No CNN model defined.')
                 else:
@@ -737,7 +737,7 @@ class DeepLC():
                             if self.reload_library: self.read_library()
                     except:
                         pass
-                    ret_preds2 = [DeepLC.library[ri+"|"+mod_name] for ri  in rem_idents]
+                    ret_preds2 = [self.library[ri+"|"+mod_name] for ri  in rem_idents]
 
             else:
                 # No library write!
