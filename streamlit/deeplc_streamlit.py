@@ -80,7 +80,7 @@ class StreamlitUI:
             "Use example data", help=self.texts.Help.example_data
         )
 
-        with st.beta_expander("Info about peptide CSV formatting"):
+        with st.expander("Info about peptide CSV formatting"):
             st.markdown(self.texts.Help.csv_formatting)
 
         st.subheader("Calibration")
@@ -93,7 +93,7 @@ class StreamlitUI:
             ],
             help=self.texts.Help.calibration_source,
         )
-        with st.beta_expander("Set advanced calibration options"):
+        with st.expander("Set advanced calibration options"):
             self.user_input["dict_cal_divider"] = st.number_input(
                 "Dictionary divider",
                 step=1,
