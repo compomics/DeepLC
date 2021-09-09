@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.36] - 2021-09-09
+- Update to Streamlit webserver: Use `st.form` and new official download button
+
 ## [0.1.35] - 2021-08-09
 - More elegant solution for library call as global
 

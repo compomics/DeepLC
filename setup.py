@@ -1,13 +1,12 @@
 from setuptools import setup
 
-
 with open("README.md", "r") as fh:
     LONG_DESCRIPTION = fh.read()
 
 
 setup(
     name='deeplc',
-    version='0.1.35',
+    version='0.1.36',
     license='apache-2.0',
     description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
     long_description=LONG_DESCRIPTION,
