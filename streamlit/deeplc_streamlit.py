@@ -1,6 +1,5 @@
 """Streamlit-based web interface for DeepLC."""
 
-import base64
 import logging
 import os
 import pathlib
@@ -12,7 +11,7 @@ import plotly.express as px
 from deeplc import DeepLC
 
 import streamlit as st
-from streamlit_utils import hide_streamlit_menu, styled_download_button
+from streamlit_utils import hide_streamlit_menu, save_dataframe
 
 logger = logging.getLogger(__name__)
 
@@ -187,9 +186,13 @@ class StreamlitUI:
             self._plot_results(result_df)
 
             # Download link
-            st.subheader("Download predictions")
-            filename = os.path.splitext(config["input_filename"])[0]
-            self._df_download_href(result_df, filename + "_deeplc_predictions.csv")
+            st.subheader("Download predicted retention times")
+            st.download_button(
+                label="Download",
+                data=save_dataframe(result_df),
+                file_name="deeplc_predictions.csv",
+                mime="text/csv"
+            )
 
     def _set_library_path(self):
         if "DEEPLC_LIBRARY_PATH" in os.environ:
@@ -296,17 +299,6 @@ class StreamlitUI:
                 bargap=0.2,
             )
         st.plotly_chart(fig, use_container_width=True)
-
-    @staticmethod
-    def _df_download_href(df, filename="deeplc_predictions.csv"):
-        """Get download href for pd.DataFrame CSV."""
-        csv = df.to_csv(index=False)
-        b64 = base64.b64encode(csv.encode()).decode()
-        styled_download_button(
-            "data:file/csv;base64," + b64,
-            "Download results",
-            download_filename=filename,
-        )
 
 
 class WebpageTexts:
