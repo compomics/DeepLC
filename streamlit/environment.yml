@@ -8,4 +8,4 @@ dependencies:
   - plotly
   - pandas
   - statsmodels
-  - streamlit
+  - streamlit>=0.88

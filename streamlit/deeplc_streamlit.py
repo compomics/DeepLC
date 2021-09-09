@@ -1,6 +1,5 @@
 """Streamlit-based web interface for DeepLC."""
 
-import base64
 import logging
 import os
 import pathlib
@@ -9,11 +8,10 @@ from importlib.metadata import version
 
 import pandas as pd
 import plotly.express as px
-import streamlit as st
 from deeplc import DeepLC
 
-from streamlit_utils import hide_streamlit_menu, styled_download_button
-
+import streamlit as st
+from streamlit_utils import hide_streamlit_menu, save_dataframe
 
 logger = logging.getLogger(__name__)
 
@@ -68,49 +66,53 @@ class StreamlitUI:
         """Format main page."""
         st.title("DeepLC")
         st.header("Input and configuration")
-        st.subheader("Input files")
-        self.user_input["input_csv"] = st.file_uploader(
-            "Peptide CSV", help=self.texts.Help.peptide_csv
-        )
-        self.user_input["input_csv_calibration"] = st.file_uploader(
-            "Calibration peptide CSV (optional)",
-            help=self.texts.Help.calibration_peptide_csv,
-        )
-        self.user_input["use_example"] = st.checkbox(
-            "Use example data", help=self.texts.Help.example_data
-        )
 
-        with st.beta_expander("Info about peptide CSV formatting"):
-            st.markdown(self.texts.Help.csv_formatting)
-
-        st.subheader("Calibration")
-        self.user_input["calibration_source"] = st.radio(
-            "Calibration peptides",
-            [
-                "Use calibration peptide CSV",
-                "Use `tr` column in peptide CSV",
-                "Do not calibrate predictions",
-            ],
-            help=self.texts.Help.calibration_source,
-        )
-        with st.beta_expander("Set advanced calibration options"):
-            self.user_input["dict_cal_divider"] = st.number_input(
-                "Dictionary divider",
-                step=1,
-                value=100,
-                help=self.texts.Help.dict_cal_divider,
+        with st.form(key="main_form"):
+            st.subheader("Input files")
+            self.user_input["input_csv"] = st.file_uploader(
+                "Peptide CSV", help=self.texts.Help.peptide_csv
             )
-            self.user_input["split_cal"] = st.number_input(
-                "Split calibration", step=1, value=25, help=self.texts.Help.split_cal
+            self.user_input["input_csv_calibration"] = st.file_uploader(
+                "Calibration peptide CSV (optional)",
+                help=self.texts.Help.calibration_peptide_csv,
+            )
+            self.user_input["use_example"] = st.checkbox(
+                "Use example data", help=self.texts.Help.example_data
             )
 
-        st.subheader("Prediction speed boost")
-        self.user_input["use_library"] = st.checkbox(
-            "Use prediction library for speed-up", help=self.texts.Help.use_library
-        )
-        st.markdown(self.texts.Help.use_library_agreement)
+            with st.expander("Info about peptide CSV formatting"):
+                st.markdown(self.texts.Help.csv_formatting)
 
-        if st.button("Predict retention times"):
+            st.subheader("Calibration")
+            self.user_input["calibration_source"] = st.radio(
+                "Calibration peptides",
+                [
+                    "Use calibration peptide CSV",
+                    "Use `tr` column in peptide CSV",
+                    "Do not calibrate predictions",
+                ],
+                help=self.texts.Help.calibration_source,
+            )
+            with st.expander("Set advanced calibration options"):
+                self.user_input["dict_cal_divider"] = st.number_input(
+                    "Dictionary divider",
+                    step=1,
+                    value=100,
+                    help=self.texts.Help.dict_cal_divider,
+                )
+                self.user_input["split_cal"] = st.number_input(
+                    "Split calibration", step=1, value=25, help=self.texts.Help.split_cal
+                )
+
+            st.subheader("Prediction speed boost")
+            self.user_input["use_library"] = st.checkbox(
+                "Use prediction library for speed-up", help=self.texts.Help.use_library
+            )
+            st.markdown(self.texts.Help.use_library_agreement)
+
+            submit_button = st.form_submit_button("Predict retention times")
+
+        if submit_button:
             try:
                 self._run_deeplc()
             except MissingPeptideCSV:
@@ -184,9 +186,13 @@ class StreamlitUI:
             self._plot_results(result_df)
 
             # Download link
-            st.subheader("Download predictions")
-            filename = os.path.splitext(config["input_filename"])[0]
-            self._df_download_href(result_df, filename + "_deeplc_predictions.csv")
+            st.subheader("Download predicted retention times")
+            st.download_button(
+                label="Download",
+                data=save_dataframe(result_df),
+                file_name="deeplc_predictions.csv",
+                mime="text/csv"
+            )
 
     def _set_library_path(self):
         if "DEEPLC_LIBRARY_PATH" in os.environ:
@@ -293,17 +299,6 @@ class StreamlitUI:
                 bargap=0.2,
             )
         st.plotly_chart(fig, use_container_width=True)
-
-    @staticmethod
-    def _df_download_href(df, filename="deeplc_predictions.csv"):
-        """Get download href for pd.DataFrame CSV."""
-        csv = df.to_csv(index=False)
-        b64 = base64.b64encode(csv.encode()).decode()
-        styled_download_button(
-            "data:file/csv;base64," + b64,
-            "Download results",
-            download_filename=filename,
-        )
 
 
 class WebpageTexts:
