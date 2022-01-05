@@ -70,7 +70,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 # Feature extraction
 from deeplc.feat_extractor import FeatExtractor
-
+from pygam import LinearGAM, s
 
 def warn(*args, **kwargs):
     pass
@@ -237,6 +237,11 @@ class DeepLC():
         else:
             self.f_extractor = FeatExtractor()
 
+        self.pygam_calibration = True
+        
+        if self.pygam_calibration:
+            from pygam import LinearGAM, s
+
     def __str__(self):
         return("""
   _____                  _      _____
@@ -345,30 +350,35 @@ class DeepLC():
 
     def calibration_core(self,uncal_preds,cal_dict,cal_min,cal_max):
         cal_preds = []
-        for uncal_pred in uncal_preds:
-            try:
-                slope, intercept = cal_dict[str(
-                    round(uncal_pred, self.bin_dist))]
-                cal_preds.append(
-                    slope * (uncal_pred) + intercept)
-            except KeyError:
-                # outside of the prediction range ... use the last
-                # calibration curve
-                if uncal_pred <= cal_min:
+        if len(uncal_preds) == 0:
+            return np.array(cal_preds)
+        if self.pygam_calibration:
+            cal_preds = cal_dict.predict(uncal_preds)
+        else:
+            for uncal_pred in uncal_preds:
+                try:
                     slope, intercept = cal_dict[str(
-                        round(cal_min, self.bin_dist))]
+                        round(uncal_pred, self.bin_dist))]
                     cal_preds.append(
                         slope * (uncal_pred) + intercept)
-                elif uncal_pred >= cal_max:
-                    slope, intercept = cal_dict[str(
-                        round(cal_max, self.bin_dist))]
-                    cal_preds.append(
-                        slope * (uncal_pred) + intercept)
-                else:
-                    slope, intercept = cal_dict[str(
-                        round(cal_max, self.bin_dist))]
-                    cal_preds.append(
-                        slope * (uncal_pred) + intercept)
+                except KeyError:
+                    # outside of the prediction range ... use the last
+                    # calibration curve
+                    if uncal_pred <= cal_min:
+                        slope, intercept = cal_dict[str(
+                            round(cal_min, self.bin_dist))]
+                        cal_preds.append(
+                            slope * (uncal_pred) + intercept)
+                    elif uncal_pred >= cal_max:
+                        slope, intercept = cal_dict[str(
+                            round(cal_max, self.bin_dist))]
+                        cal_preds.append(
+                            slope * (uncal_pred) + intercept)
+                    else:
+                        slope, intercept = cal_dict[str(
+                            round(cal_max, self.bin_dist))]
+                        cal_preds.append(
+                            slope * (uncal_pred) + intercept)
         return np.array(cal_preds)
 
     def make_preds_core(self,
@@ -829,6 +839,43 @@ class DeepLC():
                     (len(ret_preds), len(seq_df)))
             return ret_preds
 
+    def calibrate_preds_func_pygam(self,
+                                   seqs=[],
+                                   mods=[],
+                                   identifiers=[],
+                                   measured_tr=[],
+                                   correction_factor=1.0,
+                                   seq_df=None,
+                                   use_median=True,
+                                   mod_name=None):
+        if len(seqs) == 0:
+            seq_df.index
+            predicted_tr = self.make_preds(
+                seq_df=seq_df,
+                calibrate=False,
+                correction_factor=correction_factor,
+                mod_name=mod_name)
+            measured_tr = seq_df["tr"]
+        else:
+            predicted_tr = self.make_preds(
+                seqs=seqs,
+                mods=mods,
+                identifiers=identifiers,
+                calibrate=False,
+                correction_factor=correction_factor,
+                mod_name=mod_name)
+
+        # sort two lists, predicted and observed based on measured tr
+        tr_sort = [(mtr, ptr) for mtr, ptr in sorted(
+            zip(measured_tr, predicted_tr), key=lambda pair: pair[1])]
+        measured_tr = np.array([mtr for mtr, ptr in tr_sort])
+        predicted_tr = np.array([ptr for mtr, ptr in tr_sort])
+
+        gam_model_cv = LinearGAM(s(0), verbose=True).fit(predicted_tr, measured_tr)
+        calibrate_min = min(predicted_tr)
+        calibrate_max = max(predicted_tr)
+        return calibrate_min, calibrate_max, gam_model_cv
+
     def calibrate_preds_func(self,
                              seqs=[],
                              mods=[],
@@ -1041,20 +1088,32 @@ linear models between)"
         for m in self.model:
             if self.verbose:
                 logger.debug("Trying out the following model: %s" % (m))
-            calibrate_output = self.calibrate_preds_func(
-                seqs=seqs,
-                mods=mods,
-                identifiers=identifiers,
-                measured_tr=measured_tr,
-                correction_factor=correction_factor,
-                seq_df=seq_df,
-                use_median=use_median,
-                mod_name=m)
+            if self.pygam_calibration:
+                calibrate_output = self.calibrate_preds_func_pygam(
+                    seqs=seqs,
+                    mods=mods,
+                    identifiers=identifiers,
+                    measured_tr=measured_tr,
+                    correction_factor=correction_factor,
+                    seq_df=seq_df,
+                    use_median=use_median,
+                    mod_name=m)
+            else:
+                calibrate_output = self.calibrate_preds_func(
+                    seqs=seqs,
+                    mods=mods,
+                    identifiers=identifiers,
+                    measured_tr=measured_tr,
+                    correction_factor=correction_factor,
+                    seq_df=seq_df,
+                    use_median=use_median,
+                    mod_name=m)
 
             self.calibrate_min, self.calibrate_max, self.calibrate_dict = calibrate_output
 
-            if len(self.calibrate_dict.keys()) == 0:
-                continue
+            if type(self.calibrate_dict) == dict:
+                if len(self.calibrate_dict.keys()) == 0:
+                    continue
 
             preds = self.make_preds(seqs=seqs,
                                     mods=mods,
