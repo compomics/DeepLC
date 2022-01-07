@@ -177,7 +177,8 @@ class DeepLC():
                  batch_num=350000,
                  write_library=False,
                  use_library=None,
-                 reload_library=False
+                 reload_library=False,
+                 pygam_calibration=False
                  ):
 
         # if a config file is defined overwrite standard parameters
@@ -237,7 +238,7 @@ class DeepLC():
         else:
             self.f_extractor = FeatExtractor()
 
-        self.pygam_calibration = True
+        self.pygam_calibration = pygam_calibration
         
         if self.pygam_calibration:
             from pygam import LinearGAM, s

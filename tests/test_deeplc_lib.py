@@ -1,5 +1,6 @@
 import pandas as pd
 from deeplc import DeepLC
+from matplotlib import pyplot as plt
 
 def main():
     peptide_file = "examples/datasets/test_pred.csv"
@@ -11,11 +12,15 @@ def main():
     cal_df = pd.read_csv(calibration_file, sep=",")
     cal_df['modifications'] = cal_df['modifications'].fillna("")
 
-    dlc = DeepLC(write_library=True,
-                 use_library="lib.csv",
-                 reload_library=True)
+    dlc = DeepLC(write_library=False,
+                 use_library="",
+                 reload_library=False)
+                 #write_library=True,
+                 #use_library="lib.csv",
+                 #reload_library=True)
     dlc.calibrate_preds(seq_df=cal_df)
-    preds = dlc.make_preds(seq_df=pep_df)
+    preds = dlc.make_preds(seq_df=cal_df)
+
 
 if __name__ == "__main__":
     main()
