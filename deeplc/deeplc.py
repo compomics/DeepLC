@@ -582,7 +582,8 @@ class DeepLC():
                         p2 = list(self.calibration_core([LIBRARY[ri+"|"+m_name] for ri  in rem_idents],self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds2.append(p2)
 
-                        deepcallc_x[m_name] = p
+                        if self.deepcallc_mod:
+                            deepcallc_x[m_name] = p
 
                     ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
                     ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
