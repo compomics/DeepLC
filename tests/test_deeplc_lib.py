@@ -21,6 +21,8 @@ def main():
     dlc.calibrate_preds(seq_df=cal_df)
     preds = dlc.make_preds(seq_df=cal_df)
 
+    plt.scatter(pep_df["tr"],preds)
+    plt.show()
 
 if __name__ == "__main__":
     main()

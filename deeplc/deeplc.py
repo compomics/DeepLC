@@ -43,6 +43,8 @@ import tensorflow as tf
 from deeplc._exceptions import CalibrationError, DeepLCError
 from tensorflow.keras.models import load_model
 
+from deeplc.trainl3 import train_en
+
 # "Custom" activation function
 lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
 
@@ -178,7 +180,8 @@ class DeepLC():
                  write_library=False,
                  use_library=None,
                  reload_library=False,
-                 pygam_calibration=False
+                 pygam_calibration=False,
+                 deepcallc_mod=False,
                  ):
 
         # if a config file is defined overwrite standard parameters
@@ -242,6 +245,13 @@ class DeepLC():
         
         if self.pygam_calibration:
             from pygam import LinearGAM, s
+
+        self.deepcallc_mod = deepcallc_mod
+
+        if self.deepcallc_mod:
+            self.write_library=False
+            self.use_library=None
+            self.reload_library=False
 
     def __str__(self):
         return("""
@@ -531,6 +541,8 @@ class DeepLC():
                 # TODO this is madness! Only allow dicts to come through this function...
                 if isinstance(self.model, dict):
                     ret_preds = []
+                    if self.deepcallc_mod:
+                        deepcallc_x = {}
                     for m_group_name,m_name in self.model.items():
                         try:
                             X
@@ -544,6 +556,8 @@ class DeepLC():
                             logger.debug("X is empty, skipping...")
                             uncal_preds = []
                             pass
+
+                        
 
 
                         if self.write_library:
@@ -567,6 +581,8 @@ class DeepLC():
 
                         p2 = list(self.calibration_core([LIBRARY[ri+"|"+m_name] for ri  in rem_idents],self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds2.append(p2)
+
+                        deepcallc_x[m_name] = p
 
                     ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
                     ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
@@ -770,6 +786,10 @@ class DeepLC():
             del mod
         except UnboundLocalError:
             logger.debug("Variable mod not defined, so will not be deleted")
+        
+        
+        if self.deepcallc_mod and isinstance(self.model, dict):
+            ret_preds_shape = self.deepcallc_model.predict(pd.DataFrame(deepcallc_x))
 
         return ret_preds_shape
 
@@ -1065,6 +1085,7 @@ linear models between)"
         -------
 
         """
+
         if isinstance(self.model, str):
             self.model = [self.model]
 
@@ -1124,7 +1145,11 @@ linear models between)"
                                     correction_factor=correction_factor,
                                     mod_name=m)
             m_name = m.split("/")[-1]
-            m_group_name = "_".join(m_name.split("_")[:-1])
+
+            if self.deepcallc_mod:
+                m_group_name = "deepcallc"
+            else:
+                m_group_name = "_".join(m_name.split("_")[:-1])
 
             try:
                 pred_dict[m_group_name][m] = preds
@@ -1158,8 +1183,11 @@ linear models between)"
                     (perf / len(preds)))
 
             if perf < best_perf:
-                m_group_name =  "_".join(m.split("_")[:-1]).split("/")[-1]
-                # TODO is deepcopy really required?
+                if self.deepcallc_mod:
+                    m_group_name = "deepcallc"
+                else:
+                    m_group_name = "_".join(m.split("_")[:-1]).split("/")[-1]
+                    # TODO is deepcopy really required?
 
                 best_calibrate_dict = copy.deepcopy(mod_calibrate_dict[m_group_name])
                 best_calibrate_min = copy.deepcopy(mod_calibrate_min_dict[m_group_name])
@@ -1172,6 +1200,10 @@ linear models between)"
         self.calibrate_min = best_calibrate_min
         self.calibrate_max = best_calibrate_max
         self.model = best_model
+
+        if self.deepcallc_mod:
+            self.deepcallc_model = train_en(pd.DataFrame(pred_dict["deepcallc"]),seq_df["tr"])
+            
 
         logger.debug("Model with the best performance got selected: %s" %(best_model))
 
