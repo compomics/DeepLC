@@ -3,18 +3,22 @@ from deeplc import DeepLC
 from matplotlib import pyplot as plt
 
 def main():
-    peptide_file = "examples/datasets/test_pred.csv"
-    calibration_file = "examples/datasets/test_train.csv"
+    peptide_file = "temp_data/PXD005573_mcp.csv"
+    calibration_file = "temp_data/PXD005573_mcp.csv"
 
     pep_df = pd.read_csv(peptide_file, sep=",")
     pep_df['modifications'] = pep_df['modifications'].fillna("")
 
     cal_df = pd.read_csv(calibration_file, sep=",")
     cal_df['modifications'] = cal_df['modifications'].fillna("")
+    
+    pep_df = pep_df.sample(50)
+    cal_df = cal_df.sample(50)
+
     mods = ["C:/Users/robbin/Documents/Github/DeepLCModels/full_hc_arabidopsis_psms_aligned_1fd8363d9af9dcad3be7553c39396960.hdf5",
-            "C:/Users/robbin/Documents/Github/DeepLCModels/full_hc_PXD005573_mcp_1fd8363d9af9dcad3be7553c39396960.hdf5",
-            "C:/Users/robbin/Documents/Github/DeepLCModels/full_hc_PXD005573_mcp_8c22d89667368f2f02ad996469ba157e.hdf5",
-            "C:/Users/robbin/Documents/Github/DeepLCModels/full_hc_PXD005573_mcp_cb975cfdd4105f97efa0b3afffe075cc.hdf5",
+            #"C:/Users/robbin/Documents/Github/DeepLCModels/full_hc_PXD005573_mcp_1fd8363d9af9dcad3be7553c39396960.hdf5",
+            #"C:/Users/robbin/Documents/Github/DeepLCModels/full_hc_PXD005573_mcp_8c22d89667368f2f02ad996469ba157e.hdf5",
+            #"C:/Users/robbin/Documents/Github/DeepLCModels/full_hc_PXD005573_mcp_cb975cfdd4105f97efa0b3afffe075cc.hdf5",
             "C:/Users/robbin/Documents/Github/DeepLCModels/full_hc_PXD008783_median_calibrate_1fd8363d9af9dcad3be7553c39396960.hdf5",
             "C:/Users/robbin/Documents/Github/DeepLCModels/full_hc_PXD008783_median_calibrate_8c22d89667368f2f02ad996469ba157e.hdf5",
             "C:/Users/robbin/Documents/Github/DeepLCModels/full_hc_PXD008783_median_calibrate_cb975cfdd4105f97efa0b3afffe075cc.hdf5",

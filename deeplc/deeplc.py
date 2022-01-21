@@ -446,6 +446,7 @@ class DeepLC():
             seq_df["idents"] = seq_df["seq"] + "|" + seq_df["modifications"] + "|" + seq_df["charges"].astype(str)
         else:
             seq_df["idents"] = seq_df["seq"] + "|" + seq_df["modifications"]
+            seq_mod_comb = copy.deepcopy(seq_df["idents"])
 
         identifiers = list(seq_df.index)
         rem_idents = []
@@ -583,7 +584,7 @@ class DeepLC():
                         ret_preds2.append(p2)
 
                         if self.deepcallc_mod:
-                            deepcallc_x[m_name] = p
+                            deepcallc_x[m_name] = dict(zip(seq_df["idents"],p))
 
                     ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
                     ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
@@ -790,6 +791,9 @@ class DeepLC():
         
         
         if self.deepcallc_mod and isinstance(self.model, dict):
+            for m_name in deepcallc_x.keys():
+                deepcallc_x[m_name] = [deepcallc_x[m_name][ident] for ident in seq_mod_comb]
+
             ret_preds_shape = self.deepcallc_model.predict(pd.DataFrame(deepcallc_x))
 
         return ret_preds_shape
