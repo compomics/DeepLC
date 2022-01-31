@@ -45,7 +45,7 @@ setup(
         'matplotlib>=3,<4',
         'h5py>=2.10.0,<4',
         'pygam>=0.8.0,<1',
-        'scikit-learn>=1.0.0,<2',
+        'scikit-learn>=0.24.0,<2',
     ],
     python_requires='>=3.6',
 )
