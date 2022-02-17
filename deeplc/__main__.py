@@ -125,6 +125,13 @@ def parse_arguments():
         help="Append to a library with predicted retention times, will write to the file specified by --use_library"
     )
 
+    parser.add_argument(
+        "--pygam_calibration",
+        dest="pygam_calibration",
+        action='store_true',
+        default=False,
+        help="Append to a library with predicted retention times, will write to the file specified by --use_library"
+    )
 
     parser.add_argument("--version", action="version", version=__version__)
 
@@ -208,6 +215,7 @@ def run(file_pred="",
         split_cal=50,
         dict_divider=50,
         batch_num=50000,
+        pygam_calibration=False,
         plot_predictions=False,
         write_library=False,
         use_library=""
@@ -289,6 +297,8 @@ def run(file_pred="",
     # calibration
     dlc = DeepLC(path_model=file_model,
                  f_extractor=f_extractor,
+                 split_cal=split_cal,
+                 pygam_calibration=pygam_calibration,
                  cnn_model=True,
                  n_jobs=n_threads,
                  verbose=verbose,
