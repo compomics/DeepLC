@@ -180,7 +180,7 @@ class DeepLC():
                  write_library=False,
                  use_library=None,
                  reload_library=False,
-                 pygam_calibration=False,
+                 pygam_calibration=True,
                  deepcallc_mod=False,
                  ):
 
