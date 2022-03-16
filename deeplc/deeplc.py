@@ -1110,7 +1110,6 @@ linear models between)"
         mod_calibrate_max_dict = {}
         pred_dict = {}
         mod_dict = {}
-        best_models = []
 
         for m in self.model:
             if self.verbose:
@@ -1184,14 +1183,14 @@ linear models between)"
 
             if self.verbose:
                 logger.debug(
-                    "For current model got a performance of: %s" %
-                    (perf / len(preds)))
+                    "For %s model got a performance of: %s" %
+                    (m_name, perf / len(preds)))
 
             if perf < best_perf:
                 if self.deepcallc_mod:
                     m_group_name = "deepcallc"
                 else:
-                    m_group_name = "_".join(m.split("_")[:-1]).split("/")[-1]
+                    m_group_name = m_name
                     # TODO is deepcopy really required?
 
                 best_calibrate_dict = copy.deepcopy(mod_calibrate_dict[m_group_name])
