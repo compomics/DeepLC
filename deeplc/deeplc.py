@@ -79,6 +79,13 @@ def warn(*args, **kwargs):
 import warnings
 warnings.warn = warn
 
+# Supress warnings (or at least try...)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+warnings.filterwarnings('ignore', category=FutureWarning)
+
+
 
 logger = logging.getLogger(__name__)
 
