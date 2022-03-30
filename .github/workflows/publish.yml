@@ -40,6 +40,8 @@ jobs:
       with:
         name: dist
         path: dist
+    - run: ls ./
+    - run: ls ./dist
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
@@ -56,7 +58,7 @@ jobs:
     - name: Run pyinstaller
       run: pyinstaller ./deeplc.spec --clean --noconfirm
     - name: Run Inno Setup
-      run: ISCC.exe ./deeplc_setup_spec.iss
+      run: ISCC.exe ./deeplc_innosetup.iss
     - name: Upload installer
       uses: actions/upload-artifact@v2
       with:
