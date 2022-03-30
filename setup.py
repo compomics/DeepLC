@@ -22,7 +22,10 @@ setup(
     packages=['deeplc'],
     include_package_data=True,
     entry_points={
-        'console_scripts': ['deeplc=deeplc.__main__:main']
+        'console_scripts': [
+            'deeplc=deeplc.__main__:main',
+            'deeplc-gui=deeplc.gui:start_gui',
+        ]
     },
     keywords=[
         'DeepLC', 'Proteomics', 'deep learning', 'peptides', 'retention time',
