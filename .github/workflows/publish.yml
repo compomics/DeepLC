@@ -38,8 +38,8 @@ jobs:
     - name: Download compiled wheels
       uses: actions/download-artifact@v2
       with:
-        name: dist
         path: dist
+    - run: ls dist
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
@@ -51,9 +51,9 @@ jobs:
     - name: Install Inno Setup
       run: winget install -e --id JRSoftware.InnoSetup
     - name: Run pyinstaller
-      run: pyinstaller .\deeplc.spec --clean --noconfirm
+      run: pyinstaller ./deeplc.spec --clean --noconfirm
     - name: Run Inno Setup
-      run: "& 'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe' .\\deeplc_setup_spec.iss"
+      run: "& 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' ./deeplc_setup_spec.iss"
     - name: Upload installer
       uses: actions/upload-artifact@v2
       with:
