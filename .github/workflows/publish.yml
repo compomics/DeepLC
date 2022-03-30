@@ -46,7 +46,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install dist/*.whl gooey pyinstaller
+        pip install --find-links=dist deeplc
+        pip install gooey pyinstaller
     - name: Install Inno Setup
       run: winget install -e --id JRSoftware.InnoSetup
     - name: Run pyinstaller
