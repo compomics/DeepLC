@@ -38,8 +38,7 @@ jobs:
     - name: Download compiled wheels
       uses: actions/download-artifact@v2
       with:
-        path: dist
-    - run: ls dist
+        name: dist
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
