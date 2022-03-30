@@ -39,6 +39,7 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: dist
+        path: dist
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
@@ -49,11 +50,13 @@ jobs:
         pip install --find-links=dist deeplc
         pip install gooey pyinstaller
     - name: Install Inno Setup
-      run: winget install -e --id JRSoftware.InnoSetup
+      uses: crazy-max/ghaction-chocolatey@v1
+      with:
+        args: install innosetup -y --allow-unofficial --force
     - name: Run pyinstaller
       run: pyinstaller ./deeplc.spec --clean --noconfirm
     - name: Run Inno Setup
-      run: "& 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' ./deeplc_setup_spec.iss"
+      run: ISCC.exe ./deeplc_setup_spec.iss
     - name: Upload installer
       uses: actions/upload-artifact@v2
       with:
