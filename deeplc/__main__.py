@@ -1,6 +1,4 @@
-"""
-Code used to run the retention time predictor
-"""
+"""Main command line interface to DeepLC."""
 
 __author__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
 __credits__ = ["Robbin Bouwmeester", "Ralf Gabriels", "Prof. Lennart Martens", "Sven Degroeve"]
@@ -8,25 +6,20 @@ __license__ = "Apache License, Version 2.0"
 __maintainer__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
 __email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
 
-import argparse
 import logging
 import multiprocessing
 import os
-import pkg_resources
 import sys
 
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from deeplc import DeepLC
-from deeplc import FeatExtractor
+from deeplc import __version__, DeepLC, FeatExtractor
+from deeplc._argument_parser import parse_arguments
 from deeplc._exceptions import DeepLCError
 
 
-__version__ = pkg_resources.require("deeplc")[0].version
-
 logger = logging.getLogger(__name__)
-
 
 
 def setup_logging(passed_level):
@@ -52,10 +45,9 @@ def setup_logging(passed_level):
         level=log_mapping[passed_level.lower()]
     )
 
-@Gooey 
-def main():
+def main(gui=False):
     """Main function for the CLI."""
-    argu = parse_arguments_gooey()
+    argu = parse_arguments(gui=gui)
 
     setup_logging(argu.log_level)
     if argu.log_level.lower() != "debug":
@@ -88,9 +80,9 @@ def main():
         sys.exit(1)
 
 
-def run(file_pred="",
-        file_cal="",
-        file_pred_out="",
+def run(file_pred,
+        file_cal=None,
+        file_pred_out=None,
         file_model=None,
         n_threads=None,
         verbose=False,
@@ -116,7 +108,7 @@ def run(file_pred="",
     file_pred_out : str
         outfile for predictions, the file is in peprec format and predictions
         are added in the column TODO
-    file_model : str | list | None 
+    file_model : str | list | None
         the model(s) to try for retention time prediction can be a single
         location or several locations for multiple models to try
     n_threads : int
@@ -137,7 +129,7 @@ def run(file_pred="",
 
     logger.info("Using DeepLC version %s", __version__)
 
-    if len(file_cal) == 0 and file_model != None:
+    if not file_cal and file_model != None:
         fm_dict = {}
         sel_group = ""
         for fm in file_model:
@@ -156,7 +148,7 @@ def run(file_pred="",
         df_pred = pd.read_csv(file_pred,sep=" ")
     df_pred = df_pred.fillna("")
 
-    if len(file_cal) > 1:
+    if file_cal:
         df_cal = pd.read_csv(file_cal)
         if len(df_cal.columns) < 2:
             df_cal = pd.read_csv(df_cal,sep=" ")
@@ -189,13 +181,13 @@ def run(file_pred="",
                  use_library=use_library)
 
     # Calibrate the original model based on the new retention times
-    if len(file_cal) > 1:
+    if file_cal:
         logger.info("Selecting best model and calibrating predictions...")
         dlc.calibrate_preds(seq_df=df_cal)
 
     # Make predictions; calibrated or uncalibrated
     logger.info("Making predictions using model: %s", dlc.model)
-    if len(file_cal) > 1:
+    if file_cal:
         preds = dlc.make_preds(seq_df=df_pred)
     else:
         preds = dlc.make_preds(seq_df=df_pred, calibrate=False)
@@ -205,7 +197,7 @@ def run(file_pred="",
     df_pred.to_csv(file_pred_out)
 
     if plot_predictions:
-        if len(file_cal) > 1 and "tr" in df_pred.columns:
+        if file_cal and "tr" in df_pred.columns:
             file_pred_figure = os.path.splitext(file_pred_out)[0] + '.png'
             logger.debug("Saving scatterplot of predictions to file: %s", file_pred_figure)
             plt.figure(figsize=(11.5, 9))
