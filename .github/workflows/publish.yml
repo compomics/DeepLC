@@ -1,10 +1,9 @@
 name: Publish to PyPI and GitHub release
 
 on:
-  commit:
   push:
-    tags:
-    - 'v*'
+  #   tags:
+  #   - 'v*'
 
 jobs:
   python-package:
