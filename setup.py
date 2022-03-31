@@ -50,5 +50,8 @@ setup(
         'pygam>=0.8.0,<1',
         'scikit-learn>=0.24.0,<2',
     ],
+    extras_require={
+        "gui": ["gooey>=1.0"],
+    },
     python_requires='>=3.6',
 )
