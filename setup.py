@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
     LONG_DESCRIPTION = fh.read()
@@ -19,7 +19,7 @@ setup(
         'Source': 'https://github.com/compomics/DeepLC',
         'Tracker': 'https://github.com/compomics/DeepLC/issues'
     },
-    packages=['deeplc'],
+    packages=find_packages(),
     include_package_data=True,
     entry_points={
         'console_scripts': [
