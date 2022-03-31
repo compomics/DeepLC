@@ -48,24 +48,28 @@ Just go to [iomics.ugent.be/deeplc](https://iomics.ugent.be/deeplc/) and get sta
 
 
 ### Graphical user interface
-#### Installation
 
-[![Download GUI](https://flat.badgen.net/badge/download/GUI/green)](https://github.com/compomics/DeepLC/releases/latest/)
+#### In an existing Python environment (cross-platform)
 
-1. Download `deeplc_gui.zip` from the
-[latest release](https://github.com/compomics/DeepLC/releases/latest/) and
-unzip.
-2. Install DeepLC GUI with `install_gui_windows.bat` or `install_gui_linux.sh`,
-depending on your operating system.
-3. Run DeepLC GUI by running the `deeplc_gui.jar`.
+1. In your terminal with Python (>=3.7) installed, run `pip install deeplc[gui]`
+2. Start the GUI with the command `deeplc-gui` or `python -m deeplc.gui`
 
-#### Run parameters
+#### Standalone installer (Windows)
 
-Dictionary divider - this parameter defines the precision to use for fast-lookup of retention times for calibration. A value of 10 means a precision of 0.1 (and 100 a precision of 0.01) between the calibration anchor points. This parameter does not influence the precision of the calibration, but setting it too high might mean that there is bad selection of the models between anchor points. A safe value is usually higher than 10.
+[![Download GUI](https://flat.badgen.net/badge/download/GUI/blue)](https://github.com/compomics/DeepLC/releases/latest/)
 
-Split calibration - the number of divisions for the chromatogram. If the value is set to 10 the chromatogram is split up into 10 equidistant parts. For each part the median value of the calibration peptides is selected. These are the anchor points. Between each anchor point a linear fit is made.
 
-Batch number - define the number of peptides to make predictions for in a single go (reduce to fit into memory, increase for faster prediction speeds).
+1. Download the DeepLC installer (`DeepLC-...-Windows-64bit.exe`) from the
+[latest release](https://github.com/compomics/DeepLC/releases/latest/)
+2. Execute the installer
+3. If Windows Smartscreen shows a blue window with "Windows protected your PC",
+click on "More info" and then on "Run anyway". You will have to trust us that
+DeepLC does not contain any viruses, or you can check the source code 😉
+4. Go through the installation steps
+5. Start DeepLC!
+
+![GUI installation process](img/gui-installation.gif)
+
 
 ### Python package
 
@@ -181,8 +185,8 @@ For all the full models that can be used in DeepLC (including some TMT models!) 
 ## Citation
 
 If you use DeepLC for your research, please use the following citation:
->**DeepLC can predict retention times for peptides that carry as-yet unseen modifications**  
->Robbin Bouwmeester, Ralf Gabriels, Niels Hulstaert, Lennart Martens, Sven Degroeve  
+>**DeepLC can predict retention times for peptides that carry as-yet unseen modifications**
+>Robbin Bouwmeester, Ralf Gabriels, Niels Hulstaert, Lennart Martens, Sven Degroeve
 >bioRxiv 2020.03.28.013003; [doi: 10.1101/2020.03.28.013003](https://doi.org/10.1101/2020.03.28.013003)
 
 
@@ -268,6 +272,27 @@ Make sure to use negative signs for the atoms subtracted.
 It is likely you did not use calibration. No problem, but the retention times for training
 purposes were normalized between [0,10]. This means that you probably need to adjust the
 retention time yourselve after analysis or use a calibration set as the input.
+
+
+**__Q: What does the option `dict_divider` do?__**
+
+This parameter defines the precision to use for fast-lookup of retention times
+for calibration. A value of 10 means a precision of 0.1 (and 100 a precision of
+0.01) between the calibration anchor points. This parameter does not influence
+the precision of the calibration, but setting it too high might mean that there
+is bad selection of the models between anchor points. A safe value is usually
+higher than 10.
+
+
+**__Q: What does the option `split_cal` do?__**
+
+The option `split_cal`, or split calibration, sets number of divisions of the
+chromatogram for piecewise linear calibration. If the value is set to 10 the
+chromatogram is split up into 10 equidistant parts. For each part the median
+value of the calibration peptides is selected. These are the anchor points.
+Between each anchor point a linear fit is made. This option has no effect when
+the pyGAM generalized additive models are used for calibration.
+
 
 **__Q: How does the ensemble part of DeepLC work?__**
 
