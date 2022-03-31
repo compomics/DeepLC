@@ -39,7 +39,7 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: dist
-        path: dist
+        path: dist/
     - run: ls ./
     - run: ls ./dist
     - uses: actions/checkout@v2
@@ -57,6 +57,8 @@ jobs:
         args: install innosetup -y --allow-unofficial --force
     - name: Run pyinstaller
       run: pyinstaller ./deeplc.spec --clean --noconfirm
+    - name: Test built DeepLC exe
+      run: dist/deeplc/deeplc.exe --ignore-gooey --help
     - name: Run Inno Setup
       run: ISCC.exe ./deeplc_innosetup.iss
     - name: Upload installer
