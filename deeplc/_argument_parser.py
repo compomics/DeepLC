@@ -133,18 +133,19 @@ def parse_arguments(gui=False):
         "Advanced configuration", gooey_options={'columns':2}
     )
     advanced_args.add_argument(
-        "--use_library",  # TODO: Change into "Do not use library" with store_false?
+        "--use_library",
         dest="use_library",
-        action='store_true',
+        action='store',
         default=False,
-        widget="BlockCheckbox",
-        metavar="Use prediction library" if gui else "",
-        gooey_options={"checkbox_label": "Enable"},
-        help="use library with previous predictions for faster results",
-        # TODO Help says "takes argument with string", but is bool?
+        widget="FileChooser",
+        metavar="Select prediction library file" if gui else "",
+        help=(
+            "Library file with previous predictions for faster results to "
+            "read from, or to write to"
+        ),
     )
     advanced_args.add_argument(
-        "--write_library",  # TODO: Change into "Do not use library" with store_false?
+        "--write_library",
         dest="write_library",
         action='store_true',
         default=False,

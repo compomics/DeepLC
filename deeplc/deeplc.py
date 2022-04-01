@@ -28,21 +28,35 @@ DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
 
 LIBRARY = {}
 
+import os
+import sys
 import copy
 import gc
 import logging
 import multiprocessing
 import multiprocessing.dummy
 import pickle
+import warnings
 from configparser import ConfigParser
+
+
+# If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
+IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
+IS_FROZEN = getattr(sys, 'frozen', False)
+if IS_CLI_GUI or IS_FROZEN:
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    logging.getLogger('tensorflow').setLevel(logging.CRITICAL)
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+    warnings.filterwarnings('ignore', category=FutureWarning)
+    warnings.filterwarnings('ignore', category=UserWarning)
+
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-
-from deeplc._exceptions import CalibrationError, DeepLCError
 from tensorflow.keras.models import load_model
 
+from deeplc._exceptions import CalibrationError, DeepLCError
 from deeplc.trainl3 import train_en
 
 # "Custom" activation function
@@ -74,31 +88,19 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 from deeplc.feat_extractor import FeatExtractor
 from pygam import LinearGAM, s
 
-def warn(*args, **kwargs):
-    pass
-import warnings
-warnings.warn = warn
-
-# Supress warnings (or at least try...)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-
-warnings.filterwarnings('ignore', category=DeprecationWarning)
-warnings.filterwarnings('ignore', category=FutureWarning)
-
-
 
 logger = logging.getLogger(__name__)
 
 def read_library(use_library):
     global LIBRARY
-    
+
     if not use_library:
         logger.warning("Trying to read library, but no library file was provided.")
         return
     try:
         library_file = open(use_library)
     except IOError:
-        logger.error("Could not open library file: %s", use_library)
+        logger.warning("Could not find existing library file: %s", use_library)
         return
 
     for line_num,line in enumerate(library_file):
@@ -171,7 +173,7 @@ class DeepLC():
 
     """
     library = {}
-    
+
     def __init__(self,
                  main_path=os.path.dirname(os.path.realpath(__file__)),
                  path_model=None,
@@ -249,7 +251,7 @@ class DeepLC():
             self.f_extractor = FeatExtractor()
 
         self.pygam_calibration = pygam_calibration
-        
+
         if self.pygam_calibration:
             from pygam import LinearGAM, s
 
@@ -489,8 +491,9 @@ class DeepLC():
         keep_idents = set(keep_idents)
         rem_idents = set(rem_idents)
 
-        logger.warning("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
-        logger.warning("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
+        logger.info("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
+        if self.use_library:
+            logger.info("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
 
         # Save a row identifier to seq+mod mapper so output has expected return
         # shapes
@@ -565,7 +568,7 @@ class DeepLC():
                             uncal_preds = []
                             pass
 
-                        
+
 
 
                         if self.write_library:
@@ -795,8 +798,8 @@ class DeepLC():
             del mod
         except UnboundLocalError:
             logger.debug("Variable mod not defined, so will not be deleted")
-        
-        
+
+
         if self.deepcallc_mod and isinstance(self.model, dict):
             for m_name in deepcallc_x.keys():
                 deepcallc_x[m_name] = [deepcallc_x[m_name][ident] for ident in seq_mod_comb]
@@ -990,8 +993,8 @@ class DeepLC():
 
         if self.verbose:
             logger.debug(
-                "Selecting the data points for calibration (used to fit the\
-linear models between)"
+                "Selecting the data points for calibration (used to fit the "
+                "linear models between)"
             )
 
         # smooth between observed and predicted
@@ -1002,7 +1005,13 @@ linear models between)"
 
             # no points so no cigar... use previous points
             if ptr_index_start >= ptr_index_end:
-                logger.warning("Skipping calibration step, due to no points in the predicted range (are you sure about the split size?): %s,%s" % (range_calib_number,range_calib_number+split_val))
+                logger.debug(
+                    "Skipping calibration step, due to no points in the "
+                    "predicted range (are you sure about the split size?): "
+                    "%s,%s",
+                    range_calib_number,
+                    range_calib_number + split_val
+                )
                 continue
 
             mtr = measured_tr[ptr_index_start:ptr_index_end]
@@ -1214,7 +1223,7 @@ linear models between)"
 
         if self.deepcallc_mod:
             self.deepcallc_model = train_en(pd.DataFrame(pred_dict["deepcallc"]),seq_df["tr"])
-            
+
 
         logger.debug("Model with the best performance got selected: %s" %(best_model))
 
