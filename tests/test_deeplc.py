@@ -26,8 +26,8 @@ def test_cli_full():
     file_path_out = "pytest_cli_out.csv"
 
     command = [
-        "deeplc", "--file_cal", file_path_cal,
-        "--file_pred_out", file_path_out, file_path_pred
+        "deeplc", "--file_pred", file_path_pred, "--file_cal", file_path_cal,
+        "--file_pred_out", file_path_out
     ]
     subprocess.run(command, check=True)
 
