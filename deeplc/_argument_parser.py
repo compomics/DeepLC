@@ -15,7 +15,7 @@ def parse_arguments(gui=False):
         description=(
             "Retention time prediction for (modified) peptides using deep "
             "learning."),
-        usage="deeplc [<options>] <peptide_file>",
+        usage="deeplc [OPTIONS] --file_pred <peptide_file>",
         formatter_class=lambda prog: HelpFormatter(prog, max_help_position=42),
         add_help=False,
     )
@@ -25,11 +25,12 @@ def parse_arguments(gui=False):
         gooey_options={'columns':2}
     )
     io_args.add_argument(
-        "file_pred",
+        "--file_pred",
+        required=True,
         type=str,
         widget="FileChooser",
         metavar="Input peptides for prediction (required)" if gui else "",
-        help="path to peptide CSV file for which to make predictions"
+        help="path to peptide CSV file for which to make predictions (required)"
     )
     io_args.add_argument(
         "--file_cal",
@@ -74,19 +75,34 @@ def parse_arguments(gui=False):
             "the default models based on the calibration peptides"
         ),
     )
-    model_cal_args.add_argument(
-        "--pygam_calibration",  # TODO: Change into "Do not use ..." with store_false?
-        dest="pygam_calibration",
-        action='store_true',
-        default=False,
-        widget="BlockCheckbox",
-        metavar="Use pyGAM calibration" if gui else "",
-        gooey_options={"checkbox_label": "Enable"},
-        help=(
-            "calibrate with pyGAM generalized additive model instead of "
-            "simple piecewise linear fit"
-        )
+
+    calibration_group = model_cal_args.add_mutually_exclusive_group(
+        gooey_options={
+            "initial_selection": 0,
+            "title": "Calibration method",
+            "full_width": True,
+        }
     )
+    calibration_group.add_argument(
+        "--pygam_calibration",
+        dest="pygam_calibration",
+        action="store_true",
+        metavar="Use pyGAM calibration" if gui else "",
+        gooey_options={"checkbox_label": "Use pyGAM calibration"},
+        help=(
+            "use pyGAM generalized additive model as calibration method; "
+            "recommended; default"
+        ),
+    )
+    calibration_group.add_argument(
+        "--legacy_calibration",
+        dest="pygam_calibration",
+        action="store_false",
+        metavar="Use legacy calibration" if gui else "",
+        gooey_options={"checkbox_label": "Use legacy calibration"},
+        help="use legacy simple piecewise linear fit as calibration method",
+    )
+
     model_cal_args.add_argument(
         "--split_cal",
         type=int,
@@ -153,11 +169,11 @@ def parse_arguments(gui=False):
     advanced_args.add_argument(
         "--n_threads",
         type=int,
-        default=cpu_count(),
+        default=max(cpu_count(), 16),
         widget="Slider",
         metavar="Parallelization " if gui else "",
         gooey_options={"min": 1, "max": cpu_count(), "increment": 1},
-        help="number of CPU threads to use; default=all"
+        help="number of CPU threads to use; default=all with max of 16"
     )
     advanced_args.add_argument(
         "--log_level",
