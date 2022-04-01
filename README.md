@@ -51,7 +51,7 @@ Just go to [iomics.ugent.be/deeplc](https://iomics.ugent.be/deeplc/) and get sta
 
 #### In an existing Python environment (cross-platform)
 
-1. In your terminal with Python (>=3.7) installed, run `pip install deeplc[gui]`
+1. In your terminal with Python (>=3.7) installed, run `pip install deeplc`
 2. Start the GUI with the command `deeplc-gui` or `python -m deeplc.gui`
 
 #### Standalone installer (Windows)
@@ -68,7 +68,7 @@ DeepLC does not contain any viruses, or you can check the source code 😉
 4. Go through the installation steps
 5. Start DeepLC!
 
-![GUI installation process](img/gui-installation.gif)
+![GUI screenshot](https://github.com/compomics/DeepLC/raw/img/gui-screenshot.png)
 
 
 ### Python package
