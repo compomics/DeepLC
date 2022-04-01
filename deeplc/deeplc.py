@@ -129,39 +129,36 @@ class DeepLC():
     ----------
     main_path : str
         main path of module
-    path_model : str
-        path to model file: leave empty to use default models
-    verbose : bool
+    path_model : str, optional
+        path to prediction model(s); leave empty to select the best of the
+        default models based on the calibration peptides
+    verbose : bool, default=True
         turn logging on/off
-    bin_dist : float
+    bin_dist : float, default=2
         TODO
-    dict_cal_divider : int
-        Dictionary divider - this parameter defines the precision to use for fast-lookup
-        of retention times for calibration. A value of 10 means a precision of 0.1
-        (and 100 a precision of 0.01) between the calibration anchor points. This
-        parameter does not influence the precision of the calibration, but setting it
-        too high might mean that there is bad selection of the models between anchor
-        points. A safe value is usually higher than 10.
-    split_cal : int
-        Split calibration - the number of divisions for the chromatogram. If the value
-        is set to 10 the chromatogram is split up into 10 equidistant parts. For each
-        part the median value of the calibration peptides is selected. These are the
-        anchor points. Between each anchor point a linear fit is made.
-    n_jobs : int or None
-        number of threads to use; if None, use maximum available
-    config_file : str or None
+    dict_cal_divider : int, default=50
+        sets precision for fast-lookup of retention times for calibration; e.g.
+        10 means a precision of 0.1 between the calibration anchor points
+    split_cal : int, default=50
+        number of splits in the chromatogram for piecewise linear calibration
+        fit
+    n_jobs : int, optional
+        number of CPU threads to use
+    config_file : str, optional
         path to configuration file
-    f_extractor : object :: deeplc.FeatExtractor or None
+    f_extractor : object :: deeplc.FeatExtractor, optional
         deeplc.FeatExtractor object to use
-    cnn_model : bool
+    cnn_model : bool, default=True
         use CNN model or not
-    batch_num : int
-        number of peptides per batch; lower for lower memory footprint
-    write_library : bool
-        write predictions to library file for reuse in later prediction runs
-    use_library : str or None
-        path to prediction library file
-    reload_library : bool
+    batch_num : int, default=250000
+        prediction batch size (in peptides); lower to decrease memory footprint
+    write_library : bool, default=False
+        append new predictions to library for faster future results; requires
+        `use_library` option
+    use_library : str, optional
+        library file with previous predictions for faster results to read from,
+        or to write to
+    reload_library : bool, default=False
         reload prediction library
 
     Methods
@@ -174,24 +171,25 @@ class DeepLC():
     """
     library = {}
 
-    def __init__(self,
-                 main_path=os.path.dirname(os.path.realpath(__file__)),
-                 path_model=None,
-                 verbose=True,
-                 bin_dist=2,
-                 dict_cal_divider=100,
-                 split_cal=25,
-                 n_jobs=None,
-                 config_file=None,
-                 f_extractor=None,
-                 cnn_model=True,
-                 batch_num=350000,
-                 write_library=False,
-                 use_library=None,
-                 reload_library=False,
-                 pygam_calibration=True,
-                 deepcallc_mod=False,
-                 ):
+    def __init__(
+        self,
+        main_path=os.path.dirname(os.path.realpath(__file__)),
+        path_model=None,
+        verbose=True,
+        bin_dist=2,
+        dict_cal_divider=50,
+        split_cal=50,
+        n_jobs=None,
+        config_file=None,
+        f_extractor=None,
+        cnn_model=True,
+        batch_num=250000,
+        write_library=False,
+        use_library=None,
+        reload_library=False,
+        pygam_calibration=True,
+        deepcallc_mod=False,
+    ):
 
         # if a config file is defined overwrite standard parameters
         if config_file:

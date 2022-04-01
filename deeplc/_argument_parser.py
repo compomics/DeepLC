@@ -140,7 +140,7 @@ def parse_arguments(gui=False):
         widget="FileChooser",
         metavar="Select prediction library file" if gui else "",
         help=(
-            "Library file with previous predictions for faster results to "
+            "library file with previous predictions for faster results to "
             "read from, or to write to"
         ),
     )
