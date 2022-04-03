@@ -28,21 +28,35 @@ DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
 
 LIBRARY = {}
 
+import os
+import sys
 import copy
 import gc
 import logging
 import multiprocessing
 import multiprocessing.dummy
 import pickle
+import warnings
 from configparser import ConfigParser
+
+
+# If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
+IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
+IS_FROZEN = getattr(sys, 'frozen', False)
+if IS_CLI_GUI or IS_FROZEN:
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    logging.getLogger('tensorflow').setLevel(logging.CRITICAL)
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+    warnings.filterwarnings('ignore', category=FutureWarning)
+    warnings.filterwarnings('ignore', category=UserWarning)
+
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-
-from deeplc._exceptions import CalibrationError, DeepLCError
 from tensorflow.keras.models import load_model
 
+from deeplc._exceptions import CalibrationError, DeepLCError
 from deeplc.trainl3 import train_en
 
 # "Custom" activation function
@@ -74,24 +88,19 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 from deeplc.feat_extractor import FeatExtractor
 from pygam import LinearGAM, s
 
-def warn(*args, **kwargs):
-    pass
-import warnings
-warnings.warn = warn
-
 
 logger = logging.getLogger(__name__)
 
 def read_library(use_library):
     global LIBRARY
-    
+
     if not use_library:
         logger.warning("Trying to read library, but no library file was provided.")
         return
     try:
         library_file = open(use_library)
     except IOError:
-        logger.error("Could not open library file: %s", use_library)
+        logger.warning("Could not find existing library file: %s", use_library)
         return
 
     for line_num,line in enumerate(library_file):
@@ -120,39 +129,36 @@ class DeepLC():
     ----------
     main_path : str
         main path of module
-    path_model : str
-        path to model file: leave empty to use default models
-    verbose : bool
+    path_model : str, optional
+        path to prediction model(s); leave empty to select the best of the
+        default models based on the calibration peptides
+    verbose : bool, default=True
         turn logging on/off
-    bin_dist : float
+    bin_dist : float, default=2
         TODO
-    dict_cal_divider : int
-        Dictionary divider - this parameter defines the precision to use for fast-lookup
-        of retention times for calibration. A value of 10 means a precision of 0.1
-        (and 100 a precision of 0.01) between the calibration anchor points. This
-        parameter does not influence the precision of the calibration, but setting it
-        too high might mean that there is bad selection of the models between anchor
-        points. A safe value is usually higher than 10.
-    split_cal : int
-        Split calibration - the number of divisions for the chromatogram. If the value
-        is set to 10 the chromatogram is split up into 10 equidistant parts. For each
-        part the median value of the calibration peptides is selected. These are the
-        anchor points. Between each anchor point a linear fit is made.
-    n_jobs : int or None
-        number of threads to use; if None, use maximum available
-    config_file : str or None
+    dict_cal_divider : int, default=50
+        sets precision for fast-lookup of retention times for calibration; e.g.
+        10 means a precision of 0.1 between the calibration anchor points
+    split_cal : int, default=50
+        number of splits in the chromatogram for piecewise linear calibration
+        fit
+    n_jobs : int, optional
+        number of CPU threads to use
+    config_file : str, optional
         path to configuration file
-    f_extractor : object :: deeplc.FeatExtractor or None
+    f_extractor : object :: deeplc.FeatExtractor, optional
         deeplc.FeatExtractor object to use
-    cnn_model : bool
+    cnn_model : bool, default=True
         use CNN model or not
-    batch_num : int
-        number of peptides per batch; lower for lower memory footprint
-    write_library : bool
-        write predictions to library file for reuse in later prediction runs
-    use_library : str or None
-        path to prediction library file
-    reload_library : bool
+    batch_num : int, default=250000
+        prediction batch size (in peptides); lower to decrease memory footprint
+    write_library : bool, default=False
+        append new predictions to library for faster future results; requires
+        `use_library` option
+    use_library : str, optional
+        library file with previous predictions for faster results to read from,
+        or to write to
+    reload_library : bool, default=False
         reload prediction library
 
     Methods
@@ -164,25 +170,26 @@ class DeepLC():
 
     """
     library = {}
-    
-    def __init__(self,
-                 main_path=os.path.dirname(os.path.realpath(__file__)),
-                 path_model=None,
-                 verbose=True,
-                 bin_dist=2,
-                 dict_cal_divider=100,
-                 split_cal=25,
-                 n_jobs=None,
-                 config_file=None,
-                 f_extractor=None,
-                 cnn_model=True,
-                 batch_num=350000,
-                 write_library=False,
-                 use_library=None,
-                 reload_library=False,
-                 pygam_calibration=True,
-                 deepcallc_mod=False,
-                 ):
+
+    def __init__(
+        self,
+        main_path=os.path.dirname(os.path.realpath(__file__)),
+        path_model=None,
+        verbose=True,
+        bin_dist=2,
+        dict_cal_divider=50,
+        split_cal=50,
+        n_jobs=None,
+        config_file=None,
+        f_extractor=None,
+        cnn_model=True,
+        batch_num=250000,
+        write_library=False,
+        use_library=None,
+        reload_library=False,
+        pygam_calibration=True,
+        deepcallc_mod=False,
+    ):
 
         # if a config file is defined overwrite standard parameters
         if config_file:
@@ -242,7 +249,7 @@ class DeepLC():
             self.f_extractor = FeatExtractor()
 
         self.pygam_calibration = pygam_calibration
-        
+
         if self.pygam_calibration:
             from pygam import LinearGAM, s
 
@@ -482,8 +489,9 @@ class DeepLC():
         keep_idents = set(keep_idents)
         rem_idents = set(rem_idents)
 
-        logger.warning("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
-        logger.warning("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
+        logger.info("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
+        if self.use_library:
+            logger.info("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
 
         # Save a row identifier to seq+mod mapper so output has expected return
         # shapes
@@ -558,7 +566,7 @@ class DeepLC():
                             uncal_preds = []
                             pass
 
-                        
+
 
 
                         if self.write_library:
@@ -788,8 +796,8 @@ class DeepLC():
             del mod
         except UnboundLocalError:
             logger.debug("Variable mod not defined, so will not be deleted")
-        
-        
+
+
         if self.deepcallc_mod and isinstance(self.model, dict):
             for m_name in deepcallc_x.keys():
                 deepcallc_x[m_name] = [deepcallc_x[m_name][ident] for ident in seq_mod_comb]
@@ -983,8 +991,8 @@ class DeepLC():
 
         if self.verbose:
             logger.debug(
-                "Selecting the data points for calibration (used to fit the\
-linear models between)"
+                "Selecting the data points for calibration (used to fit the "
+                "linear models between)"
             )
 
         # smooth between observed and predicted
@@ -995,7 +1003,13 @@ linear models between)"
 
             # no points so no cigar... use previous points
             if ptr_index_start >= ptr_index_end:
-                logger.warning("Skipping calibration step, due to no points in the predicted range (are you sure about the split size?): %s,%s" % (range_calib_number,range_calib_number+split_val))
+                logger.debug(
+                    "Skipping calibration step, due to no points in the "
+                    "predicted range (are you sure about the split size?): "
+                    "%s,%s",
+                    range_calib_number,
+                    range_calib_number + split_val
+                )
                 continue
 
             mtr = measured_tr[ptr_index_start:ptr_index_end]
@@ -1207,7 +1221,7 @@ linear models between)"
 
         if self.deepcallc_mod:
             self.deepcallc_model = train_en(pd.DataFrame(pred_dict["deepcallc"]),seq_df["tr"])
-            
+
 
         logger.debug("Model with the best performance got selected: %s" %(best_model))
 

@@ -1,6 +1,6 @@
 # DeepLC
 data/
-*.png
+./*.png
 *.pyc
 datasets/an_data.csv
 datasets/integrated_dataset_filtered.csv

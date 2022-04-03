@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
     LONG_DESCRIPTION = fh.read()
@@ -19,10 +19,13 @@ setup(
         'Source': 'https://github.com/compomics/DeepLC',
         'Tracker': 'https://github.com/compomics/DeepLC/issues'
     },
-    packages=['deeplc'],
+    packages=find_packages(),
     include_package_data=True,
     entry_points={
-        'console_scripts': ['deeplc=deeplc.__main__:main']
+        'console_scripts': [
+            'deeplc=deeplc.__main__:main',
+            'deeplc-gui=deeplc.gui:start_gui',
+        ]
     },
     keywords=[
         'DeepLC', 'Proteomics', 'deep learning', 'peptides', 'retention time',
@@ -46,6 +49,7 @@ setup(
         'h5py>=2.10.0,<4',
         'pygam>=0.8.0,<1',
         'scikit-learn>=0.24.0,<2',
+        'gooey>=1.0',
     ],
     python_requires='>=3.6',
 )
