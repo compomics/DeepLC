@@ -13,6 +13,7 @@ DeepLC: Retention time prediction for (modified) peptides using Deep Learning.
 ---
 
 - [Introduction](#introduction)
+- [Citation](#citation)
 - [Usage](#usage)
   - [Web application](#web-application)
   - [Graphical user interface](#graphical-user-interface)
@@ -22,7 +23,6 @@ DeepLC: Retention time prediction for (modified) peptides using Deep Learning.
     - [Python module](#python-module)
   - [Input files](#input-files)
   - [Prediction models](#prediction-models)
-- [Citation](#citation)
 - [Q&A](#qa)
 
 ---
@@ -38,6 +38,13 @@ DeepLC can be used through the
 [web application](https://iomics.ugent.be/deeplc/),
 locally with a graphical user interface (GUI), or as a Python package. In the
 latter case, DeepLC can be used from the command line, or as a Python module.
+
+## Citation
+
+If you use DeepLC for your research, please use the following citation:
+>**DeepLC can predict retention times for peptides that carry as-yet unseen modifications**  
+>Robbin Bouwmeester, Ralf Gabriels, Niels Hulstaert, Lennart Martens & Sven Degroeve  
+> Nature Methods 18, 1363–1369 (2021) [doi: 10.1038/s41592-021-01301-5](http://dx.doi.org/10.1038/s41592-021-01301-5)
 
 ## Usage
 
@@ -62,7 +69,7 @@ Just go to [iomics.ugent.be/deeplc](https://iomics.ugent.be/deeplc/) and get sta
 1. Download the DeepLC installer (`DeepLC-...-Windows-64bit.exe`) from the
 [latest release](https://github.com/compomics/DeepLC/releases/latest/)
 2. Execute the installer
-3. If Windows Smartscreen shows a blue window with "Windows protected your PC",
+3. If Windows Smartscreen shows a popup window with "Windows protected your PC",
 click on "More info" and then on "Run anyway". You will have to trust us that
 DeepLC does not contain any viruses, or you can check the source code 😉
 4. Go through the installation steps
@@ -181,13 +188,6 @@ The table above is for an old version of DeepLC, the current version comes with:
 For all the full models that can be used in DeepLC (including some TMT models!) please see:
 
 [https://github.com/RobbinBouwmeester/DeepLCModels](https://github.com/RobbinBouwmeester/DeepLCModels)
-
-## Citation
-
-If you use DeepLC for your research, please use the following citation:
->**DeepLC can predict retention times for peptides that carry as-yet unseen modifications**
->Robbin Bouwmeester, Ralf Gabriels, Niels Hulstaert, Lennart Martens, Sven Degroeve
->bioRxiv 2020.03.28.013003; [doi: 10.1101/2020.03.28.013003](https://doi.org/10.1101/2020.03.28.013003)
 
 
 ## Q&A
