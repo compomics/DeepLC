@@ -75,7 +75,7 @@ DeepLC does not contain any viruses, or you can check the source code 😉
 4. Go through the installation steps
 5. Start DeepLC!
 
-![GUI screenshot](https://github.com/compomics/DeepLC/raw/img/gui-screenshot.png)
+![GUI screenshot](https://github.com/compomics/DeepLC/raw/master/img/gui-screenshot.png)
 
 
 ### Python package
