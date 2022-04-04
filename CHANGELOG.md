@@ -7,7 +7,6 @@ and this project adheres to
 
 ## [1.1.1] - 2022-04-03
 
-## Unreleased
 ### Added
 - New native Python GUI, based on the Gooey package
 - New standalone installer for Windows using PyInstaller and Inno Setup
