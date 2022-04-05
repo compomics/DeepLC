@@ -58,7 +58,7 @@ Just go to [iomics.ugent.be/deeplc](https://iomics.ugent.be/deeplc/) and get sta
 
 #### In an existing Python environment (cross-platform)
 
-1. In your terminal with Python (>=3.7) installed, run `pip install deeplc`
+1. In your terminal with Python (>=3.7) installed, run `pip install deeplc[gui]`
 2. Start the GUI with the command `deeplc-gui` or `python -m deeplc.gui`
 
 #### Standalone installer (Windows)

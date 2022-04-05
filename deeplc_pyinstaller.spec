@@ -26,7 +26,7 @@ bundle_identifier = f"{bundle_name}.{__version__}"
 
 # Collect hidden imports and datas for all requirements
 requirements = {req.split()[0] for req in importlib.metadata.requires(project)}
-requirements.update([project, "distributed", "sklearn"])
+requirements.update([project, "distributed", "sklearn", "gooey"])
 hidden_imports = set()
 datas = []
 binaries = []
