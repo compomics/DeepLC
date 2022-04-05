@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open("README.md", "r") as fh:
     LONG_DESCRIPTION = fh.read()
@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='deeplc',
-    version='1.1.1',
+    version='1.1.2',
     license='apache-2.0',
     description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
     long_description=LONG_DESCRIPTION,
@@ -49,7 +49,9 @@ setup(
         'h5py>=2.10.0,<4',
         'pygam>=0.8.0,<1',
         'scikit-learn>=0.24.0,<2',
-        'gooey>=1.0',
     ],
+    extras_require={
+        "gui": ["gooey>=1.0"],
+    },
     python_requires='>=3.6',
 )

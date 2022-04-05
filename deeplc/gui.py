@@ -3,8 +3,13 @@ import sys
 from multiprocessing import freeze_support
 from pathlib import Path
 import importlib.resources
-
-from gooey import Gooey, local_resource_path
+try:
+    from gooey import Gooey, local_resource_path
+except ImportError:
+    raise ImportError(
+        "Missing dependency `gooey` required to start graphical user interface. "
+        "Install `gooey` or use the command line interface."
+    )
 
 import deeplc.package_data.gui_images as img_module
 from deeplc.__main__ import main
