@@ -6,7 +6,7 @@ and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [1.1.2] - 2022-04-05
+## [1.1.2] - 2022-04-06
 
 ### Changed
 - Made Gooey an optional dependency (facilitates install on Linux). Install the optional
