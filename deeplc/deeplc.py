@@ -48,8 +48,6 @@ from deeplc.trainl3 import train_en
 # "Custom" activation function
 lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
 
-try: from tensorflow.compat.v1.keras.backend import set_session
-except ImportError: from tensorflow.keras.backend import set_session
 try: from tensorflow.compat.v1.keras.backend import clear_session
 except ImportError: from tensorflow.keras.backend import clear_session
 try: from tensorflow.compat.v1.keras.backend import get_session
@@ -84,8 +82,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 warnings.filterwarnings('ignore', category=FutureWarning)
-
-
 
 logger = logging.getLogger(__name__)
 
@@ -565,9 +561,6 @@ class DeepLC():
                             uncal_preds = []
                             pass
 
-                        
-
-
                         if self.write_library:
                             try:
                                 lib_file = open(self.use_library,"a")
@@ -990,8 +983,7 @@ class DeepLC():
 
         if self.verbose:
             logger.debug(
-                "Selecting the data points for calibration (used to fit the\
-linear models between)"
+                "Selecting the data points for calibration (used to fit the linear models between)"
             )
 
         # smooth between observed and predicted

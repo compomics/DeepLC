@@ -24,6 +24,7 @@ name,formula_pos,formula_neg
 15-C,,"H(-30) C(-15)"
 20-C,,"H(-30) C(-20)"
 Acetyl,"H(2) C(2) O",""
+Acetylation,"H(2) C(2) O",""
 Amidated,"H N","O(-1)"
 Biotin,"H(14) C(10) N(2) O(2) S",""
 Carbamidomethyl,"H(3) C(2) N O",""

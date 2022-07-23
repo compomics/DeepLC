@@ -45,17 +45,12 @@ class FeatExtractor():
     def __init__(self,
                  main_path=os.path.dirname(os.path.realpath(__file__)),
                  lib_path_mod=os.path.join(os.path.dirname(os.path.realpath(__file__)), "unimod/"),
-                 lib_path_prot_scale=os.path.join(os.path.dirname(os.path.realpath(__file__)), "expasy/"),
                  lib_aa_composition=os.path.join(os.path.dirname(os.path.realpath(__file__)), "aa_comp_rel.csv"),
-                 lib_path_smiles=os.path.join(os.path.dirname(os.path.realpath(__file__)), "mod_to_smiles/"),
-                 lib_three_to_one=os.path.join(os.path.dirname(os.path.realpath(__file__)), "expasy/three_to_one.csv"),
                  split_size=7,
                  verbose=True,
                  include_specific_posses=[0, 1, 2, 3, 4, 5, 6, -1, -2, -3, -4, -5, -6, -7],
-                 standard_feat=False,
                  add_sum_feat=False,
                  ptm_add_feat=False,
-                 chem_descr_feat=False,
                  ptm_subtract_feat=False,
                  add_rolling_feat=False,
                  include_unnormalized=True,
@@ -69,18 +64,12 @@ class FeatExtractor():
             cparser.read(config_file)
             lib_path_mod = cparser.get(
                 "featExtractor", "lib_path_mod").strip('"')
-            lib_path_prot_scale = cparser.get(
-                "featExtractor", "lib_path_prot_scale").strip('"')
-            lib_path_smiles = cparser.get(
-                "featExtractor", "lib_path_smiles").strip('"')
             split_size = cparser.getint("featExtractor", "split_size")
             verbose = cparser.getboolean("featExtractor", "verbose")
             add_sum_feat = cparser.getboolean("featExtractor", "add_sum_feat")
             ptm_add_feat = cparser.getboolean("featExtractor", "ptm_add_feat")
             ptm_subtract_feat = cparser.getboolean(
                 "featExtractor", "ptm_subtract_feat")
-            chem_descr_feat = cparser.getboolean(
-                "featExtractor", "chem_descr_feat")
             add_rolling_feat = cparser.getboolean(
                 "featExtractor", "add_rolling_feat")
             include_unnormalized = cparser.getboolean(
@@ -89,23 +78,17 @@ class FeatExtractor():
                 cparser.get("featExtractor", "include_specific_posses"))
 
         self.main_path = main_path
-        self.lib_struct = self.get_chem_descr(lib_path_smiles)
         self.lib_add, self.lib_subtract = self.get_libs_mods(lib_path_mod)
         self.lib_add = dict([(k.lower(), v) for k, v in self.lib_add.items()])
         self.lib_subtract = dict([(k.lower(), v)
                                   for k, v in self.lib_subtract.items()])
-        self.three_to_one = dict([l.strip().split(",")
-                                  for l in open(lib_three_to_one)])
 
         # Get the atomic composition of AAs
         self.lib_aa_composition = self.get_aa_composition(lib_aa_composition)
 
         self.split_size = split_size
-        self.libs_prop = self.get_libs_aa(lib_path_prot_scale)
         self.verbose = verbose
 
-        self.standard_feat = standard_feat
-        self.chem_descr_feat = chem_descr_feat
         self.add_sum_feat = add_sum_feat
         self.ptm_add_feat = ptm_add_feat
         self.ptm_subtract_feat = ptm_subtract_feat
@@ -151,75 +134,6 @@ class FeatExtractor():
         """
         return(pd.read_csv(file_loc, index_col=0).T.to_dict())
 
-    def count_aa(self,
-                 seq,
-                 aa_order=set(["A",
-                               "R",
-                               "N",
-                               "D",
-                               "C",
-                               "E",
-                               "Q",
-                               "G",
-                               "H",
-                               "I",
-                               "L",
-                               "K",
-                               "M",
-                               "F",
-                               "P",
-                               "S",
-                               "T",
-                               "W",
-                               "Y",
-                               "V"])):
-        """
-       Count amino acids in a peptide/protein
-
-        Parameters
-        ----------
-        seq : str
-            peptide or protein sequence
-        aa_order : set
-            order and actual amino acids that will be counted, due to Python 3.6 dicts the order is preserved
-
-        Returns
-        -------
-        dict
-            dictionary with counts of indicated amino acids (in given order, due to Python 3.6 dicts the
-            order is preserved)
-        """
-        return dict(
-            zip(aa_order, [seq.count(aa) / len(seq) for aa in aa_order]))
-
-    def analyze_lib(self, infile_name):
-        """
-        Make an amino acid dictionary that map one-letter amino acid code to physicochemical properties
-
-        Parameters
-        ----------
-        infile_name : str
-            location of the library that maps AA to property
-
-        Returns
-        -------
-        dict
-            dictionary with that maps an AA to a property
-        """
-        # TODO add file format checking
-
-        infile = open(infile_name)
-        prop_dict = {}
-        for line in infile:
-            line = line.strip()
-            # Skip empty lines and the tail of the file
-            if len(line) == 0:
-                continue
-            aa_three, val = line.lower().split(": ")
-            val = float(val)
-            prop_dict[self.three_to_one[aa_three]] = val
-        return(prop_dict)
-
     def split_seq(self,
                   a,
                   n):
@@ -241,205 +155,6 @@ class FeatExtractor():
         # since chunking is not alway possible do the modulo of residues
         k, m = divmod(len(a), n)
         return(a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
-
-    def get_libs_aa(self, path):
-        """
-        Read a directory with multiple AA properties and create a library of these dicts
-
-        Parameters
-        ----------
-        path : str
-            directory of files with AA properties
-
-        Returns
-        -------
-        dictionary
-            the library of AA properties, names are given based on the file name it read from
-        """
-        listing = os.listdir(path)
-        libs_prop = {}
-        for infile in listing:
-            if not infile.endswith(".txt"):
-                continue
-            libs_prop["".join(infile.split(".")[:-1])
-                      ] = self.analyze_lib(os.path.join(path, infile))
-        return(libs_prop)
-
-    def get_pep_scales(self,
-                       idents,
-                       seqs,
-                       libs_prop,
-                       feats,
-                       splits=5,
-                       include_unnormalized=True):
-        """
-        Calculate peptide features
-
-        Parameters
-        ----------
-        idents : list
-            identifier list; should correspond to seqs parameter list
-        seqs : list
-            peptide sequence list; should correspond to idents parameter list
-        libs_prop : dict
-            dictionary that is a library of features; features to calculate should be included in
-            the feats parameter list
-        feats : list
-            list of features to use for calculation
-        splits : int
-            number of splits for the peptide sequence; this is needed for single splits; cannot
-            be included in initial object creation
-        include_unnormalized : boolean
-            include unnormalized (by peptide length) versions of features
-
-        Returns
-        -------
-        object :: pd.DataFrame
-            pandas dataframe containing the features calculated for the peptide
-        """
-
-        feat_dict = {}
-
-        if self.verbose:
-            t0 = time.time()
-
-        aa_order = set(self.three_to_one.values())
-
-        for name, seq in zip(idents, seqs):
-
-            # main dictionary holding identifier to feature values
-            feat_dict[name] = {}
-            feat_dict[name]["seq_len"] = len(seq)
-            feat_dict[name].update(self.count_aa(seq, aa_order=aa_order))
-
-            # iterate over selected features from the feature library
-            for f in feats:
-                try:
-                    feature_seqs = [self.libs_prop[f][aa] for aa in seq]
-                except BaseException:
-                    seq = seq.replace("O", "")
-                    seq = sub(r"\d", "", seq)
-                    feature_seqs = [self.libs_prop[f][aa] for aa in seq]
-
-                # TODO remove hard coded feature retreival
-                if self.add_rolling_feat:
-                    feature_seqs = pd.Series(feature_seqs)
-                    feat_dict[name]["mean_two_%s" %
-                                    (f)] = feature_seqs.rolling(2).sum().mean()
-                    feat_dict[name]["mean_three_%s" %
-                                    (f)] = feature_seqs.rolling(3).sum().mean()
-                    feat_dict[name]["max_three_%s" %
-                                    (f)] = feature_seqs.rolling(3).sum().max()
-                    feat_dict[name]["max_two_%s" %
-                                    (f)] = feature_seqs.rolling(2).sum().max()
-                    feat_dict[name]["min_three_%s" %
-                                    (f)] = feature_seqs.rolling(3).sum().min()
-                    feat_dict[name]["min_two_%s" %
-                                    (f)] = feature_seqs.rolling(2).sum().min()
-
-                feat_dict[name]["sum_%s" % (f)] = sum(
-                    feature_seqs) / len(feature_seqs)
-                if self.include_unnormalized:
-                    feat_dict[name]["sum_%s_unnorm" % (f)] = sum(feature_seqs)
-
-                # included positions if needed
-                for p in self.include_specific_posses:
-                    feat_dict[name]["%s_%s" % (p, f)] = feature_seqs[p]
-
-                feature_seqs_split = self.split_seq(feature_seqs, splits)
-                feat_dict[name].update(
-                    dict(
-                        [
-                            ("sum_partial_%s_%s" %
-                             (f,
-                              index +
-                              1),
-                                sum(feature_seq_split) /
-                                len(feature_seq_split)) for index,
-                            feature_seq_split in enumerate(feature_seqs_split)]))
-
-                if self.include_unnormalized:
-                    feat_dict[name].update(
-                        dict(
-                            [
-                                ("sum_partial_%s_%s_unnorm" %
-                                 (f,
-                                  index +
-                                  1),
-                                    sum(feature_seq_split)) for index,
-                                feature_seq_split in enumerate(feature_seqs_split)]))
-
-        if self.verbose:
-            logger.debug(
-                "Time to calculate features: %s seconds" %
-                (time.time() - t0))
-
-        # transpose is needed to let rows be instances (peptides) and features
-        # columns
-        return pd.DataFrame(feat_dict).T
-
-    def get_feats(self,
-                  seqs,
-                  identifiers,
-                  split_size=False):
-        """
-        Calculate peptide features
-
-        Parameters
-        ----------
-        identifiers : list
-            identifier list; should correspond to seqs parameter list
-        seqs : list
-            peptide sequence list; should correspond to idents parameter list
-        split_size : int
-            split size for feature retreival; make it a boolean (False) if you want to use the initialized
-            split size
-
-        Returns
-        -------
-        object :: pd.DataFrame
-            pandas dataframe containing the features calculated for the peptide
-        """
-        if not split_size:
-            split_size = self.split_size
-        feats = list(self.libs_prop.keys())
-        X_feats = self.get_pep_scales(
-            identifiers,
-            seqs,
-            self.libs_prop,
-            feats,
-            splits=split_size)
-        return X_feats
-
-    def get_chem_descr(self, directory):
-        """
-        Get dictionary that contains chemical descriptors for modifications.
-
-        Parameters
-        ----------
-        directory : str
-            Directory (path) containing a table (file in csv format) with chemical descriptors and unimod names. Make
-            sure the first column contains the unimod name. The remaining columns can be used to encode the descriptors
-            (one each column). An example would be:
-
-                ,BalabanJ,Chi0n
-                Acetyl,2.187496097,1.90824829
-                Biotin,1.703040654,8.93954318
-                Butyryl,2.401715223,3.399812122
-                Crotonyl,2.924418198,3.140299098
-                Deamidated,2.187496097,1.432812155
-
-        Returns
-        -------
-        dict
-            dictionary that goes from one-letter AA to atomic composition
-        """
-        mod_df = pd.read_csv(
-            os.path.join(
-                directory,
-                "mod_to_struct.csv"),
-            index_col=0)
-        return(mod_df.T.to_dict())
 
     def get_libs_mods(self, directory):
         """
@@ -597,87 +312,6 @@ class FeatExtractor():
         del mod_dict
         return df_ret
 
-    def get_feats_chem_descr(
-            self,
-            seqs,
-            mods,
-            identifiers,
-            split_size=False,
-            feat_order=[
-                "Chi0n",
-                "LabuteASA",
-                "MolLogP",
-                "MinPartialCharge",
-                "BalabanJ"],
-            add_str="_chem_descr",
-            subtract_mods=False):
-        """
-        Chemical formula to atom addition/subtraction
-
-        Parameters
-        ----------
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : str
-            identifiers of the peptides; should correspond to seqs and mods
-        split_size : int
-            overwrite the set split size if needed
-        atoms_order : set
-            atoms to include and the order
-        add_str : str
-            add this substring to feature naming
-        subtract_mods : boolean
-            calculate the atom that are substracted in the PTM
-
-        Returns
-        -------
-        object :: pd.DataFrame
-            feature matrix for peptide PTMs
-        """
-        if not split_size:
-            split_size = self.split_size
-        if self.verbose:
-            t0 = time.time()
-        mod_dict = {}
-
-        len_init = len([ao + str(spl_s)
-                        for spl_s in range(split_size) for ao in feat_order])
-        for index_name, mod, seq in zip(identifiers, mods, seqs):
-            mod_dict[index_name] = dict(zip(
-                [ao + str(spl_s) + add_str for spl_s in range(split_size) for ao in feat_order], [0.0] * len_init))
-            if not mod:
-                continue
-            if len(str(mod)) == 0:
-                continue
-            if not isinstance(mod, str):
-                if math.isnan(mod):
-                    continue
-
-            split_mod = mod.split("|")
-            for i in range(1, len(split_mod), 2):
-                loc = split_mod[i - 1]
-                if subtract_mods:
-                    fill_mods, num = self.calc_feats_mods(
-                        self.lib_subtract[split_mod[i].rstrip()])
-                else:
-                    fill_mods, num = self.calc_feats_mods(
-                        self.lib_add[split_mod[i].rstrip()])
-
-                chem_descr = self.lib_struct[split_mod[i].rstrip()]
-                relative_loc = int(
-                    math.ceil(
-                        (int(loc) / len(seq)) * split_size)) - 1
-                for f in feat_order:
-                    mod_dict[index_name]["%s%s%s" %
-                                         (f, relative_loc, add_str)] += chem_descr[f]
-        if self.verbose:
-            logger.debug(
-                "Time to calculate mod features: %s seconds" %
-                (time.time() - t0))
-        return pd.DataFrame(mod_dict).T
-
     def get_comp_change_mods(self,
                              seqs,
                              mods,
@@ -706,7 +340,6 @@ class FeatExtractor():
         object :: pd.DataFrame
             feature matrix for compositional changes caused by modifications
         """
-        composition_dict = {}
         feat_dict = {}
         for ident, mod, seq in zip(identifiers, mods, seqs):
 
@@ -1150,10 +783,6 @@ class FeatExtractor():
         if self.verbose:
             t0 = time.time()
 
-        if self.standard_feat:
-            if self.verbose:
-                logger.debug("Extracting standard features")
-            X = self.get_feats(seqs, identifiers, split_size=self.split_size)
         if self.add_comp_feat:
             if self.verbose:
                 logger.debug("Extracting compositional features")
@@ -1181,12 +810,6 @@ class FeatExtractor():
                 split_size=self.split_size,
                 add_str="_subtract",
                 subtract_mods=True)
-        if self.chem_descr_feat:
-            if self.verbose:
-                logger.debug(
-                    "Extracting chemical descriptors features for modifications")
-            X_feats_chem_descr = self.get_feats_chem_descr(
-                seqs, mods, identifiers, split_size=3, add_str="_chem_desc")
         if self.cnn_feats:
             if self.verbose:
                 logger.debug("Extracting CNN features")
@@ -1225,11 +848,6 @@ class FeatExtractor():
                 X = pd.concat([X, X_feats_neg], axis=1)
             except BaseException:
                 X = X_feats_neg
-        if self.chem_descr_feat:
-            try:
-                X = pd.concat([X, X_feats_chem_descr], axis=1)
-            except BaseException:
-                X = X_feats_chem_descr
 
         if self.verbose:
             logger.debug(
