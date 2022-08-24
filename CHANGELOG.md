@@ -5,6 +5,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [1.1.2] - 2022-04-06
+
+### Changed
+- Made Gooey an optional dependency (facilitates install on Linux). Install the optional
+dependencies for the graphical user interface with `pip install deeplc[gui]`
+
+## [1.1.1] - 2022-04-03
+
+### Added
+- New native Python GUI, based on the Gooey package
+- New standalone installer for Windows using PyInstaller and Inno Setup
+- Added `deeplc-gui` entrypoint to start GUI from the command line
+
+### Changed
+- CLI: Restructured help message
+- Made DeepLC class API docstring consistent with CLI help message
+- Docs: Moved `dict_divider` and `split_cal` explanation to README Q&A section.
+- CI: Only run tests on commits to `master` or from a PR
+- Refactoring: Cleaned up `__main__.py`
+- Logging: Changed some loggings from DEBUG to INFO level, some from WARNING to INFO or
+DEBUG level
+
+### Removed
+- Removed Java-based GUI in favor of new Python-based GUI
+
+### Fixed
+- If run through CLI/GUI, all Tensorflow warnings are now fully suppressed
+- Added `--legacy_calibration` CLI option to allow for old piecewise linear calibration
+while new pyGAM calibration method is default. `--legacy_calibration` is mutually
+exclusive with `--pygam_calibration`.
+
 ## [1.0.1] - 2022-03-17
 - Make version compatible with pip release
 

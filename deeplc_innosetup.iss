@@ -1,5 +1,4 @@
 #define MyAppName "DeepLC"
-#define MyAppVersion "1.0.1"
 #define MyAppPublisher "CompOmics"
 #define MyAppURL "https://github.com/compomics/DeepLC"
 #define MyAppExeName "deeplc.exe"
@@ -18,7 +17,7 @@ LicenseFile=.\LICENSE
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir="dist"
-OutputBaseFilename="DeepLC-Windows-64bit"
+OutputBaseFilename="{#MyAppName}-{#MyAppVersion}-Windows64bit"
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
