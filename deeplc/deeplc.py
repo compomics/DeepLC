@@ -808,6 +808,7 @@ class DeepLC():
                    identifiers=[],
                    calibrate=True,
                    seq_df=None,
+                   psm_utils_obj=None,
                    correction_factor=1.0,
                    mod_name=None):
         """
@@ -838,6 +839,19 @@ class DeepLC():
         np.array
             predictions
         """
+        if psm_utils_obj:
+            dict_seqs_t={}
+
+            for peptide in pep_list:
+                id_t = peptide.peptide.sequence + "|" + peptide.peprec_modifications
+                dict_seqs_t[id_t] = {}
+                dict_seqs_t[id_t]["seq"] = peptide.peptide.sequence
+                dict_seqs_t[id_t]["modifications"] = peptide.peptide.peprec_modifications
+                dict_seqs_t[id_t]["tr"] = peptide.retention_time
+            
+            seq_df = pd.DataFrame(dict_seqs_t).T
+            del dict_seqs_t
+
         if self.batch_num == 0:
             return self.make_preds_core(seqs=seqs,
                                         mods=mods,
@@ -1068,6 +1082,7 @@ class DeepLC():
                         identifiers=[],
                         measured_tr=[],
                         correction_factor=1.0,
+                        psm_utils_obj=None,
                         seq_df=None,
                         use_median=True):
         """
@@ -1108,7 +1123,7 @@ class DeepLC():
             logger.debug(
                 "Ready to find the best model out of: %s" %
                 (self.model))
-
+        
         best_perf = float("inf")
         best_calibrate_min = 0.0
         best_calibrate_max = 0.0
@@ -1118,6 +1133,21 @@ class DeepLC():
         mod_calibrate_max_dict = {}
         pred_dict = {}
         mod_dict = {}
+
+        if psm_utils_obj:
+            dict_seqs_t={}
+
+            for peptide in pep_list:
+                id_t = peptide.peptide.sequence + "|" + peptide.peprec_modifications
+                dict_seqs_t[id_t] = {}
+                dict_seqs_t[id_t]["seq"] = peptide.peptide.sequence
+                dict_seqs_t[id_t]["modifications"] = peptide.peptide.peprec_modifications
+                dict_seqs_t[id_t]["tr"] = peptide.retention_time
+            
+            seq_df = pd.DataFrame(dict_seqs_t).T
+            del dict_seqs_t
+
+                
 
         for m in self.model:
             if self.verbose:
@@ -1153,6 +1183,7 @@ class DeepLC():
                                     mods=mods,
                                     identifiers=identifiers,
                                     calibrate=True,
+                                    psm_utils_obj=None,
                                     seq_df=seq_df,
                                     correction_factor=correction_factor,
                                     mod_name=m)

@@ -23,6 +23,8 @@ name,formula_pos,formula_neg
 10-C,,"H(-20) C(-10)"
 15-C,,"H(-30) C(-15)"
 20-C,,"H(-30) C(-20)"
+TMTpro,"H(25) C(15) N(3) O(3)",""
+tmtpro,"H(25) C(15) N(3) O(3)",""
 Acetyl,"H(2) C(2) O",""
 Acetylation,"H(2) C(2) O",""
 Amidated,"H N","O(-1)"
