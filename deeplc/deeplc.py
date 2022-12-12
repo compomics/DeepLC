@@ -103,7 +103,7 @@ def read_library(use_library):
         logger.warning("Could not find existing library file: %s", use_library)
         return
 
-    for line_num,line in enumerate(library_file):
+    for line in library_file:
         split_line = line.strip().split(",")
         try:
             LIBRARY[split_line[0]] = float(split_line[1])
@@ -440,6 +440,7 @@ class DeepLC():
         if len(seqs) == 0:
             # Make a copy, because we do not want to change to original df
             seq_df = seq_df.copy()
+            identifiers = list(seq_df.index)
         else:
             # Make a df out of provided lists
             seq_df = pd.DataFrame([seqs, mods]).T
@@ -455,50 +456,43 @@ class DeepLC():
             seq_df["idents"] = seq_df["seq"] + "|" + seq_df["modifications"]
             seq_mod_comb = copy.deepcopy(seq_df["idents"])
 
-        identifiers = list(seq_df.index)
-        rem_idents = []
-        keep_idents = []
-        if isinstance(self.model, dict):
-            all_mods = [m_name for m_group_name,m_name in self.model.items()]
-
-        # TODO check if .keys() object is the same as set (or at least for set operations)
-        idents_in_lib = set(LIBRARY.keys())
-
-        if self.use_library:
-            for ident in seq_df["idents"]:
-                if isinstance(self.model, dict):
-                    spec_ident = all_mods
-                elif mod_name != None:
-                    spec_ident = [ident+"|"+mod_name]
-                else:
-                    spec_ident = [ident]
-
-                if isinstance(self.model, dict):
-                    if len([m for m in self.model.values() if ident+"|"+m in idents_in_lib]) == len(self.model.values()):
-                        rem_idents.append(ident)
-                    else:
-                        keep_idents.append(ident)
-                else:
-                    if len([si for si in spec_ident if si in idents_in_lib]) > 0:
-                        rem_idents.append(ident)
-                    else:
-                        keep_idents.append(ident)
-        else:
-            keep_idents = seq_df["idents"]
-
-        keep_idents = set(keep_idents)
-        rem_idents = set(rem_idents)
-
-        logger.info("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
-        if self.use_library:
-            logger.info("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
-
         # Save a row identifier to seq+mod mapper so output has expected return
         # shapes
         identifiers_to_seqmod = dict(zip(seq_df.index, seq_df["idents"]))
 
         # Drop duplicated seq+mod
         seq_df.drop_duplicates(subset=["idents"], inplace=True)
+
+        rem_idents = set()
+        keep_idents = set()
+        if isinstance(self.model, dict):
+            all_mods = [m_name for m_group_name,m_name in self.model.items()]
+
+        if self.use_library:
+            for ident in seq_df["idents"]:
+
+                if isinstance(self.model, dict):
+                    if all(ident+"|"+m in LIBRARY for m in all_mods):
+                        rem_idents.add(ident)
+                    else:
+                        keep_idents.add(ident)
+
+                else:
+                    if mod_name != None:
+                        spec_ident = ident+"|"+mod_name
+                    else:
+                        spec_ident = ident
+                    if spec_ident in LIBRARY:
+                        rem_idents.add(ident)
+                    else:
+                        keep_idents.add(ident)
+        else:
+            keep_idents = set(seq_df["idents"])
+
+        logger.info("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
+        if self.use_library:
+            logger.info("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
+
 
         if self.use_library:
             seq_df = seq_df[seq_df["idents"].isin(keep_idents)]
