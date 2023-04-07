@@ -59,6 +59,10 @@ from tensorflow.keras.models import load_model
 from deeplc._exceptions import CalibrationError, DeepLCError
 from deeplc.trainl3 import train_en
 
+from psm_utils.io.peptide_record import peprec_to_proforma
+from psm_utils.psm import PSM
+from psm_utils.psm_list import PSMList
+
 # "Custom" activation function
 lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
 
@@ -303,13 +307,21 @@ class DeepLC():
         pd.DataFrame
             feature matrix
         """
+        list_of_psms = []
         if len(charges) > 0:
-            return self.f_extractor.full_feat_extract(seqs, mods, identifiers,charges=charges)
+            for seq,mod,id in zip(seqs,mods,identifiers):
+                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=id))
         else:
-            return self.f_extractor.full_feat_extract(seqs, mods, identifiers)
+            for seq,mod,id,z in zip(seqs,mods,identifiers,charges):
+                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=id))
+
+        psm_list = PSMList(psm_list=list_of_psms)
+
+        return self.f_extractor.full_feat_extract(psm_list)
 
     def do_f_extraction_pd(self,
-                           df_instances):
+                           df_instances,
+                           charges=[]):
         """
         Extract all features we can extract; without parallelization; use if
         you want to run feature extraction with a single thread; and use a
@@ -326,18 +338,16 @@ class DeepLC():
         pd.DataFrame
             feature matrix
         """
-        if "charges" in df_instances.columns:
-            return self.f_extractor.full_feat_extract(
-                df_instances["seq"],
-                df_instances["modifications"],
-                df_instances.index,
-                charges=df_instances["charges"]
-                )
+        list_of_psms = []
+        if len(charges) == 0:
+            for seq,mod,id in zip(df_instances["seq"],df_instances["modifications"],df_instances.index):
+                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=id))
         else:
-            return self.f_extractor.full_feat_extract(
-                df_instances["seq"],
-                df_instances["modifications"],
-                df_instances.index)
+            for seq,mod,id,z in zip(df_instances["seq"],df_instances["modifications"],df_instances.index,charges=df_instances["charges"]):
+                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=id))
+        psm_list = PSMList(psm_list=list_of_psms)
+
+        return self.f_extractor.full_feat_extract(psm_list)
 
     def do_f_extraction_pd_parallel(self,
                                     df_instances):
@@ -363,6 +373,7 @@ class DeepLC():
             pool = multiprocessing.dummy.Pool(1)
         else:
             pool = multiprocessing.Pool(self.n_jobs)
+
         if self.n_jobs == 1:
             df = self.do_f_extraction_pd(df_instances)
         else:
@@ -373,6 +384,28 @@ class DeepLC():
         pool.close()
         pool.join()
         return df
+
+    def do_f_extraction_psm_list(
+                        self,
+                        psm_list
+            ):
+        """
+        Extract all features we can extract; without parallelization; use if
+        you want to run feature extraction with a single thread; and use a
+        defined dataframe
+
+        Parameters
+        ----------
+        df_instances : object :: pd.DataFrame
+            dataframe containing the sequences (column:seq), modifications
+            (column:modifications) and naming (column:index)
+
+        Returns
+        -------
+        pd.DataFrame
+            feature matrix
+        """
+        return self.f_extractor.full_feat_extract(psm_list)
 
     def calibration_core(self,uncal_preds,cal_dict,cal_min,cal_max):
         cal_preds = []
@@ -407,17 +440,30 @@ class DeepLC():
                             slope * (uncal_pred) + intercept)
         return np.array(cal_preds)
 
+    def write_to_library(self):
+        # TODO repair function
+        try:
+            lib_file = open(self.use_library,"a")
+        except:
+            logger.debug("Could not append to the library file")
+            return
+        if type(m_name) == str:
+            for up, mn, sd in zip(uncal_preds, [m_name]*len(uncal_preds), seq_df["idents"]):
+                lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
+            lib_file.close()
+        else:
+            for up, mn, sd in zip(uncal_preds, m_name, seq_df["idents"]):
+                lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
+            lib_file.close()
+        if self.reload_library: read_library(self.use_library)
+
     def make_preds_core(self,
-                        seq_df=None,
-                        seqs=[],
-                        mods=[],
-                        identifiers=[],
+                        psm_list,
                         calibrate=True,
                         correction_factor=1.0,
                         mod_name=None):
         """
         Make predictions for sequences
-
         Parameters
         ----------
         seq_df : object :: pd.DataFrame
@@ -437,87 +483,74 @@ class DeepLC():
         mod_name : str or None
             specify a model to use instead of the model assigned originally to
             this instance of the object
-
         Returns
         -------
         np.array
             predictions
         """
+        if len(psm_list) > 0:
+            if self.cnn_model:
+                if self.verbose:
+                    logger.debug("Extracting features for the CNN model ...")
+                X = self.do_f_extraction_psm_list(psm_list)
 
-        # See if we got a list; if not assume we got a df
-        if len(seqs) == 0:
-            # Make a copy, because we do not want to change to original df
-            seq_df = seq_df.copy()
-        else:
-            # Make a df out of provided lists
-            seq_df = pd.DataFrame([seqs, mods]).T
-            seq_df.columns = ["seq", "modifications"]
-            seq_df.index = identifiers
+                X_sum = np.stack(X["matrix_sum"])
+                X_global = np.concatenate((np.stack(X["matrix_all"]),
+                                        np.stack(X["pos_matrix"])),
+                                        axis=1)
+                X_hc = np.stack(X["matrix_hc"])
+                X = np.stack(X["matrix"])
+            else:
+                if self.verbose:
+                    logger.debug(
+                        "Extracting features for the predictive model ...")
+                X = self.do_f_extraction_pd_parallel(psm_list)
+                X = X[self.model.feature_names]
 
-        # Only run on unique peptides, defined by seq+mod
-        # TODO sort the mods in the peprec on both position and alphabet mod;
-        # to not let duplicates through!
-        if "charges" in seq_df.columns:
-            seq_df["idents"] = seq_df["seq"] + "|" + seq_df["modifications"] + "|" + seq_df["charges"].astype(str)
-        else:
-            seq_df["idents"] = seq_df["seq"] + "|" + seq_df["modifications"]
-            seq_mod_comb = copy.deepcopy(seq_df["idents"])
+        # Drop duplicated seq+mod
+        #seq_df.drop_duplicates(subset=["idents"], inplace=True)
 
-        identifiers = list(seq_df.index)
-        rem_idents = []
-        keep_idents = []
+        #rem_idents = set()
+        #keep_idents = set()
         if isinstance(self.model, dict):
             all_mods = [m_name for m_group_name,m_name in self.model.items()]
 
-        # TODO check if .keys() object is the same as set (or at least for set operations)
-        idents_in_lib = set(LIBRARY.keys())
+        #if self.use_library:
+            #for ident in seq_df["idents"]:
+            #
+                #if isinstance(self.model, dict):
+                #    if all(ident+"|"+m in LIBRARY for m in all_mods):
+                #        rem_idents.add(ident)
+                #    else:
+                #        keep_idents.add(ident)
 
-        if self.use_library:
-            for ident in seq_df["idents"]:
-                if isinstance(self.model, dict):
-                    spec_ident = all_mods
-                elif mod_name != None:
-                    spec_ident = [ident+"|"+mod_name]
-                else:
-                    spec_ident = [ident]
+            #    else:
+            #        if mod_name != None:
+            #            spec_ident = ident+"|"+mod_name
+            #        else:
+            #            spec_ident = ident
+            #        if spec_ident in LIBRARY:
+            #            rem_idents.add(ident)
+            #        else:
+            #            keep_idents.add(ident)
+        #else:
+        #    keep_idents = set(seq_df["idents"])
 
-                if isinstance(self.model, dict):
-                    if len([m for m in self.model.values() if ident+"|"+m in idents_in_lib]) == len(self.model.values()):
-                        rem_idents.append(ident)
-                    else:
-                        keep_idents.append(ident)
-                else:
-                    if len([si for si in spec_ident if si in idents_in_lib]) > 0:
-                        rem_idents.append(ident)
-                    else:
-                        keep_idents.append(ident)
-        else:
-            keep_idents = seq_df["idents"]
+        #logger.info("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
+        #if self.use_library:
+        #    logger.info("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
 
-        keep_idents = set(keep_idents)
-        rem_idents = set(rem_idents)
 
-        logger.info("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
-        if self.use_library:
-            logger.info("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
-
-        # Save a row identifier to seq+mod mapper so output has expected return
-        # shapes
-        identifiers_to_seqmod = dict(zip(seq_df.index, seq_df["idents"]))
-
-        # Drop duplicated seq+mod
-        seq_df.drop_duplicates(subset=["idents"], inplace=True)
-
-        if self.use_library:
-            seq_df = seq_df[seq_df["idents"].isin(keep_idents)]
+        #if self.use_library:
+        #    seq_df = seq_df[seq_df["idents"].isin(keep_idents)]
 
         if self.verbose:
             cnn_verbose = 1
         else:
             cnn_verbose = 0
-
+        """
         # If we need to apply deep NN
-        if len(seq_df.index) > 0:
+        if len(psm_list) > 0:
             if self.cnn_model:
                 if self.verbose:
                     logger.debug("Extracting features for the CNN model ...")
@@ -540,8 +573,11 @@ class DeepLC():
 
                 X = X[self.model.feature_names]
 
-        ret_preds = []
+        
         ret_preds2 = []
+        """
+        
+        ret_preds = []
 
         # If we need to calibrate
         if calibrate:
@@ -574,6 +610,9 @@ class DeepLC():
                             uncal_preds = []
                             pass
 
+
+
+
                         if self.write_library:
                             try:
                                 lib_file = open(self.use_library,"a")
@@ -593,14 +632,14 @@ class DeepLC():
                         p = list(self.calibration_core(uncal_preds,self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds.append(p)
 
-                        p2 = list(self.calibration_core([LIBRARY[ri+"|"+m_name] for ri  in rem_idents],self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
-                        ret_preds2.append(p2)
+                        #p2 = list(self.calibration_core([LIBRARY[ri+"|"+m_name] for ri  in rem_idents],self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
+                        #ret_preds2.append(p2)
 
-                        if self.deepcallc_mod:
-                            deepcallc_x[m_name] = dict(zip(seq_df["idents"],p))
+                        #if self.deepcallc_mod:
+                        #    deepcallc_x[m_name] = dict(zip(seq_df["idents"],p))
 
                     ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
-                    ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
+                    #ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
                 elif not mod_name:
                     # No library write!
                     mod = load_model(
@@ -626,21 +665,21 @@ class DeepLC():
 
 
 
-                    if self.write_library:
-                        try:
-                            lib_file = open(self.use_library,"a")
-                        except:
-                            logger.debug("Could not append to the library file")
-
-                        for up, sd in zip(uncal_preds, seq_df["idents"]):
-                            lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
-                        lib_file.close()
-                        if self.reload_library: read_library(self.use_library)
+                    #if self.write_library:
+                    #    try:
+                    #        lib_file = open(self.use_library,"a")
+                    #    except:
+                    #        logger.debug("Could not append to the library file")
+                    #
+                    #    for up, sd in zip(uncal_preds, seq_df["idents"]):
+                    #        lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
+                    #    lib_file.close()
+                    #    if self.reload_library: read_library(self.use_library)
 
                     ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
 
-                    p2 = list(self.calibration_core([LIBRARY[ri+"|"+mod_name] for ri  in rem_idents],self.calibrate_dict,self.calibrate_min,self.calibrate_max))
-                    ret_preds2.extend(p2)
+                    #p2 = list(self.calibration_core([LIBRARY[ri+"|"+mod_name] for ri  in rem_idents],self.calibrate_dict,self.calibrate_min,self.calibrate_max))
+                    #ret_preds2.extend(p2)
             else:
                 # first get uncalibrated prediction
                 uncal_preds = self.model.predict(X) / correction_factor
@@ -664,7 +703,7 @@ class DeepLC():
                 if not mod_name:
                     if isinstance(self.model, dict):
                         ret_preds = []
-                        ret_preds2 = []
+                        #ret_preds2 = []
                         for m_group_name,m_name in self.model.items():
                             try:
                                 X
@@ -692,10 +731,10 @@ class DeepLC():
                                 if self.reload_library: self.read_library(self.use_library)
 
                             p2 = [LIBRARY[ri+"|"+m_name] for ri  in rem_idents]
-                            ret_preds2.append(p2)
+                            #ret_preds2.append(p2)
 
                         ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
-                        ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
+                        #ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
                     elif isinstance(self.model, list):
                         mod_name = self.model[0]
                         mod = load_model(
@@ -708,6 +747,8 @@ class DeepLC():
                                                 X_hc],
                                                 batch_size=5120,
                                                 verbose=cnn_verbose).flatten() / correction_factor
+
+                        """
                         if self.write_library:
                             try:
                                 lib_file = open(self.use_library,"a")
@@ -720,6 +761,7 @@ class DeepLC():
                             if self.reload_library: read_library(self.use_library)
 
                         ret_preds2 = np.array([LIBRARY[ri+"|"+mod_name] for ri  in rem_idents])
+                        """
                     elif isinstance(self.model, str):
                         # No library write!
                         mod_name = self.model
@@ -733,7 +775,7 @@ class DeepLC():
                                                 X_hc],
                                                 batch_size=5120,
                                                 verbose=cnn_verbose).flatten() / correction_factor
-
+                        """
                         if self.write_library:
                             try:
                                 lib_file = open(self.use_library,"a")
@@ -745,7 +787,8 @@ class DeepLC():
                             lib_file.close()
                             if self.reload_library: self.read_library(self.use_library)
 
-                        ret_preds2 = np.array([LIBRARY[ri+"|"+mod_name] for ri  in rem_idents])
+                        #ret_preds2 = np.array([LIBRARY[ri+"|"+mod_name] for ri  in rem_idents])
+                        """
                     else:
                         raise DeepLCError('No CNN model defined.')
                 else:
@@ -774,16 +817,17 @@ class DeepLC():
                             if self.reload_library: read_library(self.use_library)
                     except:
                         pass
-                    ret_preds2 = [LIBRARY[ri+"|"+mod_name] for ri  in rem_idents]
+                    #ret_preds2 = [LIBRARY[ri+"|"+mod_name] for ri  in rem_idents]
 
             else:
                 # No library write!
                 ret_preds = self.model.predict(X) / correction_factor
 
-        pred_dict = dict(zip(seq_df["idents"], ret_preds))
+        """
+        pred_dict = dict(zip(list(range(len(psm_list))), ret_preds))
 
-        if len(ret_preds2) > 0:
-            pred_dict.update(dict(zip(rem_idents, ret_preds2)))
+        #if len(ret_preds2) > 0:
+        #    pred_dict.update(dict(zip(rem_idents, ret_preds2)))
 
 
         # Map from unique peptide identifiers to the original dataframe
@@ -808,17 +852,13 @@ class DeepLC():
                 deepcallc_x[m_name] = [deepcallc_x[m_name][ident] for ident in seq_mod_comb]
 
             ret_preds_shape = self.deepcallc_model.predict(pd.DataFrame(deepcallc_x))
-
-        return ret_preds_shape
-
+        """
+        return ret_preds
 
     def make_preds(self,
-                   seqs=[],
-                   mods=[],
-                   identifiers=[],
+                   psm_list=None,
                    calibrate=True,
                    seq_df=None,
-                   psm_utils_obj=None,
                    correction_factor=1.0,
                    mod_name=None):
         """
@@ -849,74 +889,41 @@ class DeepLC():
         np.array
             predictions
         """
-        if psm_utils_obj:
-            dict_seqs_t={}
-
-            for peptide in pep_list:
-                id_t = peptide.peptide.sequence + "|" + peptide.peprec_modifications
-                dict_seqs_t[id_t] = {}
-                dict_seqs_t[id_t]["seq"] = peptide.peptide.sequence
-                dict_seqs_t[id_t]["modifications"] = peptide.peptide.peprec_modifications
-                dict_seqs_t[id_t]["tr"] = peptide.retention_time
-            
-            seq_df = pd.DataFrame(dict_seqs_t).T
-            del dict_seqs_t
-
-        if self.batch_num == 0:
-            return self.make_preds_core(seqs=seqs,
-                                        mods=mods,
-                                        identifiers=identifiers,
-                                        calibrate=calibrate,
-                                        seq_df=seq_df,
-                                        correction_factor=correction_factor,
-                                        mod_name=mod_name)
-        else:
-            ret_preds = []
-            if len(seqs) > 0:
-                seq_df = pd.DataFrame({"seq": seqs,
-                                       "modifications": mods},
-                                      index=identifiers)
-            for g, seq_df_t in seq_df.groupby(
-                    np.arange(len(seq_df)) // self.batch_num):
-                temp_preds = self.make_preds_core(
-                    identifiers=identifiers,
-                    calibrate=calibrate,
-                    seq_df=seq_df_t,
-                    correction_factor=correction_factor,
-                    mod_name=mod_name)
-                ret_preds.extend(temp_preds)
-
-                # if self.verbose:
-                logger.debug(
-                    "Finished predicting retention time for: %s/%s" %
-                    (len(ret_preds), len(seq_df)))
-            return ret_preds
+        if type(seq_df) == pd.core.frame.DataFrame:
+            list_of_psms = []
+            for seq,mod,id in zip(seq_df["seq"],seq_df["modifications"],seq_df.index):
+                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id))
+            psm_list = PSMList(psm_list=list_of_psms)
+        
+        return self.make_preds_core(psm_list,
+                                    calibrate=calibrate,
+                                    correction_factor=correction_factor,
+                                    mod_name=mod_name)
+        
+        # todo make this multithreaded
 
     def calibrate_preds_func_pygam(self,
-                                   seqs=[],
-                                   mods=[],
-                                   identifiers=[],
-                                   measured_tr=[],
+                                   psm_list=None,
                                    correction_factor=1.0,
                                    seq_df=None,
+                                   measured_tr=None,
                                    use_median=True,
                                    mod_name=None):
-        if len(seqs) == 0:
-            seq_df.index
-            predicted_tr = self.make_preds(
-                seq_df=seq_df,
-                calibrate=False,
-                correction_factor=correction_factor,
-                mod_name=mod_name)
-            measured_tr = seq_df["tr"]
-        else:
-            predicted_tr = self.make_preds(
-                seqs=seqs,
-                mods=mods,
-                identifiers=identifiers,
-                calibrate=False,
-                correction_factor=correction_factor,
-                mod_name=mod_name)
+        # TODO make a df to psm_list function
+        # TODO make sure either psm_list or seq_df is supplied
+        if type(seq_df) == pd.core.frame.DataFrame:
+            list_of_psms = []
+            for seq,mod,id,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
+                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id,retention_time=tr))
+            psm_list = PSMList(psm_list=list_of_psms)
+
+        predicted_tr = self.make_preds(
+            psm_list,
+            calibrate=False,
+            correction_factor=correction_factor,
+            mod_name=mod_name)
+        
+        measured_tr = [psm.retention_time for psm in psm_list]
 
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [(mtr, ptr) for mtr, ptr in sorted(
@@ -930,10 +937,7 @@ class DeepLC():
         return calibrate_min, calibrate_max, gam_model_cv
 
     def calibrate_preds_func(self,
-                             seqs=[],
-                             mods=[],
-                             identifiers=[],
-                             measured_tr=[],
+                             psm_list=None,
                              correction_factor=1.0,
                              seq_df=None,
                              use_median=True,
@@ -978,22 +982,18 @@ class DeepLC():
             model that should be applied to do calibration (!!! what is the
             shape of this?)
         """
-        if len(seqs) == 0:
-            seq_df.index
-            predicted_tr = self.make_preds(
-                seq_df=seq_df,
-                calibrate=False,
-                correction_factor=correction_factor,
-                mod_name=mod_name)
-            measured_tr = seq_df["tr"]
-        else:
-            predicted_tr = self.make_preds(
-                seqs=seqs,
-                mods=mods,
-                identifiers=identifiers,
-                calibrate=False,
-                correction_factor=correction_factor,
-                mod_name=mod_name)
+        if type(seq_df) == pd.core.frame.DataFrame:
+            list_of_psms = []
+            for seq,mod,id in zip(seq_df["seq"],seq_df["modifications"],seq_df.index):
+                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id))
+            psm_list = PSMList(psm_list=list_of_psms)
+
+        predicted_tr = self.make_preds(
+            psm_list,
+            calibrate=False,
+            correction_factor=correction_factor,
+            mod_name=mod_name)
+        measured_tr = seq_df["tr"]
 
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [(mtr, ptr) for mtr, ptr in sorted(
@@ -1087,9 +1087,7 @@ class DeepLC():
 
 
     def calibrate_preds(self,
-                        seqs=[],
-                        mods=[],
-                        identifiers=[],
+                        psm_list=None,
                         measured_tr=[],
                         correction_factor=1.0,
                         psm_utils_obj=None,
@@ -1123,6 +1121,11 @@ class DeepLC():
         -------
 
         """
+        if type(seq_df) == pd.core.frame.DataFrame:
+            list_of_psms = []
+            for seq,mod,id,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
+                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id,retention_time=tr))
+            psm_list = PSMList(psm_list=list_of_psms)
 
         if isinstance(self.model, str):
             self.model = [self.model]
@@ -1144,29 +1147,12 @@ class DeepLC():
         pred_dict = {}
         mod_dict = {}
 
-        if psm_utils_obj:
-            dict_seqs_t={}
-
-            for peptide in pep_list:
-                id_t = peptide.peptide.sequence + "|" + peptide.peprec_modifications
-                dict_seqs_t[id_t] = {}
-                dict_seqs_t[id_t]["seq"] = peptide.peptide.sequence
-                dict_seqs_t[id_t]["modifications"] = peptide.peptide.peprec_modifications
-                dict_seqs_t[id_t]["tr"] = peptide.retention_time
-            
-            seq_df = pd.DataFrame(dict_seqs_t).T
-            del dict_seqs_t
-
-                
-
         for m in self.model:
             if self.verbose:
                 logger.debug("Trying out the following model: %s" % (m))
             if self.pygam_calibration:
                 calibrate_output = self.calibrate_preds_func_pygam(
-                    seqs=seqs,
-                    mods=mods,
-                    identifiers=identifiers,
+                    psm_list,
                     measured_tr=measured_tr,
                     correction_factor=correction_factor,
                     seq_df=seq_df,
@@ -1174,9 +1160,7 @@ class DeepLC():
                     mod_name=m)
             else:
                 calibrate_output = self.calibrate_preds_func(
-                    seqs=seqs,
-                    mods=mods,
-                    identifiers=identifiers,
+                    psm_list,
                     measured_tr=measured_tr,
                     correction_factor=correction_factor,
                     seq_df=seq_df,
@@ -1188,16 +1172,15 @@ class DeepLC():
             if type(self.calibrate_dict) == dict:
                 if len(self.calibrate_dict.keys()) == 0:
                     continue
+            
+            m_name = m.split("/")[-1]
 
-            preds = self.make_preds(seqs=seqs,
-                                    mods=mods,
-                                    identifiers=identifiers,
+            preds = self.make_preds(psm_list,
                                     calibrate=True,
-                                    psm_utils_obj=None,
                                     seq_df=seq_df,
                                     correction_factor=correction_factor,
                                     mod_name=m)
-            m_name = m.split("/")[-1]
+            
 
             if self.deepcallc_mod:
                 m_group_name = "deepcallc"

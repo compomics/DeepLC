@@ -12,6 +12,7 @@ __maintainer__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
 __email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
 
 # Native imports
+from operator import index
 import os
 import math
 import time
@@ -19,12 +20,17 @@ from configparser import ConfigParser
 import ast
 from re import sub
 import logging
+from copy import deepcopy
 
 # Numpy
 import numpy as np
 
 # Pandas
 import pandas as pd
+
+from psm_utils.io.peptide_record import peprec_to_proforma
+from psm_utils.psm import PSM
+from psm_utils.psm_list import PSMList
 
 
 logger = logging.getLogger(__name__)
@@ -273,7 +279,7 @@ class FeatExtractor():
             if not isinstance(mod, str):
                 if math.isnan(mod):
                     continue
-
+            """
             split_mod = mod.rstrip().split("|")
             for i in range(1, len(split_mod), 2):
                 if subtract_mods:
@@ -304,6 +310,8 @@ class FeatExtractor():
                         continue
                     mod_dict[index_name]["%s%s%s" %
                                          (fm, relative_loc, add_str)] += n
+            """
+
         if self.verbose:
             logger.debug(
                 "Time to calculate mod features: %s seconds" %
@@ -313,9 +321,7 @@ class FeatExtractor():
         return df_ret
 
     def get_comp_change_mods(self,
-                             seqs,
-                             mods,
-                             identifiers,
+                             psm_list,
                              positions=[0, 1, 2, 3, 4, -1, -2, -3, -4, -5],
                              atom_count=["C", "H", "N", "O", "S", "P"]):
         """
@@ -341,73 +347,39 @@ class FeatExtractor():
             feature matrix for compositional changes caused by modifications
         """
         feat_dict = {}
-        for ident, mod, seq in zip(identifiers, mods, seqs):
+        for psm in psm_list:
+            peptidoform = psm.peptidoform
+            seq = peptidoform.sequence
+
+            peptide_composition = peptidoform.sequential_composition
+            peptide_composition = peptidoform.sequential_composition
+            peptide_composition[1] = peptide_composition[0]+peptide_composition[1]
+            peptide_composition[-2] = peptide_composition[-2]+peptide_composition[-1]
+
+            del peptide_composition[0]
+            del peptide_composition[-1]
 
             # Initialize atom counts, the mods composition and prepare  list to
             # look at positional features with zeros
             peptide_comp = [
                 dict(zip(atom_count, [0] * len(atom_count))) for aa in seq]
-            mod_comp = [dict(zip(atom_count, [0] * len(atom_count)))
-                        for aa in seq]
             pos_atoms = list(mod_comp[0].keys())
 
-            # Get the compositional count of AAs
-            for i, aa in enumerate(seq):
-                if aa not in self.lib_aa_composition.keys():
-                    continue
-                peptide_comp_temp = self.lib_aa_composition[aa]
-                for k, v in peptide_comp_temp.items():
+            for i, position_composition in enumerate(peptide_composition):
+                for k, v in position_composition.items():
                     try:
                         peptide_comp[i][k] = v
                     except KeyError:
                         continue
 
-            # Sometimes due to bad formatting this happens... Now this is just
-            # ignored... And no modifications are taken into account
-            try:
-                split_mod = mod.split("|")
-            except BaseException:
-                logger.debug(
-                    "Not able to split the following mod properly: %s" %
-                    (mod))
-                split_mod = []
+            mod_comp = deepcopy(peptide_comp)
 
-            # Iterate over modifications
-            for i in range(1, len(split_mod), 2):
-                split_mod[i - 1] = int(split_mod[i - 1])
+            for i, peptide_position in enumerate(peptidoform.parsed_sequence):
+                if peptide_position[1] != None:
+                    modification_composition = peptide_position[1][0].composition
 
-                # For this modification see what we need to add/subtract in
-                # terms of composition
-                fill_mods, fill_num = self.calc_feats_mods(
-                    self.lib_add[split_mod[i].rstrip()])
-                subtract_mods, subtract_num = self.calc_feats_mods(
-                    self.lib_subtract[split_mod[i].rstrip()])
-
-                # Go over each modification compositional change and make the
-                # change in a new feature matrix
-                for atom, atom_change in zip(fill_mods, fill_num):
-                    try:
-                        mod_comp[split_mod[i - 1] - 1][atom] += atom_change
-                    except KeyError:
-                        logger.debug(
-                            "Skipping the following atom in modification: %s,%s,%s,%s,%s,%s" %
-                            (split_mod[i], atom, atom_change, ident, mod, seq))
-                    except IndexError:
-                        logger.debug(
-                            "Index does not exist for: %s,%s,%s,%s,%s" %
-                            (atom, atom_change, ident, mod, seq))
-
-                for atom, atom_change in zip(subtract_mods, subtract_num):
-                    try:
-                        mod_comp[split_mod[i - 1] - 1][atom] -= atom_change
-                    except KeyError:
-                        logger.debug(
-                            "Skipping the following atom in modification: %s,%s,%s,%s,%s,%s" %
-                            (split_mod[i], atom, atom_change, ident, mod, seq))
-                    except IndexError:
-                        logger.debug(
-                            "Index does not exist for: %s,%s,%s,%s,%s" %
-                            (atom, atom_change, ident, mod, seq))
+                    for atom_position_composition,atom_change in modification_composition.items():
+                        mod_comp[i][atom_position_composition] += atom_change
 
             # Make the native peptide compositional feature matrix a
             # pd.DataFrame
@@ -415,9 +387,6 @@ class FeatExtractor():
 
             # Make only the mods compositional feature matrix a pd.DataFrame
             mod_comp_df = pd.DataFrame(mod_comp)
-
-            # Go from native to modified feature matrix
-            combined_comp_df = peptide_comp_df + mod_comp_df
 
             # Get the total atom count
             summed_comp = dict(combined_comp_df.sum())
@@ -463,8 +432,7 @@ class FeatExtractor():
         return(pd.DataFrame(feat_dict).T)
 
     def encode_atoms(self,
-                     seqs,
-                     mods_all,
+                     psm_list,
                      indexes,
                      charges=[],
                      padding_length=60,
@@ -562,54 +530,51 @@ class FeatExtractor():
         ret_list_all = {}
         ret_list_pos = {}
         ret_list_hc = {}
-        look_up_mod_subtract = {}
-        look_up_mod_add = {}
+        #look_up_mod_subtract = {}
+        #look_up_mod_add = {}
 
-        if len(charges) == 0:
-            charges = [-1] * len(indexes)
+        # Reintroduce for CCS
+        #if len(charges) == 0:
+        #    charges = [-1] * len(indexes)
 
         # Iterate over all instances
-        for row_index, seq, mods, charge in zip(indexes, seqs, mods_all, charges):
+        for psm,row_index in zip(psm_list,indexes):
+            peptidoform = psm.peptidoform
+            seq = peptidoform.sequence
+            seq_len = len(seq)
+            
             # For now anything longer than padding length is cut away
             # (C-terminal cutting)
-            seq_len = len(seq)
             if seq_len > padding_length:
                 seq = seq[0:padding_length]
                 seq_len = len(seq)
 
+            peptide_composition = peptidoform.sequential_composition
+            peptide_composition = peptidoform.sequential_composition
+            peptide_composition[1] = peptide_composition[0]+peptide_composition[1]
+            peptide_composition[-2] = peptide_composition[-2]+peptide_composition[-1]
+
             # Add padding for peptides that are too short
-            padding = "".join(["X"] * (padding_length - len(seq)))
-            seq = seq + padding
+            # TODO is this still needed?
+            #padding = "".join(["X"] * (padding_length - len(seq)))
+            #seq = seq + padding
 
             # Initialize all feature matrixes
             matrix = np.zeros(
-                (len(seq), len(dict_index.keys())), dtype=np.float16)
+                (padding_length, len(dict_index.keys())), dtype=np.float16)
             matrix_hc = np.zeros(
-                (len(seq), len(dict_aa.keys())), dtype=np.float16)
+                (padding_length, len(dict_aa.keys())), dtype=np.float16)
             matrix_pos = np.zeros(
                 (len(positions), len(
                     dict_index.keys())), dtype=np.float16)
 
-            # Add the feature of sequence length to the feature matrix where
-            # all atom are counted
-            pep_len = len(seq) - seq.count("X")
-
-            for index, aa in enumerate(seq):
-                # Stop iterating if we start analyzing the padding characters
-                if aa == "X":
-                    break
-
-                # Calculate the index for the summed feature matrix
-                #index_sum = int(index/sum_mods)
-                try:
-                    matrix_hc[index, dict_aa[aa]] = 1.
-                except KeyError:
-                    # TODO write to std out
-                    pass
-
-                for atom, val in self.lib_aa_composition[aa].items():
-                    # Add compositional features to all matrixes
-                    matrix[index, dict_index[atom]] = val
+            for i, position_composition in enumerate(peptide_composition):
+                
+                for k, v in position_composition.items():
+                    try:
+                        matrix[i, dict_index[k]] = v
+                    except KeyError:
+                        continue
 
             for p in positions_pos:
                 aa = seq[p]
@@ -621,132 +586,44 @@ class FeatExtractor():
                 for atom, val in self.lib_aa_composition[aa].items():
                     matrix_pos[pn, dict_index_pos[atom]] = val
 
-            # If there are no modifications we can continue to the next peptide
-            if len(mods) == 0:
-                matrix_all = np.sum(matrix, axis=0)
-                matrix_all = np.append(matrix_all, seq_len)
-                if charge != -1:
-                    matrix_all = np.append(matrix_all,(seq.count("H"))/float(seq_len))
-                    matrix_all = np.append(matrix_all,(seq.count("F")+seq.count("W")+seq.count("Y"))/float(seq_len))
-                    matrix_all = np.append(matrix_all,(seq.count("D")+seq.count("E"))/float(seq_len))
-                    matrix_all = np.append(matrix_all,(seq.count("K")+seq.count("R"))/float(seq_len))
-                    matrix_all = np.append(matrix_all,charge)
-                matrix_sum = rolling_sum(matrix.T, n=2)[:, ::2].T
-                ret_list[row_index] = {
-                    "index_name": row_index, "matrix": matrix}
-                ret_list_sum[row_index] = {
-                    "index_name": row_index, "matrix_sum": matrix_sum}
-                ret_list_all[row_index] = {
-                    "index_name": row_index, "matrix_all": matrix_all}
-                ret_list_pos[row_index] = {
-                    "index_name": row_index,
-                    "pos_matrix": matrix_pos.flatten()}
-                ret_list_hc[row_index] = {
-                    "index_name": row_index, "matrix_hc": matrix_hc}
-                continue
-
-            # Iterate over all modifications
-            mods = mods.rstrip().lower().split("|")
-
-            for i in range(1, len(mods), 2):
-                if self.ignore_mods:
-                    continue
-
+            for i, peptide_position in enumerate(peptidoform.parsed_sequence):
                 try:
-                    mod_add = self.lib_add[mods[i]]
-                    mod_sub = self.lib_subtract[mods[i]]
+                    matrix_hc[i, dict_aa[peptide_position[0]]] = 1.
                 except KeyError:
-                    logger.debug(
-                        "Skipping the following modification due to it not being present in the library: %s" %
-                        (mods[i]))
-                    continue
-                # Try to get the compositional change
-                try:
-                    subtract_mods, subtract_num = look_up_mod_subtract[mod_sub]
-                except KeyError:
-                    look_up_mod_subtract[mod_sub] = self.calc_feats_mods(
-                        mod_sub)
-                    subtract_mods, subtract_num = look_up_mod_subtract[mod_sub]
-                try:
-                    fill_mods, fill_num = look_up_mod_add[mod_add]
-                except KeyError:
-                    look_up_mod_add[mod_add] = self.calc_feats_mods(mod_add)
-                    fill_mods, fill_num = look_up_mod_add[mod_add]
+                    pass
 
-                # What is the location? If bigger than sequence... Put it on C-terminus...
-                # TODO display error
-                # TODO find better solution than C-terminus
-                loc = int(mods[i - 1]) - 1
-                if loc > len(seq):
-                    loc = len(seq) - 1
+                if peptide_position[1] is not None:
+                    modification_composition = peptide_position[1][0].composition
 
-                # For additions in compositional change
-                for atom, atom_change in zip(fill_mods, fill_num):
-                    try:
-                        matrix[loc, dict_index[atom]] += atom_change
-                        if loc in positions:
-                            matrix_pos[loc, dict_index_pos[atom]] += val
-                        elif loc - len(seq) in positions:
-                            matrix_pos[loc -
-                                       len(seq), dict_index_pos[atom]] += val
-
-                    except KeyError:
-                        logger.debug(
-                            "Skipping the following atom in modification: %s" %
-                            (atom))
-                    except IndexError:
-                        logger.debug(
-                            "Index does not exist for: ",
-                            atom,
-                            atom_change,
-                            mods[i],
-                            seq)
-
-                # For subtractions in compositional change
-                for atom, atom_change in zip(subtract_mods, subtract_num):
-                    try:
-                        matrix[loc, dict_index[atom]] -= atom_change
-                        if loc in positions:
-                            matrix_pos[loc, dict_index_pos[atom]] -= val
-                        elif loc - len(seq) in positions:
-                            matrix_pos[loc -
-                                       len(seq), dict_index_pos[atom]] -= val
-
-                    except KeyError:
-                        logger.debug(
-                            "Skipping the following atom in modification: %s" %
-                            (atom))
-                    except IndexError:
-                        logger.debug(
-                            "Index does not exist for: ",
-                            atom,
-                            atom_change,
-                            mods[i],
-                            seq)
+                    for atom_position_composition,atom_change in modification_composition.items():
+                        matrix[i, dict_index[atom_position_composition]] += atom_change
+                        if i in positions:
+                            matrix_pos[loc, dict_index_pos[atom_position_composition]] += atom_change
+                        elif i - seq_len in positions:
+                            matrix_pos[i - seq_len, dict_index_pos[atom_position_composition]] += atom_change
 
             matrix_all = np.sum(matrix, axis=0)
             matrix_all = np.append(matrix_all, seq_len)
-            if charge != -1:
-                matrix_all = np.append(matrix_all,(seq.count("H"))/float(seq_len))
-                matrix_all = np.append(matrix_all,(seq.count("F")+seq.count("W")+seq.count("Y"))/float(seq_len))
-                matrix_all = np.append(matrix_all,(seq.count("D")+seq.count("E"))/float(seq_len))
-                matrix_all = np.append(matrix_all,(seq.count("K")+seq.count("R"))/float(seq_len))
-                matrix_all = np.append(matrix_all,charge)
+            # Reintroduce for CCS
+            #if charge != -1:
+            #    matrix_all = np.append(matrix_all,(seq.count("H"))/float(seq_len))
+            #    matrix_all = np.append(matrix_all,(seq.count("F")+seq.count("W")+seq.count("Y"))/float(seq_len))
+            #    matrix_all = np.append(matrix_all,(seq.count("D")+seq.count("E"))/float(seq_len))
+            #    matrix_all = np.append(matrix_all,(seq.count("K")+seq.count("R"))/float(seq_len))
+            #    matrix_all = np.append(matrix_all,charge)
             matrix_sum = rolling_sum(matrix.T, n=2)[:, ::2].T
 
-            ret_list[row_index] = {"index_name": row_index, "matrix": matrix}
+            ret_list[row_index] = {
+                "index_name": row_index, "matrix": matrix}
             ret_list_sum[row_index] = {
-                "index_name": row_index,
-                "matrix_sum": matrix_sum}
+                "index_name": row_index, "matrix_sum": matrix_sum}
             ret_list_all[row_index] = {
-                "index_name": row_index,
-                "matrix_all": matrix_all}
+                "index_name": row_index, "matrix_all": matrix_all}
             ret_list_pos[row_index] = {
                 "index_name": row_index,
                 "pos_matrix": matrix_pos.flatten()}
             ret_list_hc[row_index] = {
-                "index_name": row_index,
-                "matrix_hc": matrix_hc}
+                "index_name": row_index, "matrix_hc": matrix_hc}
 
         ret_list = pd.DataFrame.from_dict(ret_list).T
         ret_list_sum = pd.DataFrame.from_dict(ret_list_sum).T
@@ -757,9 +634,10 @@ class FeatExtractor():
         return ret_list, ret_list_sum, ret_list_pos, ret_list_all, ret_list_hc
 
     def full_feat_extract(self,
-                          seqs,
-                          mods,
-                          identifiers,
+                          psm_list=[],
+                          seqs=[],
+                          mods=[],
+                          identifiers=[],
                           charges=[]):
         """
         Extract all features we can extract... Probably the function your want to call by default
@@ -780,33 +658,37 @@ class FeatExtractor():
         pd.DataFrame
             feature matrix
         """
+        if len(seqs) > 0:
+            list_of_psms = []
+            for seq,mod,id in zip(seqs,mods,identifiers):
+                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id))
+            psm_list = PSMList(psm_list=list_of_psms)
+
         if self.verbose:
             t0 = time.time()
 
         if self.add_comp_feat:
             if self.verbose:
                 logger.debug("Extracting compositional features")
-            X_comp = self.get_comp_change_mods(seqs, mods, identifiers)
+            X_comp = self.get_comp_change_mods(psm_list)
         if self.add_sum_feat:
             if self.verbose:
                 logger.debug(
                     "Extracting compositional sum features for modifications")
             X_feats_sum = self.get_feats_mods(
-                seqs, mods, identifiers, split_size=1, add_str="_sum")
+                psm_list, split_size=1, add_str="_sum")
         if self.ptm_add_feat:
             if self.verbose:
                 logger.debug(
                     "Extracting compositional add features for modifications")
             X_feats_add = self.get_feats_mods(
-                seqs, mods, identifiers, split_size=self.split_size, add_str="_add")
+                psm_list, split_size=self.split_size, add_str="_add")
         if self.ptm_subtract_feat:
             if self.verbose:
                 logger.debug(
                     "Extracting compositional subtract features for modifications")
             X_feats_neg = self.get_feats_mods(
-                seqs,
-                mods,
-                identifiers,
+                psm_list,
                 split_size=self.split_size,
                 add_str="_subtract",
                 subtract_mods=True)
@@ -814,7 +696,7 @@ class FeatExtractor():
             if self.verbose:
                 logger.debug("Extracting CNN features")
             X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc = self.encode_atoms(
-                seqs, mods, identifiers, charges=charges)
+                psm_list, list(range(len(psm_list))), charges=charges)
             X_cnn = pd.concat(
                 [X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc], axis=1)
 
