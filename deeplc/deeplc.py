@@ -38,6 +38,7 @@ import multiprocessing.dummy
 import pickle
 import warnings
 from configparser import ConfigParser
+from tempfile import TemporaryDirectory
 
 
 # If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
@@ -54,6 +55,7 @@ if IS_CLI_GUI or IS_FROZEN:
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from tensorflow.python.eager import context
 from tensorflow.keras.models import load_model
 
 from deeplc._exceptions import CalibrationError, DeepLCError
@@ -62,6 +64,7 @@ from deeplc.trainl3 import train_en
 from psm_utils.io.peptide_record import peprec_to_proforma
 from psm_utils.psm import PSM
 from psm_utils.psm_list import PSMList
+from deeplcretrainer import deeplcretrainer
 
 # "Custom" activation function
 lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
@@ -115,7 +118,7 @@ def read_library(use_library):
         logger.warning("Could not find existing library file: %s", use_library)
         return
 
-    for line_num,line in enumerate(library_file):
+    for line in library_file:
         split_line = line.strip().split(",")
         try:
             LIBRARY[split_line[0]] = float(split_line[1])
@@ -201,6 +204,7 @@ class DeepLC():
         reload_library=False,
         pygam_calibration=True,
         deepcallc_mod=False,
+        deeplc_retrain=False
     ):
 
         # if a config file is defined overwrite standard parameters
@@ -261,6 +265,7 @@ class DeepLC():
             self.f_extractor = FeatExtractor()
 
         self.pygam_calibration = pygam_calibration
+        self.deeplc_retrain = deeplc_retrain
 
         if self.pygam_calibration:
             from pygam import LinearGAM, s
@@ -928,8 +933,11 @@ class DeepLC():
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [(mtr, ptr) for mtr, ptr in sorted(
             zip(measured_tr, predicted_tr), key=lambda pair: pair[1])]
-        measured_tr = np.array([mtr for mtr, ptr in tr_sort])
-        predicted_tr = np.array([ptr for mtr, ptr in tr_sort])
+        measured_tr = np.array([mtr for mtr, ptr in tr_sort],dtype=np.float32)
+        predicted_tr = np.array([ptr for mtr, ptr in tr_sort],dtype=np.float32)
+
+        #predicted_tr = list(predicted_tr)
+        #measured_tr = list(measured_tr)
 
         gam_model_cv = LinearGAM(s(0), verbose=True).fit(predicted_tr, measured_tr)
         calibrate_min = min(predicted_tr)
@@ -1146,6 +1154,33 @@ class DeepLC():
         mod_calibrate_max_dict = {}
         pred_dict = {}
         mod_dict = {}
+
+        if self.deeplc_retrain:
+            # The following code is not required in most cases, but here it is used to clear variables that might cause problems
+            _ = tf.Variable([1])
+
+            context._context = None
+            context._create_context()
+
+            tf.config.threading.set_inter_op_parallelism_threads(1)
+
+            t_dir = TemporaryDirectory().name
+            os.mkdir(t_dir)
+
+            # For training new models we need to use a file, so write the train df to a file
+            df_train_file = os.path.join(t_dir,"train.csv")
+            seq_df.to_csv(df_train_file,index=False)
+
+            # Here we will apply transfer learning we specify previously trained models in the 'mods_transfer_learning'
+            models = deeplcretrainer.retrain(
+                [df_train_file],
+                mods_transfer_learning=self.model,
+                freeze_layers=True,
+                n_epochs=10,
+                freeze_after_concat=1
+            )
+
+            self.model = models
 
         for m in self.model:
             if self.verbose:
