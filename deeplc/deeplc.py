@@ -39,7 +39,7 @@ import pickle
 import warnings
 from configparser import ConfigParser
 from tempfile import TemporaryDirectory
-
+from copy import deepcopy
 
 # If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
@@ -462,6 +462,27 @@ class DeepLC():
             lib_file.close()
         if self.reload_library: read_library(self.use_library)
 
+    def _check_presence_library(self,
+                                psm_list,
+                                m_name
+                            ):
+        list_of_psms = []
+        for seq,mod,id in zip(seq_df["seq"],seq_df["modifications"],seq_df.index):
+            list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id))
+        psm_list = PSMList(psm_list=list_of_psms)
+
+        proforma_library = []
+        proforma_library_predictions = {}
+        
+        for psm in psm_list:
+            k = psm.peptidoform.proforma+"|"+m_name
+            if k in LIBRARY.keys():
+                proforma_library.append(psm.peptidoform.proforma)
+                proforma_library_predictions[k] = LIBRARY[k]
+
+        proforma_library = list(set(proforma_library))
+        return proforma_library, proforma_library_predictions
+  
     def make_preds_core(self,
                         psm_list,
                         calibrate=True,
@@ -493,6 +514,11 @@ class DeepLC():
         np.array
             predictions
         """
+        if self.verbose:
+            cnn_verbose = 1
+        else:
+            cnn_verbose = 0
+
         if len(psm_list) > 0:
             if self.cnn_model:
                 if self.verbose:
@@ -511,76 +537,6 @@ class DeepLC():
                         "Extracting features for the predictive model ...")
                 X = self.do_f_extraction_pd_parallel(psm_list)
                 X = X[self.model.feature_names]
-
-        # Drop duplicated seq+mod
-        #seq_df.drop_duplicates(subset=["idents"], inplace=True)
-
-        #rem_idents = set()
-        #keep_idents = set()
-        if isinstance(self.model, dict):
-            all_mods = [m_name for m_group_name,m_name in self.model.items()]
-
-        #if self.use_library:
-            #for ident in seq_df["idents"]:
-            #
-                #if isinstance(self.model, dict):
-                #    if all(ident+"|"+m in LIBRARY for m in all_mods):
-                #        rem_idents.add(ident)
-                #    else:
-                #        keep_idents.add(ident)
-
-            #    else:
-            #        if mod_name != None:
-            #            spec_ident = ident+"|"+mod_name
-            #        else:
-            #            spec_ident = ident
-            #        if spec_ident in LIBRARY:
-            #            rem_idents.add(ident)
-            #        else:
-            #            keep_idents.add(ident)
-        #else:
-        #    keep_idents = set(seq_df["idents"])
-
-        #logger.info("Going to predict retention times for this amount of identifiers: %s" % (str(len(keep_idents))))
-        #if self.use_library:
-        #    logger.info("Using this amount of identifiers from the library: %s" % (str(len(rem_idents))))
-
-
-        #if self.use_library:
-        #    seq_df = seq_df[seq_df["idents"].isin(keep_idents)]
-
-        if self.verbose:
-            cnn_verbose = 1
-        else:
-            cnn_verbose = 0
-        """
-        # If we need to apply deep NN
-        if len(psm_list) > 0:
-            if self.cnn_model:
-                if self.verbose:
-                    logger.debug("Extracting features for the CNN model ...")
-                X = self.do_f_extraction_pd_parallel(seq_df)
-                X = X.loc[seq_df.index]
-
-                X_sum = np.stack(X["matrix_sum"])
-                X_global = np.concatenate((np.stack(X["matrix_all"]),
-                                        np.stack(X["pos_matrix"])),
-                                        axis=1)
-                X_hc = np.stack(X["matrix_hc"])
-                X = np.stack(X["matrix"])
-            else:
-                if self.verbose:
-                    logger.debug(
-                        "Extracting features for the predictive model ...")
-                seq_df.index
-                X = self.do_f_extraction_pd_parallel(seq_df)
-                X = X.loc[seq_df.index]
-
-                X = X[self.model.feature_names]
-
-        
-        ret_preds2 = []
-        """
         
         ret_preds = []
 
@@ -596,11 +552,10 @@ class DeepLC():
 
             # Load the model differently if we are going to use a CNN
             if self.cnn_model:
-                # TODO this is madness! Only allow dicts to come through this function...
                 if isinstance(self.model, dict):
                     ret_preds = []
-                    if self.deepcallc_mod:
-                        deepcallc_x = {}
+                    #if self.deepcallc_mod:
+                    #    deepcallc_x = {}
                     for m_group_name,m_name in self.model.items():
                         try:
                             X
@@ -613,40 +568,13 @@ class DeepLC():
                         except UnboundLocalError:
                             logger.debug("X is empty, skipping...")
                             uncal_preds = []
-                            pass
-
-
-
-
-                        if self.write_library:
-                            try:
-                                lib_file = open(self.use_library,"a")
-                            except:
-                                logger.debug("Could not append to the library file")
-                                break
-                            if type(m_name) == str:
-                                for up, mn, sd in zip(uncal_preds, [m_name]*len(uncal_preds), seq_df["idents"]):
-                                    lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
-                                lib_file.close()
-                            else:
-                                for up, mn, sd in zip(uncal_preds, m_name, seq_df["idents"]):
-                                    lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
-                                lib_file.close()
-                            if self.reload_library: read_library(self.use_library)
 
                         p = list(self.calibration_core(uncal_preds,self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
                         ret_preds.append(p)
 
-                        #p2 = list(self.calibration_core([LIBRARY[ri+"|"+m_name] for ri  in rem_idents],self.calibrate_dict[m_name],self.calibrate_min[m_name],self.calibrate_max[m_name]))
-                        #ret_preds2.append(p2)
-
-                        #if self.deepcallc_mod:
-                        #    deepcallc_x[m_name] = dict(zip(seq_df["idents"],p))
 
                     ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
-                    #ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
                 elif not mod_name:
-                    # No library write!
                     mod = load_model(
                         self.model,
                         custom_objects={'<lambda>': lrelu}
@@ -669,36 +597,11 @@ class DeepLC():
                         pass
 
 
-
-                    #if self.write_library:
-                    #    try:
-                    #        lib_file = open(self.use_library,"a")
-                    #    except:
-                    #        logger.debug("Could not append to the library file")
-                    #
-                    #    for up, sd in zip(uncal_preds, seq_df["idents"]):
-                    #        lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
-                    #    lib_file.close()
-                    #    if self.reload_library: read_library(self.use_library)
-
                     ret_preds = self.calibration_core(uncal_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
 
-                    #p2 = list(self.calibration_core([LIBRARY[ri+"|"+mod_name] for ri  in rem_idents],self.calibrate_dict,self.calibrate_min,self.calibrate_max))
-                    #ret_preds2.extend(p2)
             else:
                 # first get uncalibrated prediction
                 uncal_preds = self.model.predict(X) / correction_factor
-
-                if self.write_library:
-                    try:
-                        lib_file = open(self.use_library,"a")
-                    except:
-                        logger.debug("Could not append to the library file")
-
-                    for up, sd in zip(uncal_preds, seq_df["idents"]):
-                        lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
-                    lib_file.close()
-                    if self.reload_library: read_library(self.use_library)
         else:
             if self.verbose:
                 logger.debug("Predicting without calibration...")
@@ -708,7 +611,7 @@ class DeepLC():
                 if not mod_name:
                     if isinstance(self.model, dict):
                         ret_preds = []
-                        #ret_preds2 = []
+
                         for m_group_name,m_name in self.model.items():
                             try:
                                 X
@@ -724,22 +627,8 @@ class DeepLC():
                                 ret_preds.append([])
                                 pass
 
-                            if self.write_library:
-                                try:
-                                    lib_file = open(self.use_library,"a")
-                                except:
-                                    logger.debug("Could not append to the library file")
-
-                                for up, sd in zip(ret_preds[-1], seq_df["idents"]):
-                                    lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
-                                lib_file.close()
-                                if self.reload_library: self.read_library(self.use_library)
-
-                            p2 = [LIBRARY[ri+"|"+m_name] for ri  in rem_idents]
-                            #ret_preds2.append(p2)
-
                         ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
-                        #ret_preds2 = np.array([sum(a)/len(a) for a in zip(*ret_preds2)])
+
                     elif isinstance(self.model, list):
                         mod_name = self.model[0]
                         mod = load_model(
@@ -753,20 +642,6 @@ class DeepLC():
                                                 batch_size=5120,
                                                 verbose=cnn_verbose).flatten() / correction_factor
 
-                        """
-                        if self.write_library:
-                            try:
-                                lib_file = open(self.use_library,"a")
-                            except:
-                                logger.debug("Could not append to the library file")
-
-                            for up, sd in zip(ret_preds, seq_df["idents"]):
-                                lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
-                            lib_file.close()
-                            if self.reload_library: read_library(self.use_library)
-
-                        ret_preds2 = np.array([LIBRARY[ri+"|"+mod_name] for ri  in rem_idents])
-                        """
                     elif isinstance(self.model, str):
                         # No library write!
                         mod_name = self.model
@@ -780,20 +655,6 @@ class DeepLC():
                                                 X_hc],
                                                 batch_size=5120,
                                                 verbose=cnn_verbose).flatten() / correction_factor
-                        """
-                        if self.write_library:
-                            try:
-                                lib_file = open(self.use_library,"a")
-                            except:
-                                logger.debug("Could not append to the library file")
-
-                            for up, sd in zip(ret_preds, seq_df["idents"]):
-                                lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
-                            lib_file.close()
-                            if self.reload_library: self.read_library(self.use_library)
-
-                        #ret_preds2 = np.array([LIBRARY[ri+"|"+mod_name] for ri  in rem_idents])
-                        """
                     else:
                         raise DeepLCError('No CNN model defined.')
                 else:
@@ -809,55 +670,11 @@ class DeepLC():
                                                 X_hc],
                                                 batch_size=5120,
                                                 verbose=cnn_verbose).flatten() / correction_factor
-                        if self.write_library:
-                            try:
-                                lib_file = open(self.use_library,"a")
-                            except:
-                                logger.debug("Could not append to the library file")
-
-                            for up, sd in zip(ret_preds, seq_df["idents"]):
-                                lib_file.write("%s,%s\n" % (sd+"|"+mod_name,str(up)))
-                            lib_file.close()
-
-                            if self.reload_library: read_library(self.use_library)
                     except:
                         pass
-                    #ret_preds2 = [LIBRARY[ri+"|"+mod_name] for ri  in rem_idents]
-
             else:
-                # No library write!
                 ret_preds = self.model.predict(X) / correction_factor
 
-        """
-        pred_dict = dict(zip(list(range(len(psm_list))), ret_preds))
-
-        #if len(ret_preds2) > 0:
-        #    pred_dict.update(dict(zip(rem_idents, ret_preds2)))
-
-
-        # Map from unique peptide identifiers to the original dataframe
-        ret_preds_shape = []
-        for ident in identifiers:
-            ret_preds_shape.append(pred_dict[identifiers_to_seqmod[ident]])
-
-        if self.verbose:
-            logger.debug("Predictions done ...")
-
-        # Below can cause freezing on some systems
-        # It is meant to clear any remaining vars in memory
-        reset_keras()
-        try:
-            del mod
-        except UnboundLocalError:
-            logger.debug("Variable mod not defined, so will not be deleted")
-
-
-        if self.deepcallc_mod and isinstance(self.model, dict):
-            for m_name in deepcallc_x.keys():
-                deepcallc_x[m_name] = [deepcallc_x[m_name][ident] for ident in seq_mod_comb]
-
-            ret_preds_shape = self.deepcallc_model.predict(pd.DataFrame(deepcallc_x))
-        """
         return ret_preds
 
     def make_preds(self,
