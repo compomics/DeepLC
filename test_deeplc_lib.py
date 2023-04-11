@@ -1,12 +1,14 @@
 import pandas as pd
 from deeplc import DeepLC
+from deeplc.__main__ import setup_logging
 from matplotlib import pyplot as plt
 
 def main():
-    dlc = DeepLC() 
+    setup_logging("debug")
+    dlc = DeepLC()
 
     dlc.calibrate_preds(infile="msms.txt")
-    preds = dlc.make_preds(infile="msms.txt")
+    preds = dlc.make_preds(infile="msms_.txt")
 
     psm_list = read_file(infile)
     if "msms" in infile and ".txt" in infile:

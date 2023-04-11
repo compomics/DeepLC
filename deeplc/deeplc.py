@@ -434,22 +434,31 @@ class DeepLC():
             feature matrix
         """
         self.n_jobs = 1
+        logger.info("prepare feature extraction")
         if multiprocessing.current_process().daemon:
             logger.warning("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
-            psm_list_split = split_list(psm_list, self.n_jobs+1)
+            psm_list_split = split_list(psm_list, self.n_jobs)
             pool = multiprocessing.dummy.Pool(1)
         elif self.n_jobs > 1:
-            psm_list_split = split_list(psm_list, self.n_jobs+1)
+            psm_list_split = split_list(psm_list, self.n_jobs)
             pool = multiprocessing.Pool(self.n_jobs)
 
         if self.n_jobs == 1:
+            logger.info("start feature extraction")
             all_feats = self.do_f_extraction_psm_list(psm_list)
+            logger.info("got feature extraction results")
         else:
-            all_feats = pd.concat(
-                pool.map(
+            logger.info("start feature extraction")
+            all_feats_async = pool.map_async(
                     self.do_f_extraction_psm_list,
-                    psm_list_split,
-                    12))
+                    psm_list_split)
+
+            logger.info("wait for feature extraction")
+            all_feats_async.wait()
+            logger.info("get feature extraction results")
+            all_feats = pd.concat(all_feats_async.get())
+            logger.info("got feature extraction results")
+
             pool.close()
             pool.join()
 
