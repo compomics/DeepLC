@@ -31,6 +31,7 @@ import pandas as pd
 from psm_utils.io.peptide_record import peprec_to_proforma
 from psm_utils.psm import PSM
 from psm_utils.psm_list import PSMList
+from pyteomics import mass
 
 
 logger = logging.getLogger(__name__)
@@ -352,7 +353,6 @@ class FeatExtractor():
             seq = peptidoform.sequence
 
             peptide_composition = peptidoform.sequential_composition
-            peptide_composition = peptidoform.sequential_composition
             peptide_composition[1] = peptide_composition[0]+peptide_composition[1]
             peptide_composition[-2] = peptide_composition[-2]+peptide_composition[-1]
 
@@ -539,6 +539,10 @@ class FeatExtractor():
 
         # Iterate over all instances
         for psm,row_index in zip(psm_list,indexes):
+            #print(psm)
+            #print(psm.peptidoform)
+            #print(psm.peptidoform.sequence)
+            #print(psm.peptidoform.sequential_composition)
             peptidoform = psm.peptidoform
             seq = peptidoform.sequence
             seq_len = len(seq)
@@ -548,11 +552,11 @@ class FeatExtractor():
             if seq_len > padding_length:
                 seq = seq[0:padding_length]
                 seq_len = len(seq)
+            
+            peptide_composition = [mass.std_aa_comp[aa] for aa in seq]
 
-            peptide_composition = peptidoform.sequential_composition
-            peptide_composition = peptidoform.sequential_composition
-            peptide_composition[1] = peptide_composition[0]+peptide_composition[1]
-            peptide_composition[-2] = peptide_composition[-2]+peptide_composition[-1]
+            #peptide_composition[1] = peptide_composition[0]+peptide_composition[1]
+            #peptide_composition[-2] = peptide_composition[-2]+peptide_composition[-1]
 
             # Add padding for peptides that are too short
             # TODO is this still needed?
@@ -578,12 +582,12 @@ class FeatExtractor():
 
             for p in positions_pos:
                 aa = seq[p]
-                for atom, val in self.lib_aa_composition[aa].items():
+                for atom, val in mass.std_aa_comp[aa].items():
                     matrix_pos[p, dict_index_pos[atom]] = val
 
             for pn in positions_neg:
                 aa = seq[seq_len + pn]
-                for atom, val in self.lib_aa_composition[aa].items():
+                for atom, val in mass.std_aa_comp[aa].items():
                     matrix_pos[pn, dict_index_pos[atom]] = val
 
             for i, peptide_position in enumerate(peptidoform.parsed_sequence):
@@ -598,7 +602,7 @@ class FeatExtractor():
                     for atom_position_composition,atom_change in modification_composition.items():
                         matrix[i, dict_index[atom_position_composition]] += atom_change
                         if i in positions:
-                            matrix_pos[loc, dict_index_pos[atom_position_composition]] += atom_change
+                            matrix_pos[i, dict_index_pos[atom_position_composition]] += atom_change
                         elif i - seq_len in positions:
                             matrix_pos[i - seq_len, dict_index_pos[atom_position_composition]] += atom_change
 
@@ -695,8 +699,12 @@ class FeatExtractor():
         if self.cnn_feats:
             if self.verbose:
                 logger.debug("Extracting CNN features")
+            #try:
             X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc = self.encode_atoms(
                 psm_list, list(range(len(psm_list))), charges=charges)
+            #except:
+            #    X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc = self.encode_atoms(
+            #        [psm_list], list(range(len([psm_list]))), charges=charges)
             X_cnn = pd.concat(
                 [X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc], axis=1)
 
