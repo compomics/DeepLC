@@ -43,13 +43,13 @@ setup(
         'setuptools>=42.0.1',
         'tensorflow>=2.2,<3',
         'scipy>=1.4.1,<2',
-        'numpy>=1.17,<=1.22.4',
+        'numpy>=1.17,<2',
         'pandas>=0.25,<2',
         'matplotlib>=3,<4',
         'h5py>=2.10.0,<4',
         'pygam>=0.8.0,<1',
         'scikit-learn>=0.24.0,<2',
-        'gooey>=1.0.0,<2'
+        'gooey>=1.0.0,<2',
         'deeplcretrainer>=0.1,<1'
     ],
     extras_require={
