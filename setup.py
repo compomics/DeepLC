@@ -49,9 +49,7 @@ setup(
         'h5py>=2.10.0,<4',
         'pygam>=0.8.0,<1',
         'scikit-learn>=0.24.0,<2',
-        'gooey>=1.0.0,<2',
         'deeplcretrainer>=0.1,<1',
-        'attrdict>2.0.0'
     ],
     extras_require={
         "gui": ["gooey>=1.0"],
