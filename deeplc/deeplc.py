@@ -10,19 +10,23 @@ __license__ = "Apache License, Version 2.0"
 __maintainer__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
 __email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
 __credits__ = [
-    "Robbin Bouwmeester", "Ralf Gabriels", "Lennart Martens", "Sven Degroeve"
+    "Robbin Bouwmeester",
+    "Ralf Gabriels",
+    "Lennart Martens",
+    "Sven Degroeve",
 ]
 
 
 # Default models, will be used if no other is specified. If no best model is
 # selected during calibration, the first model in the list will be used.
 import os
+
 deeplc_dir = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_MODELS = [
     "mods/full_hc_hela_hf_psms_aligned_1fd8363d9af9dcad3be7553c39396960.hdf5",
     "mods/full_hc_hela_hf_psms_aligned_8c22d89667368f2f02ad996469ba157e.hdf5",
     "mods/full_hc_hela_hf_psms_aligned_cb975cfdd4105f97efa0b3afffe075cc.hdf5",
-    "mods/full_hc_PXD005573_mcp_cb975cfdd4105f97efa0b3afffe075cc.hdf5"
+    "mods/full_hc_PXD005573_mcp_cb975cfdd4105f97efa0b3afffe075cc.hdf5",
 ]
 DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
 
@@ -45,13 +49,13 @@ import math
 
 # If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
-IS_FROZEN = getattr(sys, 'frozen', False)
+IS_FROZEN = getattr(sys, "frozen", False)
 if IS_CLI_GUI or IS_FROZEN:
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    logging.getLogger('tensorflow').setLevel(logging.CRITICAL)
-    warnings.filterwarnings('ignore', category=DeprecationWarning)
-    warnings.filterwarnings('ignore', category=FutureWarning)
-    warnings.filterwarnings('ignore', category=UserWarning)
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+    logging.getLogger("tensorflow").setLevel(logging.CRITICAL)
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    warnings.filterwarnings("ignore", category=UserWarning)
 
 
 import numpy as np
@@ -59,6 +63,7 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow.python.eager import context
 from tensorflow.keras.models import load_model
+import h5py
 
 from deeplc._exceptions import CalibrationError, DeepLCError
 from deeplc.trainl3 import train_en
@@ -74,24 +79,33 @@ from deeplcretrainer import deeplcretrainer
 # "Custom" activation function
 lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
 
-try: from tensorflow.compat.v1.keras.backend import clear_session
-except ImportError: from tensorflow.keras.backend import clear_session
-try: from tensorflow.compat.v1.keras.backend import get_session
-except ImportError: from tensorflow.keras.backend import get_session
+
+try:
+    from tensorflow.compat.v1.keras.backend import set_session
+except ImportError:
+    from tensorflow.keras.backend import set_session
+try:
+    from tensorflow.compat.v1.keras.backend import clear_session
+except ImportError:
+    from tensorflow.keras.backend import clear_session
+try:
+    from tensorflow.compat.v1.keras.backend import get_session
+except ImportError:
+    from tensorflow.keras.backend import get_session
 
 # Set to force CPU calculations
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 
 # Set for TF V1.0 (counters some memory problems of nvidia 20 series GPUs)
-#config = tf.ConfigProto()
-#config.gpu_options.allow_growth = True
-#session = tf.Session(config=config)
+# config = tf.ConfigProto()
+# config.gpu_options.allow_growth = True
+# session = tf.Session(config=config)
 
 # Set for TF V2.0 (counters some memory problems of nvidia 20 series GPUs)
-#config = tf.compat.v1.ConfigProto()
-#config.gpu_options.allow_growth = True
-#session = tf.compat.v1.Session(config=config)
+# config = tf.compat.v1.ConfigProto()
+# config.gpu_options.allow_growth = True
+# session = tf.compat.v1.Session(config=config)
 
 # Feature extraction
 from deeplc.feat_extractor import FeatExtractor
@@ -110,6 +124,7 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 
 logger = logging.getLogger(__name__)
 
+
 def read_library(use_library):
     global LIBRARY
 
@@ -127,9 +142,8 @@ def read_library(use_library):
         try:
             LIBRARY[split_line[0]] = float(split_line[1])
         except:
-            logger.warning(
-                "Could not use this library entry due to an error: %s", line
-            )
+            logger.warning("Could not use this library entry due to an error: %s", line)
+
 
 def split_list(a, n):
     k, m = divmod(len(a), n)
@@ -142,9 +156,10 @@ def reset_keras():
     sess.close()
     gc.collect()
     # Set to force CPU calculations
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-class DeepLC():
+
+class DeepLC:
     """
     DeepLC predictor.
 
@@ -192,6 +207,7 @@ class DeepLC():
         Make predictions
 
     """
+
     library = {}
 
     def __init__(
@@ -212,9 +228,8 @@ class DeepLC():
         reload_library=False,
         pygam_calibration=True,
         deepcallc_mod=False,
-        deeplc_retrain=False
+        deeplc_retrain=False,
     ):
-
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()
@@ -253,7 +268,7 @@ class DeepLC():
         tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
 
         if "NUMEXPR_MAX_THREADS" not in os.environ:
-            os.environ['NUMEXPR_MAX_THREADS'] = str(n_jobs)
+            os.environ["NUMEXPR_MAX_THREADS"] = str(n_jobs)
 
         if path_model:
             self.model = path_model
@@ -274,12 +289,12 @@ class DeepLC():
         self.deepcallc_mod = deepcallc_mod
 
         if self.deepcallc_mod:
-            self.write_library=False
-            self.use_library=None
-            self.reload_library=False
+            self.write_library = False
+            self.use_library = None
+            self.reload_library = False
 
     def __str__(self):
-        return("""
+        return """
   _____                  _      _____
  |  __ \                | |    / ____|
  | |  | | ___  ___ _ __ | |   | |
@@ -288,13 +303,9 @@ class DeepLC():
  |_____/ \___|\___| .__/|______\_____|
                   | |
                   |_|
-              """)
+              """
 
-    def do_f_extraction(self,
-                        seqs,
-                        mods,
-                        identifiers,
-                        charges=[]):
+    def do_f_extraction(self, seqs, mods, identifiers, charges=[]):
         """
         Extract all features we can extract; without parallelization; use if you
         want to run feature extraction with a single core
@@ -344,6 +355,7 @@ class DeepLC():
         pd.DataFrame
             feature matrix
         """
+
         list_of_psms = []
         if len(charges) == 0:
             for seq,mod,id in zip(df_instances["seq"],df_instances["modifications"],df_instances.index):
@@ -355,8 +367,7 @@ class DeepLC():
 
         return self.f_extractor.full_feat_extract(psm_list)
 
-    def do_f_extraction_pd_parallel(self,
-                                    df_instances):
+    def do_f_extraction_pd_parallel(self, df_instances):
         """
         Extract all features we can extract; with parallelization; use if you
         want to run feature extraction with multiple threads; and use a defined
@@ -377,7 +388,9 @@ class DeepLC():
 
         df_instances_split = np.array_split(df_instances, math.ceil(self.n_jobs/4.0))
         if multiprocessing.current_process().daemon:
-            logger.warning("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
+            logger.warning(
+                "DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children."
+            )
             pool = multiprocessing.dummy.Pool(1)
         else:
             pool = multiprocessing.Pool(math.ceil(self.n_jobs/4.0))
@@ -475,29 +488,22 @@ class DeepLC():
         else:
             for uncal_pred in uncal_preds:
                 try:
-                    slope, intercept = cal_dict[str(
-                        round(uncal_pred, self.bin_dist))]
-                    cal_preds.append(
-                        slope * (uncal_pred) + intercept)
+                    slope, intercept = cal_dict[str(round(uncal_pred, self.bin_dist))]
+                    cal_preds.append(slope * (uncal_pred) + intercept)
                 except KeyError:
                     # outside of the prediction range ... use the last
                     # calibration curve
                     if uncal_pred <= cal_min:
-                        slope, intercept = cal_dict[str(
-                            round(cal_min, self.bin_dist))]
-                        cal_preds.append(
-                            slope * (uncal_pred) + intercept)
+                        slope, intercept = cal_dict[str(round(cal_min, self.bin_dist))]
+                        cal_preds.append(slope * (uncal_pred) + intercept)
                     elif uncal_pred >= cal_max:
-                        slope, intercept = cal_dict[str(
-                            round(cal_max, self.bin_dist))]
-                        cal_preds.append(
-                            slope * (uncal_pred) + intercept)
+                        slope, intercept = cal_dict[str(round(cal_max, self.bin_dist))]
+                        cal_preds.append(slope * (uncal_pred) + intercept)
                     else:
-                        slope, intercept = cal_dict[str(
-                            round(cal_max, self.bin_dist))]
-                        cal_preds.append(
-                            slope * (uncal_pred) + intercept)
+                        slope, intercept = cal_dict[str(round(cal_max, self.bin_dist))]
+                        cal_preds.append(slope * (uncal_pred) + intercept)
         return np.array(cal_preds)
+
 
     """
     def write_to_library(self):
@@ -594,11 +600,14 @@ class DeepLC():
             predictions
         """
         if calibrate:
-            assert self.calibrate_dict, "DeepLC instance is not yet calibrated.\
+            assert (
+                self.calibrate_dict
+            ), "DeepLC instance is not yet calibrated.\
                                         Calibrate before making predictions, or use calibrate=False"
 
         if len(X) == 0 and len(psm_list) > 0:
             if self.verbose:
+
                 logger.debug("Extracting features for the CNN model ...")
             #X = self.do_f_extraction_psm_list(psm_list)
             X = self.do_f_extraction_psm_list_parallel(psm_list)
@@ -623,6 +632,7 @@ class DeepLC():
             ret_preds = mod.predict(
                 [X, X_sum, X_global, X_hc], batch_size=5120).flatten()
         except UnboundLocalError:
+
             logger.debug("X is empty, skipping...")
             ret_preds = []
 
@@ -762,13 +772,17 @@ class DeepLC():
             mod_name=mod_name)
 
         # sort two lists, predicted and observed based on measured tr
-        tr_sort = [(mtr, ptr) for mtr, ptr in sorted(
-            zip(measured_tr, predicted_tr), key=lambda pair: pair[1])]
-        measured_tr = np.array([mtr for mtr, ptr in tr_sort],dtype=np.float32)
-        predicted_tr = np.array([ptr for mtr, ptr in tr_sort],dtype=np.float32)
+        tr_sort = [
+            (mtr, ptr)
+            for mtr, ptr in sorted(
+                zip(measured_tr, predicted_tr), key=lambda pair: pair[1]
+            )
+        ]
+        measured_tr = np.array([mtr for mtr, ptr in tr_sort], dtype=np.float32)
+        predicted_tr = np.array([ptr for mtr, ptr in tr_sort], dtype=np.float32)
 
-        #predicted_tr = list(predicted_tr)
-        #measured_tr = list(measured_tr)
+        # predicted_tr = list(predicted_tr)
+        # measured_tr = list(measured_tr)
 
         gam_model_cv = LinearGAM(s(0), verbose=True).fit(predicted_tr, measured_tr)
         calibrate_min = min(predicted_tr)
@@ -834,8 +848,12 @@ class DeepLC():
         measured_tr = seq_df["tr"]
 
         # sort two lists, predicted and observed based on measured tr
-        tr_sort = [(mtr, ptr) for mtr, ptr in sorted(
-            zip(measured_tr, predicted_tr), key=lambda pair: pair[1])]
+        tr_sort = [
+            (mtr, ptr)
+            for mtr, ptr in sorted(
+                zip(measured_tr, predicted_tr), key=lambda pair: pair[1]
+            )
+        ]
         measured_tr = np.array([mtr for mtr, ptr in tr_sort])
         predicted_tr = np.array([ptr for mtr, ptr in tr_sort])
 
@@ -843,7 +861,7 @@ class DeepLC():
         ptr_mean = []
 
         calibrate_dict = {}
-        calibrate_min = float('inf')
+        calibrate_min = float("inf")
         calibrate_max = 0
 
         if self.verbose:
@@ -852,10 +870,10 @@ class DeepLC():
             )
 
         # smooth between observed and predicted
-        split_val = predicted_tr[-1]/self.split_cal
-        for range_calib_number in np.arange(0.0,predicted_tr[-1],split_val):
-            ptr_index_start = np.argmax(predicted_tr>=range_calib_number)
-            ptr_index_end = np.argmax(predicted_tr>=range_calib_number+split_val)
+        split_val = predicted_tr[-1] / self.split_cal
+        for range_calib_number in np.arange(0.0, predicted_tr[-1], split_val):
+            ptr_index_start = np.argmax(predicted_tr >= range_calib_number)
+            ptr_index_end = np.argmax(predicted_tr >= range_calib_number + split_val)
 
             # no points so no cigar... use previous points
             if ptr_index_start >= ptr_index_end:
@@ -864,7 +882,7 @@ class DeepLC():
                     "predicted range (are you sure about the split size?): "
                     "%s,%s",
                     range_calib_number,
-                    range_calib_number + split_val
+                    range_calib_number + split_val,
                 )
                 continue
 
@@ -906,14 +924,14 @@ class DeepLC():
             delta_mtr = mtr_mean[i + 1] - mtr_mean[i]
 
             slope = delta_mtr / delta_ptr
-            intercept = (-1*(ptr_mean[i]*slope))+mtr_mean[i]
+            intercept = (-1 * (ptr_mean[i] * slope)) + mtr_mean[i]
 
             # optimized predictions using a dict to find calibration curve very
             # fast
             for v in np.arange(
                 round(ptr_mean[i], self.bin_dist),
                 round(ptr_mean[i + 1], self.bin_dist),
-                1 / ((self.bin_dist) * self.dict_cal_divider)
+                1 / ((self.bin_dist) * self.dict_cal_divider),
             ):
                 if v < calibrate_min:
                     calibrate_min = v
@@ -922,7 +940,6 @@ class DeepLC():
                 calibrate_dict[str(round(v, self.bin_dist))] = [slope, intercept]
 
         return calibrate_min, calibrate_max, calibrate_dict
-
 
     def calibrate_preds(self,
                         psm_list=None,
@@ -984,6 +1001,7 @@ class DeepLC():
         if self.verbose:
             logger.debug("Start to calibrate predictions ...")
         if self.verbose:
+
             logger.debug(
                 "Ready to find the best model out of: %s" %
                 (self.model))
@@ -1018,6 +1036,7 @@ class DeepLC():
             #        pass
 
             # For training new models we need to use a file, so write the train df to a file
+
             #df_train_file = os.path.join(t_dir,"train.csv")
             #seq_df.to_csv(df_train_file,index=False)
 
@@ -1044,7 +1063,7 @@ class DeepLC():
                 mods_transfer_learning=self.model,
                 freeze_layers=True,
                 n_epochs=10,
-                freeze_after_concat=1
+                freeze_after_concat=1,
             )
 
             self.model = models
@@ -1063,7 +1082,8 @@ class DeepLC():
                     correction_factor=correction_factor,
                     seq_df=seq_df,
                     use_median=use_median,
-                    mod_name=m)
+                    mod_name=m,
+                )
             else:
                 calibrate_output = self.calibrate_preds_func(
                     psm_list,
@@ -1071,9 +1091,14 @@ class DeepLC():
                     correction_factor=correction_factor,
                     seq_df=seq_df,
                     use_median=use_median,
-                    mod_name=m)
+                    mod_name=m,
+                )
 
-            self.calibrate_min, self.calibrate_max, self.calibrate_dict = calibrate_output
+            (
+                self.calibrate_min,
+                self.calibrate_max,
+                self.calibrate_dict,
+            ) = calibrate_output
 
             if type(self.calibrate_dict) == dict:
                 if len(self.calibrate_dict.keys()) == 0:
@@ -1085,7 +1110,6 @@ class DeepLC():
                                     calibrate=True,
                                     seq_df=seq_df,
                                     mod_name=m)
-            
 
             if self.deepcallc_mod:
                 m_group_name = "deepcallc"
@@ -1112,7 +1136,7 @@ class DeepLC():
                 mod_calibrate_max_dict[m_group_name][m] = self.calibrate_max
 
         for m_name in pred_dict.keys():
-            preds = [sum(a)/len(a) for a in zip(*list(pred_dict[m_name].values()))]
+            preds = [sum(a) / len(a) for a in zip(*list(pred_dict[m_name].values()))]
             if len(measured_tr) == 0:
                 perf = sum(abs(seq_df["tr"] - preds))
             else:
@@ -1120,8 +1144,9 @@ class DeepLC():
 
             if self.verbose:
                 logger.debug(
-                    "For %s model got a performance of: %s" %
-                    (m_name, perf / len(preds)))
+                    "For %s model got a performance of: %s"
+                    % (m_name, perf / len(preds))
+                )
 
             if perf < best_perf:
                 if self.deepcallc_mod:
@@ -1148,11 +1173,13 @@ class DeepLC():
         self.n_jobs = 1
 
         logger.debug("Model with the best performance got selected: %s" %(best_model))
+            self.deepcallc_model = train_en(
+                pd.DataFrame(pred_dict["deepcallc"]), seq_df["tr"]
+            )
 
+        logger.debug("Model with the best performance got selected: %s" % (best_model))
 
-    def split_seq(self,
-                  a,
-                  n):
+    def split_seq(self, a, n):
         """
         Split a list (a) into multiple chunks (n)
 
@@ -1171,5 +1198,5 @@ class DeepLC():
 
         # since chunking is not alway possible do the modulo of residues
         k, m = divmod(len(a), n)
-        result = (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
+        result = (a[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n))
         return result
