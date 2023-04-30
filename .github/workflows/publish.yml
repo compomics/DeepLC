@@ -2,8 +2,8 @@ name: Publish to PyPI and GitHub release
 
 on:
   push:
-    tags:
-    - 'v*'
+  #   tags:
+  #   - 'v*'
 
 jobs:
   python-package:
@@ -33,7 +33,6 @@ jobs:
       with:
         name: dist
         path: dist/*.whl
-
   windows-installer:
     runs-on: windows-latest
     needs: python-package
@@ -86,6 +85,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: python-package
     steps:
+    - name: Download compiled wheels
+      uses: actions/download-artifact@v2
+      with:
+        name: dist
+        path: dist/
+    - run: ls ./
+    - run: ls ./dist
     - uses: actions/checkout@v2
     - name: Get release version number
       id: release_version
@@ -93,11 +99,15 @@ jobs:
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v1
       with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build and push to ghcr.io
-      uses: docker/build-push-action@v2
+        args: install innosetup -y --allow-unofficial --force
+    - name: Run pyinstaller
+      run: pyinstaller ./deeplc.spec --clean --noconfirm
+    - name: Test built DeepLC exe
+      run: dist/deeplc/deeplc.exe --ignore-gooey --help
+    - name: Run Inno Setup
+      run: ISCC.exe ./deeplc_innosetup.iss
+    - name: Upload installer
+      uses: actions/upload-artifact@v2
       with:
         context: streamlit
         push: true
