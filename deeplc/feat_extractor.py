@@ -672,11 +672,6 @@ class FeatExtractor():
 
         if self.cnn_feats:
             X = X_cnn
-        if self.add_comp_feat:
-            try:
-                X = pd.concat([X, X_comp], axis=1)
-            except BaseException:
-                X = X_comp
         if self.add_sum_feat:
             try:
                 X = pd.concat([X, X_feats_sum], axis=1)
