@@ -40,6 +40,8 @@ import warnings
 from configparser import ConfigParser
 from tempfile import TemporaryDirectory
 from copy import deepcopy
+import random
+import math
 
 # If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
@@ -65,6 +67,7 @@ from psm_utils.io.peptide_record import peprec_to_proforma
 from psm_utils.psm import PSM
 from psm_utils.psm_list import PSMList
 from psm_utils.io import read_file
+from psm_utils.io import write_file
 
 from deeplcretrainer import deeplcretrainer
 
@@ -75,7 +78,6 @@ try: from tensorflow.compat.v1.keras.backend import clear_session
 except ImportError: from tensorflow.keras.backend import clear_session
 try: from tensorflow.compat.v1.keras.backend import get_session
 except ImportError: from tensorflow.keras.backend import get_session
-
 
 # Set to force CPU calculations
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -373,12 +375,12 @@ class DeepLC():
         """
         #self.n_jobs = 1
 
-        df_instances_split = np.array_split(df_instances, self.n_jobs)
+        df_instances_split = np.array_split(df_instances, math.ceil(self.n_jobs/4.0))
         if multiprocessing.current_process().daemon:
             logger.warning("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
             pool = multiprocessing.dummy.Pool(1)
         else:
-            pool = multiprocessing.Pool(self.n_jobs)
+            pool = multiprocessing.Pool(math.ceil(self.n_jobs/4.0))
 
         if self.n_jobs == 1:
             df = self.do_f_extraction_pd(df_instances)
@@ -600,12 +602,12 @@ class DeepLC():
             #X = self.do_f_extraction_psm_list(psm_list)
             X = self.do_f_extraction_psm_list_parallel(psm_list)
 
-            X_sum = np.stack(X["matrix_sum"])
-            X_global = np.concatenate((np.stack(X["matrix_all"]),
-                                    np.stack(X["pos_matrix"])),
+            X_sum = np.stack(X["matrix_sum"].values())
+            X_global = np.concatenate((np.stack(X["matrix_all"].values()),
+                                    np.stack(X["pos_matrix"].values())),
                                     axis=1)
-            X_hc = np.stack(X["matrix_hc"])
-            X = np.stack(X["matrix"])
+            X_hc = np.stack(X["matrix_hc"].values())
+            X = np.stack(X["matrix"].values())
         elif len(X) == 0 and len(psm_list) == 0:
             return []
 
@@ -684,12 +686,18 @@ class DeepLC():
             X = self.do_f_extraction_psm_list_parallel(psm_list)
             #X = self.do_f_extraction_psm_list(psm_list)
 
-            X_sum = np.stack(X["matrix_sum"])
-            X_global = np.concatenate((np.stack(X["matrix_all"]),
-                                    np.stack(X["pos_matrix"])),
+            X_sum = np.stack(X["matrix_sum"].values())
+            #print(np.stack(X["matrix_all"].values()))
+            #print(X["matrix_all"].values())
+            #input("s")
+            #print(X["pos_matrix"].values())
+            #print(np.stack(X["pos_matrix"].values()))
+            #print("s2")
+            X_global = np.concatenate((np.stack(X["matrix_all"].values()),
+                                    np.stack(X["pos_matrix"].values())),
                                     axis=1)
-            X_hc = np.stack(X["matrix_hc"])
-            X = np.stack(X["matrix"])
+            X_hc = np.stack(X["matrix_hc"].values())
+            X = np.stack(X["matrix"].values())
         else:
             return []
 
@@ -745,7 +753,7 @@ class DeepLC():
                 list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id,retention_time=tr))
             psm_list = PSMList(psm_list=list_of_psms)
 
-        measured_tr = [psm.retention_time for psm in psm_list]
+            measured_tr = [psm.retention_time for psm in psm_list]
 
         predicted_tr = self.make_preds(
             psm_list,
@@ -920,7 +928,10 @@ class DeepLC():
                         infile="",
                         measured_tr=[],
                         correction_factor=1.0,
+                        location_peprec_retraining="",
+                        location_retraining_models="",
                         psm_utils_obj=None,
+                        sample_for_calibration_curve=None,
                         seq_df=None,
                         use_median=True):
         """
@@ -956,6 +967,7 @@ class DeepLC():
             for seq,mod,id,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
                 list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id,retention_time=tr))
             psm_list = PSMList(psm_list=list_of_psms)
+            
 
         if isinstance(self.model, str):
             self.model = [self.model]
@@ -965,6 +977,8 @@ class DeepLC():
             if "msms" in infile and ".txt" in infile:
                 mapper = pd.read_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "unimod/map_mq_file.csv"),index_col=0)["value"].to_dict()
                 psm_list.rename_modifications(mapper)
+
+        measured_tr = [psm.retention_time for psm in psm_list]
 
         if self.verbose:
             logger.debug("Start to calibrate predictions ...")
@@ -992,16 +1006,40 @@ class DeepLC():
 
             tf.config.threading.set_inter_op_parallelism_threads(1)
 
-            t_dir = TemporaryDirectory().name
-            os.mkdir(t_dir)
+            #if len(location_peprec_retraining) == 0:
+            #    t_dir = TemporaryDirectory().name
+            #    os.mkdir(t_dir)
+            #else:
+            #    t_dir = location_peprec_retraining
+            #    try:
+            #        os.mkdir(t_dir)
+            #    except:
+            #        pass
 
             # For training new models we need to use a file, so write the train df to a file
-            df_train_file = os.path.join(t_dir,"train.csv")
-            seq_df.to_csv(df_train_file,index=False)
+            #df_train_file = os.path.join(t_dir,"train.csv")
+            #seq_df.to_csv(df_train_file,index=False)
+
+            #peprec_name = os.path.join(t_dir,"train.peprec")
+            #write_file(psm_list,peprec_name,filetype="peprec")            
+
+            #peprec_name_csv = os.path.join(t_dir,"train.csv")
+            #pd.read_csv(peprec_name,sep=" ").rename({"observed_retention_time":"tr","peptide":"seq"},axis=1).to_csv(peprec_name_csv,sep=",")
+            
+            if len(location_retraining_models) > 0:
+                t_dir_models = TemporaryDirectory().name
+                os.mkdir(t_dir_models)
+            else:
+                t_dir_models = location_retraining_models
+                try:
+                    os.mkdir(t_dir_models)
+                except:
+                    pass
 
             # Here we will apply transfer learning we specify previously trained models in the 'mods_transfer_learning'
             models = deeplcretrainer.retrain(
-                [df_train_file],
+                {"deeplc_transferlearn":psm_list},
+                outpath=t_dir_models,
                 mods_transfer_learning=self.model,
                 freeze_layers=True,
                 n_epochs=10,
@@ -1009,6 +1047,10 @@ class DeepLC():
             )
 
             self.model = models
+
+        if isinstance(sample_for_calibration_curve, int):
+            psm_list = random.sample(list(psm_list), sample_for_calibration_curve)
+            measured_tr = [psm.retention_time for psm in psm_list]
 
         for m in self.model:
             if self.verbose:
@@ -1073,7 +1115,7 @@ class DeepLC():
             if len(measured_tr) == 0:
                 perf = sum(abs(seq_df["tr"] - preds))
             else:
-                perf = sum(abs(measured_tr - preds))
+                perf = sum(abs(np.array(measured_tr) - np.array(preds)))
 
             if self.verbose:
                 logger.debug(
