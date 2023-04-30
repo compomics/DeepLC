@@ -1172,11 +1172,6 @@ class DeepLC:
 
         self.n_jobs = 1
 
-        logger.debug("Model with the best performance got selected: %s" %(best_model))
-            self.deepcallc_model = train_en(
-                pd.DataFrame(pred_dict["deepcallc"]), seq_df["tr"]
-            )
-
         logger.debug("Model with the best performance got selected: %s" % (best_model))
 
     def split_seq(self, a, n):
