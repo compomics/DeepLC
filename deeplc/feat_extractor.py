@@ -328,119 +328,6 @@ class FeatExtractor():
         del mod_dict
         return df_ret
 
-    def get_comp_change_mods(self,
-                             psm_list,
-                             positions=[0, 1, 2, 3, 4, -1, -2, -3, -4, -5],
-                             atom_count=["C", "H", "N", "O", "S", "P"]):
-        """
-        Get the compositional change for modifications and encode as features
-
-        Parameters
-        ----------
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : str
-            identifiers of the peptides; should correspond to seqs and mods
-        positions : list
-            list of positions to include seperately, for the C-terminus
-            provide negative indices
-        atom_count : list
-            specificy the atoms to count
-
-        Returns
-        -------
-        object :: pd.DataFrame
-            feature matrix for compositional changes caused by modifications
-        """
-        feat_dict = {}
-        for psm in psm_list:
-            peptidoform = psm.peptidoform
-            seq = peptidoform.sequence
-
-            peptide_composition = peptidoform.sequential_composition
-            peptide_composition[1] = peptide_composition[0]+peptide_composition[1]
-            peptide_composition[-2] = peptide_composition[-2]+peptide_composition[-1]
-
-            del peptide_composition[0]
-            del peptide_composition[-1]
-
-            # Initialize atom counts, the mods composition and prepare  list to
-            # look at positional features with zeros
-            peptide_comp = [
-                dict(zip(atom_count, [0] * len(atom_count))) for aa in seq]
-            pos_atoms = list(mod_comp[0].keys())
-
-            for i, position_composition in enumerate(peptide_composition):
-                for k, v in position_composition.items():
-                    try:
-                        peptide_comp[i][k] = v
-                    except KeyError:
-                        continue
-
-            mod_comp = deepcopy(peptide_comp)
-
-            for i, peptide_position in enumerate(peptidoform.parsed_sequence):
-                if peptide_position[1] != None:
-                    modification_composition = peptide_position[1][0].composition
-
-                    for atom_position_composition,atom_change in modification_composition.items():
-                        mod_comp[i][atom_position_composition] += atom_change
-
-            # Make the native peptide compositional feature matrix a
-            # pd.DataFrame
-            peptide_comp_df = pd.DataFrame(peptide_comp)
-
-            # Make only the mods compositional feature matrix a pd.DataFrame
-            mod_comp_df = pd.DataFrame(mod_comp)
-
-            # Get the total atom count
-            summed_comp = dict(combined_comp_df.sum())
-            sum_comp = sum(summed_comp.values())
-
-            feat_dict[ident] = {}
-
-            feat_dict[ident].update(dict([[k + "_tot", v]
-                                          for k, v in summed_comp.items()]))
-            feat_dict[ident].update(
-                dict([[k + "_tot_norm", v / sum_comp]for k, v in summed_comp.items()]))
-
-            # Go over positions we need to put into features
-            for p in positions:
-                feat_dict[ident].update(
-                    dict([[k + "_" + str(p), v] for k, v in dict(combined_comp_df.iloc[p]).items()]))
-
-            # Split peptide into equal sizes and calculate features
-            index_splits = self.split_seq(
-                combined_comp_df.index, self.split_size)
-
-            for i_part, split_part in enumerate(index_splits):
-                split_part_df = combined_comp_df.loc[split_part]
-                split_part_df_sum = split_part_df.sum().sum()
-                split_part_df_norm = split_part_df / split_part_df_sum
-                for atom in split_part_df.columns:
-                    feat_dict[ident]["part_%s_atom_%s" %
-                                     (i_part, atom)] = split_part_df[atom].sum()
-                    feat_dict[ident]["part_%s_atom_%s_norm" %
-                                     (i_part, atom)] = split_part_df_norm[atom].sum()
-
-            # Get rolling features for the composition
-            for pa in pos_atoms:
-                feat_dict[ident]["rolling_2_atom_%s_max" % (pa)] = pd.Series(
-                    [v[pa] for v in peptide_comp]).rolling(2).sum().max()
-                feat_dict[ident]["rolling_2_atom_%s_min" % (pa)] = pd.Series(
-                    [v[pa] for v in peptide_comp]).rolling(2).sum().min()
-                feat_dict[ident]["rolling_3_atom_%s_max" % (pa)] = pd.Series(
-                    [v[pa] for v in peptide_comp]).rolling(3).sum().max()
-                feat_dict[ident]["rolling_3_atom_%s_min" % (pa)] = pd.Series(
-                    [v[pa] for v in peptide_comp]).rolling(3).sum().min()
-
-        return(pd.DataFrame(feat_dict).T)
-
-    #@lru_cache(maxsize=None)
-    #def get_modification(self,):
-
     def encode_atoms(self,
                      psm_list,
                      indexes,
@@ -745,10 +632,6 @@ class FeatExtractor():
         if self.verbose:
             t0 = time.time()
 
-        if self.add_comp_feat:
-            if self.verbose:
-                logger.debug("Extracting compositional features")
-            X_comp = self.get_comp_change_mods(psm_list)
         if self.add_sum_feat:
             if self.verbose:
                 logger.debug(
@@ -788,10 +671,7 @@ class FeatExtractor():
             #del X_hc
 
         if self.cnn_feats:
-            try:
-                X = pd.concat([X, X_cnn], axis=1)
-            except BaseException:
-                X = X_cnn
+            X = X_cnn
         if self.add_comp_feat:
             try:
                 X = pd.concat([X, X_comp], axis=1)

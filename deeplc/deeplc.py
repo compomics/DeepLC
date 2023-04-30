@@ -499,6 +499,7 @@ class DeepLC():
                             slope * (uncal_pred) + intercept)
         return np.array(cal_preds)
 
+    """
     def write_to_library(self):
         # TODO repair function
         try:
@@ -516,7 +517,7 @@ class DeepLC():
             lib_file.close()
         if self.reload_library: read_library(self.use_library)
 
-    """
+    
     def _check_presence_library(self,
                                 psm_list,
                                 m_name
