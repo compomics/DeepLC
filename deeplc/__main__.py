@@ -119,12 +119,6 @@ def run(
     # not use RDKit features so we skip the chemical descriptor making
     # procedure.
     f_extractor = FeatExtractor(
-        add_sum_feat=False,
-        ptm_add_feat=False,
-        ptm_subtract_feat=False,
-        standard_feat=False,
-        chem_descr_feat=False,
-        add_comp_feat=False,
         cnn_feats=True,
         verbose=verbose
     )
