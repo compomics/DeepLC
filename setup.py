@@ -6,12 +6,12 @@ with open("README.md", "r") as fh:
 
 setup(
     name='deeplc',
-    version='1.2.1',
+    version='2.0.0',
     license='apache-2.0',
     description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
-    author='Robbin Bouwmeester, Niels Hulstaert, Ralf Gabriels, Prof. Lennart Martens, Prof. Sven Degroeve',
+    author='Robbin Bouwmeester, Niels Hulstaert, Arthur Declercq, Ralf Gabriels, Prof. Lennart Martens, Prof. Sven Degroeve',
     author_email='Robbin.Bouwmeester@UGent.be',
     url='http://compomics.github.io/projects/DeepLC',
     project_urls={
