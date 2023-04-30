@@ -74,6 +74,7 @@ def run(
     file_pred_out=None,
     plot_predictions=False,
     file_model=None,
+    pygam_calibration=True,
     split_cal=50,
     dict_divider=50,
     use_library=None,
