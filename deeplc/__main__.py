@@ -85,7 +85,6 @@ def run(
     verbose=True,
 ):
     """Run DeepLC."""
-
     logger.info("Using DeepLC version %s", __version__)
     logger.debug("Using %i CPU threads", n_threads)
 

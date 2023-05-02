@@ -530,9 +530,17 @@ class FeatExtractor():
                     matrix_hc[i, dict_aa[peptide_position[0]]] = 1.
                 except KeyError:
                     pass
+                except IndexError:
+                    # Likely to be a sequence > 60 AA
+                    pass
 
                 if peptide_position[1] is not None:
-                    modification_composition = peptide_position[1][0].composition
+                    try:
+                        modification_composition = peptide_position[1][0].composition
+                    except KeyError:
+                        logger.debug(
+                            "Skipping the following (not in library): ", peptide_position[1])
+                        continue
 
                     for atom_position_composition,atom_change in modification_composition.items():
                         matrix[i, dict_index[atom_position_composition]] += atom_change
