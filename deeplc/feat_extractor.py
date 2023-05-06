@@ -469,6 +469,9 @@ class FeatExtractor():
             if seq_len > padding_length:
                 seq = seq[0:padding_length]
                 seq_len = len(seq)
+                logger.debug(
+                            "Truncating peptide (too long): ", seq)
+                
             
             
 
