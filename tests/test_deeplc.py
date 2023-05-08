@@ -34,7 +34,6 @@ def test_cli_full():
     preds_df = pd.read_csv(file_path_out)
     train_df = pd.read_csv(file_path_pred)
     model_r2 = r2_score(train_df['tr'], preds_df['predicted retention time'])
-    logging.info(f"{len(train_df.index)}{len(preds_df.index)}")
     logging.info("DeepLC R2 score on %s: %f", file_path_pred, model_r2)
     assert model_r2 > 0.90, f"DeepLC R2 score on {file_path_pred} below 0.9 \
 (was {model_r2})"

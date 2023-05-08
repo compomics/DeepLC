@@ -598,13 +598,6 @@ class FeatExtractor():
         #ret_list_all = pd.DataFrame.from_dict(ret_list_all).T
         #ret_list_hc = pd.DataFrame.from_dict(ret_list_hc).T
 
-        logger.debug(
-                "Dicts to DF: %s seconds" %
-                (time.time() - t1))
-
-        logger.debug(
-                "To df: %s seconds" %
-                (time.time() - t1))
 
         return ret_list
     

@@ -125,27 +125,6 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 
 logger = logging.getLogger(__name__)
 
-
-def read_library(use_library):
-    global LIBRARY
-
-    if not use_library:
-        logger.warning("Trying to read library, but no library file was provided.")
-        return
-    try:
-        library_file = open(use_library)
-    except IOError:
-        logger.warning("Could not find existing library file: %s", use_library)
-        return
-
-    for line in library_file:
-        split_line = line.strip().split(",")
-        try:
-            LIBRARY[split_line[0]] = float(split_line[1])
-        except:
-            logger.warning("Could not use this library entry due to an error: %s", line)
-
-
 def split_list(a, n):
     k, m = divmod(len(a), n)
     return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
@@ -505,49 +484,6 @@ class DeepLC:
                         cal_preds.append(slope * (uncal_pred) + intercept)
         return np.array(cal_preds)
 
-
-    """
-    def write_to_library(self):
-        # TODO repair function
-        try:
-            lib_file = open(self.use_library,"a")
-        except:
-            logger.debug("Could not append to the library file")
-            return
-        if type(m_name) == str:
-            for up, mn, sd in zip(uncal_preds, [m_name]*len(uncal_preds), seq_df["idents"]):
-                lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
-            lib_file.close()
-        else:
-            for up, mn, sd in zip(uncal_preds, m_name, seq_df["idents"]):
-                lib_file.write("%s,%s\n" % (sd+"|"+m_name,str(up)))
-            lib_file.close()
-        if self.reload_library: read_library(self.use_library)
-
-    
-    def _check_presence_library(self,
-                                psm_list,
-                                m_name
-                            ):
-        psm_list_lib = []
-        psm_list_lib_idx = []
-        
-        psm_list_nonlib = []
-        psm_list_nonlib_idx = []
-        
-        for idx,psm in enumnerate(psm_list):
-            k = psm.peptidoform.proforma+"|"+m_name
-            if k in LIBRARY.keys():
-                psm_list_lib.append(psm)
-                psm_list_lib_idx.append(idx)
-            else:
-                psm_list_nonlib.append(psm)
-                psm_list_nonlib_idx.append(idx)
-
-        proforma_library = list(set(proforma_library))
-        return psm_list_lib, psm_list_lib_idx, psm_list_nonlib, psm_list_nonlib_idx
-    """
-    
     def make_preds_core_library(self,
                                 psm_list=[],
                                 calibrate=True,
@@ -1018,27 +954,6 @@ class DeepLC:
 
             tf.config.threading.set_inter_op_parallelism_threads(1)
 
-            #if len(location_peprec_retraining) == 0:
-            #    t_dir = TemporaryDirectory().name
-            #    os.mkdir(t_dir)
-            #else:
-            #    t_dir = location_peprec_retraining
-            #    try:
-            #        os.mkdir(t_dir)
-            #    except:
-            #        pass
-
-            # For training new models we need to use a file, so write the train df to a file
-
-            #df_train_file = os.path.join(t_dir,"train.csv")
-            #seq_df.to_csv(df_train_file,index=False)
-
-            #peprec_name = os.path.join(t_dir,"train.peprec")
-            #write_file(psm_list,peprec_name,filetype="peprec")            
-
-            #peprec_name_csv = os.path.join(t_dir,"train.csv")
-            #pd.read_csv(peprec_name,sep=" ").rename({"observed_retention_time":"tr","peptide":"seq"},axis=1).to_csv(peprec_name_csv,sep=",")
-            
             if len(location_retraining_models) > 0:
                 t_dir_models = TemporaryDirectory().name
                 os.mkdir(t_dir_models)
