@@ -326,11 +326,11 @@ class DeepLC:
         """
         list_of_psms = []
         if len(charges) > 0:
-            for seq,mod,id in zip(seqs,mods,identifiers):
-                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=id))
+            for seq,mod,ident in zip(seqs,mods,identifiers):
+                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=ident))
         else:
-            for seq,mod,id,z in zip(seqs,mods,identifiers,charges):
-                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=id))
+            for seq,mod,ident,z in zip(seqs,mods,identifiers,charges):
+                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=ident))
 
         psm_list = PSMList(psm_list=list_of_psms)
 
@@ -358,11 +358,11 @@ class DeepLC:
 
         list_of_psms = []
         if len(charges) == 0:
-            for seq,mod,id in zip(df_instances["seq"],df_instances["modifications"],df_instances.index):
-                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=id))
+            for seq,mod,ident in zip(df_instances["seq"],df_instances["modifications"],df_instances.index):
+                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=ident))
         else:
-            for seq,mod,id,z in zip(df_instances["seq"],df_instances["modifications"],df_instances.index,charges=df_instances["charges"]):
-                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=id))
+            for seq,mod,ident,z in zip(df_instances["seq"],df_instances["modifications"],df_instances.index,charges=df_instances["charges"]):
+                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=ident))
         psm_list = PSMList(psm_list=list_of_psms)
 
         return self.f_extractor.full_feat_extract(psm_list)
@@ -680,8 +680,8 @@ class DeepLC:
         """
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
-            for seq,mod,id in zip(seq_df["seq"],seq_df["modifications"],seq_df.index):
-                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id))
+            for seq,mod,ident in zip(seq_df["seq"],seq_df["modifications"],seq_df.index):
+                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident))
             psm_list = PSMList(psm_list=list_of_psms)
         
         if len(infile) > 0:
@@ -695,15 +695,7 @@ class DeepLC:
                 logger.debug("Extracting features for the CNN model ...")
 
             X = self.do_f_extraction_psm_list_parallel(psm_list)
-            #X = self.do_f_extraction_psm_list(psm_list)
-
             X_sum = np.stack(X["matrix_sum"].values())
-            #print(np.stack(X["matrix_all"].values()))
-            #print(X["matrix_all"].values())
-            #input("s")
-            #print(X["pos_matrix"].values())
-            #print(np.stack(X["pos_matrix"].values()))
-            #print("s2")
             X_global = np.concatenate((np.stack(X["matrix_all"].values()),
                                     np.stack(X["pos_matrix"].values())),
                                     axis=1)
@@ -760,8 +752,8 @@ class DeepLC:
         # TODO make sure either psm_list or seq_df is supplied
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
-            for seq,mod,id,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
-                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id,retention_time=tr))
+            for seq,mod,ident,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
+                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident,retention_time=tr))
             psm_list = PSMList(psm_list=list_of_psms)
 
             measured_tr = [psm.retention_time for psm in psm_list]
@@ -837,8 +829,8 @@ class DeepLC:
         """
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
-            for seq,mod,id in zip(seq_df["seq"],seq_df["modifications"],seq_df.index):
-                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id))
+            for seq,mod,ident in zip(seq_df["seq"],seq_df["modifications"],seq_df.index):
+                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident))
             psm_list = PSMList(psm_list=list_of_psms)
 
         predicted_tr = self.make_preds(
@@ -982,8 +974,8 @@ class DeepLC:
         """
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
-            for seq,mod,id,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
-                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=id,retention_time=tr))
+            for seq,mod,ident,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
+                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident,retention_time=tr))
             psm_list = PSMList(psm_list=list_of_psms)
             
 

@@ -48,9 +48,9 @@ def parse_arguments(gui=False):
             "gooey_options": {"checkbox_label": "Use pyGAM calibration"},
             "metavar": "Use pyGAM calibration"
         },
-        "legacy_calibration": {
-            "gooey_options": {"checkbox_label": "Use legacy calibration"},
-            "metavar": "Use legacy calibration"
+        "transfer_learning": {
+            "gooey_options": {"checkbox_label": "Use transfer learning calibration"},
+            "metavar": "Use transfer learning calibration"
         },
         "split_cal": {"gooey_options": {"visible": False}},
         "dict_divider": {"gooey_options": {"visible": False}},
@@ -116,13 +116,6 @@ def parse_arguments(gui=False):
         help="path to write output file with predictions",
         **gooey_args["file_pred_out"]
     )
-    io_args.add_argument(
-        "--plot_predictions",
-        action='store_true',
-        default=False,
-        help="save scatter plot of predictions vs observations",
-        **gooey_args["plot_predictions"]
-    )
 
     model_cal_args = parser.add_argument_group(
         "Model and calibration",
@@ -153,6 +146,16 @@ def parse_arguments(gui=False):
         ),
         **gooey_args["pygam_calibration"]
     )
+    
+    calibration_group.add_argument(
+        "--transfer_learning",
+        dest="transfer_learning",
+        action="store_false",
+        help="use transfer learning as calibration method",
+        **gooey_args["transfer_learning"]
+    )
+
+    """
     calibration_group.add_argument(
         "--legacy_calibration",
         dest="pygam_calibration",
@@ -160,6 +163,7 @@ def parse_arguments(gui=False):
         help="use legacy simple piecewise linear fit as calibration method",
         **gooey_args["legacy_calibration"]
     )
+    """
 
     model_cal_args.add_argument(
         "--split_cal",
@@ -190,6 +194,7 @@ def parse_arguments(gui=False):
     advanced_args = parser.add_argument_group(
         "Advanced configuration", **gooey_args["advanced_args"]
     )
+    """
     advanced_args.add_argument(
         "--use_library",
         dest="use_library",
@@ -202,6 +207,9 @@ def parse_arguments(gui=False):
         ),
         **gooey_args["use_library"]
     )
+    """
+
+    """
     advanced_args.add_argument(
         "--write_library",
         dest="write_library",
@@ -210,6 +218,8 @@ def parse_arguments(gui=False):
         help="append new predictions to library for faster future results",
         **gooey_args["write_library"]
     )
+    """
+
     advanced_args.add_argument(
         "--batch_num",
         type=int,
