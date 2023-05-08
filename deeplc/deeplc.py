@@ -12,6 +12,7 @@ __email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
 __credits__ = [
     "Robbin Bouwmeester",
     "Ralf Gabriels",
+    "Arthur Declercq"
     "Lennart Martens",
     "Sven Degroeve",
 ]

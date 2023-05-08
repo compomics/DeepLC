@@ -8,6 +8,11 @@ and this project adheres to
 # [2.1.2] - 2023-05-08
 
 ### Changed
+- add Arthur Declercq as contributor
+
+# [2.1.2] - 2023-05-08
+
+### Changed
 - dependency fix
 
 # [2.1.1] - 2023-05-08
