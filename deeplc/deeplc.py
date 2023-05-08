@@ -240,9 +240,6 @@ class DeepLC:
         self.use_library = use_library
         self.write_library = write_library
 
-        if self.use_library:
-            read_library(self.use_library)
-
         self.reload_library = reload_library
 
         tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
