@@ -171,6 +171,7 @@ def run(
         dict_cal_divider=dict_divider,
         write_library=write_library,
         use_library=use_library,
+        pygam_calibration=pygam_calibration,
         batch_num=batch_num,
         n_jobs=n_threads,
         verbose=verbose,
@@ -181,12 +182,11 @@ def run(
     # Calibrate the original model based on the new retention times
     if len(psm_list_cal) > 0:
         logger.info("Selecting best model and calibrating predictions...")
-        print(psm_list_cal)
         dlc.calibrate_preds(psm_list=psm_list_cal)
 
     # Make predictions; calibrated or uncalibrated
     logger.info("Making predictions using model: %s", dlc.model)
-    if file_cal:
+    if len(psm_list_cal) > 0:
         preds = dlc.make_preds(seq_df=df_pred, infile=file_pred, psm_list=psm_list_pred)
     else:
         preds = dlc.make_preds(seq_df=df_pred, infile=file_pred, psm_list=psm_list_pred, calibrate=False)

@@ -27,14 +27,16 @@ def test_cli_full():
 
     command = [
         "deeplc", "--file_pred", file_path_pred, "--file_cal", file_path_cal,
-        "--file_pred_out", file_path_out
+        "--file_pred_out", file_path_out,
     ]
     subprocess.run(command, check=True)
 
     preds_df = pd.read_csv(file_path_out)
-    model_r2 = r2_score(preds_df['tr'], preds_df['predicted_tr'])
+    train_df = pd.read_csv(file_path_pred)
+    model_r2 = r2_score(train_df['tr'], preds_df['predicted retention time'])
+    logging.info(f"{len(train_df.index)}{len(preds_df.index)}")
     logging.info("DeepLC R2 score on %s: %f", file_path_pred, model_r2)
-    assert model_r2 > 0.90, f"DeepLC R2 score on {file_path_pred} below 0.95 \
+    assert model_r2 > 0.90, f"DeepLC R2 score on {file_path_pred} below 0.9 \
 (was {model_r2})"
 
 

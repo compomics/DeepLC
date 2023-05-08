@@ -139,7 +139,7 @@ def parse_arguments(gui=False):
     calibration_group.add_argument(
         "--pygam_calibration",
         dest="pygam_calibration",
-        action="store_true",
+        default=True,
         help=(
             "use pyGAM generalized additive model as calibration method; "
             "recommended; default"
@@ -150,7 +150,8 @@ def parse_arguments(gui=False):
     calibration_group.add_argument(
         "--transfer_learning",
         dest="transfer_learning",
-        action="store_false",
+        #action="store_false",
+        default=False,
         help="use transfer learning as calibration method",
         **gooey_args["transfer_learning"]
     )
