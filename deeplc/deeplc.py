@@ -209,7 +209,10 @@ class DeepLC:
         pygam_calibration=True,
         deepcallc_mod=False,
         deeplc_retrain=False,
-    ):
+    ):  
+        # Force pygam calibration... TODO fix this
+        pygam_calibration=True
+
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()

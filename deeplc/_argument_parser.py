@@ -152,7 +152,7 @@ def parse_arguments(gui=False):
         "--transfer_learning",
         dest="transfer_learning",
         action="store_false",
-        #default=False,
+        default=False,
         help="use transfer learning as calibration method",
         **gooey_args["transfer_learning"]
     )
