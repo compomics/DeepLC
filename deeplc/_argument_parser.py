@@ -37,18 +37,13 @@ def parse_arguments(gui=False):
         },
         "model_cal_args": {"gooey_options": {'columns':2}},
         "file_model": {"widget": "MultiFileChooser"},
-        "calibration_group": {
-            "gooey_options": {
-                "initial_selection": 0,
-                "title": "Calibration method",
-                "full_width": True,
-            }
-        },
         "pygam_calibration": {
+            "widget": "BlockCheckbox",
             "gooey_options": {"checkbox_label": "Use pyGAM calibration"},
             "metavar": "Use pyGAM calibration"
         },
         "transfer_learning": {
+            "widget": "BlockCheckbox",
             "gooey_options": {"checkbox_label": "Use transfer learning calibration"},
             "metavar": "Use transfer learning calibration"
         },
@@ -133,25 +128,25 @@ def parse_arguments(gui=False):
         **gooey_args["file_model"],
     )
 
-    calibration_group = model_cal_args.add_mutually_exclusive_group(
-        **gooey_args["calibration_group"]
-    )
-    calibration_group.add_argument(
-        "--pygam_calibration",
-        dest="pygam_calibration",
-        action="store_true",
-        #default=True,
-        help=(
-            "use pyGAM generalized additive model as calibration method; "
-            "recommended; default"
-        ),
-        **gooey_args["pygam_calibration"]
-    )
+    #calibration_group = model_cal_args.add_mutually_exclusive_group(
+    #    **gooey_args["calibration_group"]
+    #)
+    #model_cal_args.add_argument(
+    #    "--pygam_calibration",
+    #    dest="pygam_calibration",
+    #    action="store_true",
+    #    #default=True,
+    #    help=(
+    #        "use pyGAM generalized additive model as calibration method; "
+    #        "recommended; default"
+    #    ),
+    #    **gooey_args["pygam_calibration"]
+    #)
     
-    calibration_group.add_argument(
+    model_cal_args.add_argument(
         "--transfer_learning",
         dest="transfer_learning",
-        action="store_false",
+        action="store_true",
         default=False,
         help="use transfer learning as calibration method",
         **gooey_args["transfer_learning"]

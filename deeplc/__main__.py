@@ -171,17 +171,16 @@ def run(
         dict_cal_divider=dict_divider,
         write_library=write_library,
         use_library=use_library,
-        pygam_calibration=pygam_calibration,
         batch_num=batch_num,
         n_jobs=n_threads,
         verbose=verbose,
         deeplc_retrain=transfer_learning
     )
-
     
     # Calibrate the original model based on the new retention times
     if len(psm_list_cal) > 0:
         logger.info("Selecting best model and calibrating predictions...")
+        logger.info("Initiating transfer learning?")
         dlc.calibrate_preds(psm_list=psm_list_cal)
 
     # Make predictions; calibrated or uncalibrated
