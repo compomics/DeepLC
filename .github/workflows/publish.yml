@@ -83,7 +83,6 @@ jobs:
 
   build-streamlit-image:
     runs-on: ubuntu-latest
-    needs: python-package
     steps:
     - uses: actions/checkout@v2
     - id: latest_release
