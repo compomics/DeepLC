@@ -8,10 +8,10 @@ from importlib.metadata import version
 
 import pandas as pd
 import plotly.express as px
-from deeplc import DeepLC
+from streamlit_utils import hide_streamlit_menu, save_dataframe
 
 import streamlit as st
-from streamlit_utils import hide_streamlit_menu, save_dataframe
+from deeplc import DeepLC
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,10 @@ class StreamlitUI:
                     help=self.texts.Help.dict_cal_divider,
                 )
                 self.user_input["split_cal"] = st.number_input(
-                    "Split calibration", step=1, value=25, help=self.texts.Help.split_cal
+                    "Split calibration",
+                    step=1,
+                    value=25,
+                    help=self.texts.Help.split_cal,
                 )
 
             st.subheader("Prediction speed boost")
@@ -145,7 +148,10 @@ class StreamlitUI:
 
         logger.info(
             "Run requested // %s // peptides %i / use_library %r / calibrate %r",
-            datetime.now(), len(config["input_df"]), use_lib, calibrate
+            datetime.now(),
+            len(config["input_df"]),
+            use_lib,
+            calibrate,
         )
 
         # Run DeepLC
@@ -161,9 +167,7 @@ class StreamlitUI:
                 reload_library=True if use_lib else False,
             )
             if calibrate:
-                config["input_df_calibration"]["modifications"].fillna(
-                    "", inplace=True
-                )
+                config["input_df_calibration"]["modifications"].fillna("", inplace=True)
                 dlc.calibrate_preds(seq_df=config["input_df_calibration"])
             config["input_df"]["modifications"].fillna("", inplace=True)
             preds = dlc.make_preds(seq_df=config["input_df"], calibrate=calibrate)
@@ -191,7 +195,7 @@ class StreamlitUI:
                 label="Download",
                 data=save_dataframe(result_df),
                 file_name="deeplc_predictions.csv",
-                mime="text/csv"
+                mime="text/csv",
             )
 
     def _set_library_path(self):
@@ -241,7 +245,7 @@ class StreamlitUI:
             try:
                 config["input_df"] = pd.read_csv(user_input["input_csv"])
             except (ValueError, pd.errors.ParserError) as e:
-                raise InvalidPeptideCSV(e)
+                raise InvalidPeptideCSV(e) from e
         else:
             raise MissingPeptideCSV
 
@@ -260,7 +264,7 @@ class StreamlitUI:
                         user_input["input_csv_calibration"]
                     )
                 except (ValueError, pd.errors.ParserError) as e:
-                    raise InvalidPeptideCSV(e)
+                    raise InvalidPeptideCSV(e) from e
 
         return config
 
@@ -306,7 +310,7 @@ class WebpageTexts:
         badges = """
             [![GitHub release](https://img.shields.io/github/release-pre/compomics/deeplc.svg?style=flat-square)](https://github.com/compomics/deeplc/releases)
             [![GitHub](https://img.shields.io/github/license/compomics/deeplc.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0)
-            [![Twitter](https://flat.badgen.net/twitter/follow/compomics?icon=twitter)](https://twitter.com/compomics)
+            [![Twitter](https://img.shields.io/twitter/follow/compomics?style=flat-square)](https://twitter.com/compomics)
             """
 
         about = f"""
@@ -323,18 +327,19 @@ class WebpageTexts:
             If you use DeepLC for your research, please use the following citation:
             >**DeepLC can predict retention times for peptides that carry as-yet unseen
             modifications**<br>
-            >Robbin Bouwmeester, Ralf Gabriels, Niels Hulstaert, Lennart Martens, Sven
-            Degroeve<br>
-            >_bioRxiv (2020)_<br>
-            >[doi:10.1101/2020.03.28.013003](https://doi.org/10.1101/2020.03.28.013003)
+            >Robbin Bouwmeester, Ralf Gabriels, Niels Hulstaert, Lennart Martens, Sven Degroeve<br>
+            >_Nature Methods 18, 1363–1369 (2021)_<br>
+            >[doi:10.1038/s41592-021-01301-5](https://doi.org/10.1038/s41592-021-01301-5)
 
             ---
 
-            Currently using the following package versions:
+            Currently using the following package versions: <br />
+            [![DeepLC](https://img.shields.io/badge/deeplc-{version('deeplc')}-blue?style=flat-square&logoColor=white&logo=pypi)](https://github.com/compomics/deeplc)
+            [![Tensorflow](https://img.shields.io/badge/tensorflow-{version('tensorflow')}-blue?style=flat-square&logoColor=white&logo=pypi)](https://github.com/tensorflow/tensorflow)
+            [![Streamlit](https://img.shields.io/badge/streamlit-{version('streamlit')}-blue?style=flat-square&logoColor=white&logo=pypi)](https://github.com/streamlit/streamlit)
 
-            [![DeepLC](https://flat.badgen.net/badge/deeplc/{version('deeplc')}/grey?icon=pypi)](https://github.com/compomics/deeplc)
-            [![Tensorflow](https://flat.badgen.net/badge/tensorflow/{version('tensorflow')}/grey?icon=pypi)](https://github.com/tensorflow/tensorflow)
-            [![Streamlit](https://flat.badgen.net/badge/streamlit/{version('streamlit')}/grey?icon=pypi)](https://github.com/streamlit/streamlit)
+            Latest DeepLC version:<br />
+            ![PyPI](https://img.shields.io/pypi/v/deeplc?style=flat-square&logoColor=white&logo=pypi)
             """
 
     class Help:
