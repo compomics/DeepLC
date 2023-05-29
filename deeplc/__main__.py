@@ -112,10 +112,10 @@ def run(
         file_model = fm_dict
     
     with open(file_pred) as f:
-        first_line_pred = f.readline()
+        first_line_pred = f.readline().strip()
     if file_cal:
         with open(file_cal) as f:
-            first_line_cal = f.readline()
+            first_line_cal = f.readline().strip()
 
     if "modifications" in first_line_pred.split(",") and "seq" in first_line_pred.split(","):
         # Read input files
