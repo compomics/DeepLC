@@ -548,12 +548,12 @@ class DeepLC:
             #X = self.do_f_extraction_psm_list(psm_list)
             X = self.do_f_extraction_psm_list_parallel(psm_list)
 
-            X_sum = np.stack(X["matrix_sum"].values())
-            X_global = np.concatenate((np.stack(X["matrix_all"].values()),
-                                    np.stack(X["pos_matrix"].values())),
+            X_sum = np.stack(list(X["matrix_sum"].values()))
+            X_global = np.concatenate((np.stack(list(X["matrix_all"].values())),
+                                    np.stack(list(X["pos_matrix"].values()))),
                                     axis=1)
-            X_hc = np.stack(X["matrix_hc"].values())
-            X = np.stack(X["matrix"].values())
+            X_hc = np.stack(list(X["matrix_hc"].values()))
+            X = np.stack(list(X["matrix"].values()))
         elif len(X) == 0 and len(psm_list) == 0:
             return []
 
@@ -631,12 +631,12 @@ class DeepLC:
                 logger.debug("Extracting features for the CNN model ...")
 
             X = self.do_f_extraction_psm_list_parallel(psm_list)
-            X_sum = np.stack(X["matrix_sum"].values())
-            X_global = np.concatenate((np.stack(X["matrix_all"].values()),
-                                    np.stack(X["pos_matrix"].values())),
+            X_sum = np.stack(list(X["matrix_sum"].values()))
+            X_global = np.concatenate((np.stack(list(X["matrix_all"].values())),
+                                    np.stack(list(X["pos_matrix"].values()))),
                                     axis=1)
-            X_hc = np.stack(X["matrix_hc"].values())
-            X = np.stack(X["matrix"].values())
+            X_hc = np.stack(list(X["matrix_hc"].values()))
+            X = np.stack(list(X["matrix"].values()))
         else:
             return []
 
