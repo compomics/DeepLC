@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='deeplc',
-    version='2.2.1',
+    version='2.2.2',
     license='apache-2.0',
     description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
     long_description=LONG_DESCRIPTION,

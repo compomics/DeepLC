@@ -546,11 +546,24 @@ class FeatExtractor():
                         continue
 
                     for atom_position_composition,atom_change in modification_composition.items():
-                        matrix[i, dict_index[atom_position_composition]] += atom_change
-                        if i in positions:
-                            matrix_pos[i, dict_index_pos[atom_position_composition]] += atom_change
-                        elif i - seq_len in positions:
-                            matrix_pos[i - seq_len, dict_index_pos[atom_position_composition]] += atom_change
+                        try:
+                            matrix[i, dict_index[atom_position_composition]] += atom_change
+                            if i in positions:
+                                matrix_pos[i, dict_index_pos[atom_position_composition]] += atom_change
+                            elif i - seq_len in positions:
+                                matrix_pos[i - seq_len, dict_index_pos[atom_position_composition]] += atom_change
+                        except KeyError:
+                            try:
+                                logger.debug(f"Could not add the following atom: {atom_position_composition}, attempting to replace the [] part")
+                                atom_position_composition = sub("\[.*?\]", "", atom_position_composition)
+                                matrix[i, dict_index[atom_position_composition]] += atom_change
+                                if i in positions:
+                                    matrix_pos[i, dict_index_pos[atom_position_composition]] += atom_change
+                                elif i - seq_len in positions:
+                                    matrix_pos[i - seq_len, dict_index_pos[atom_position_composition]] += atom_change
+                            except KeyError:
+                                logger.debug(f"Could not add the following atom: {atom_position_composition}, second attempt, now ignored")
+                                continue
 
             #logger.debug(
             #    "Peptide onehot+mod: %s seconds" %
