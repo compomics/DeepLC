@@ -517,12 +517,18 @@ class FeatExtractor():
             for p in positions_pos:
                 aa = seq[p]
                 for atom, val in mass.std_aa_comp[aa].items():
-                    matrix_pos[p, dict_index_pos[atom]] = val
+                    try:
+                        matrix_pos[p, dict_index_pos[atom]] = val
+                    except KeyError:
+                        logger.debug(f"Could not add the following atom: {atom}")
 
             for pn in positions_neg:
                 aa = seq[seq_len + pn]
                 for atom, val in mass.std_aa_comp[aa].items():
-                    matrix_pos[pn, dict_index_pos[atom]] = val
+                    try:
+                        matrix_pos[pn, dict_index_pos[atom]] = val
+                    except KeyError:
+                        logger.debug(f"Could not add the following atom: {atom}")
 
             #logger.debug(
             #    "Peptide positions: %s seconds" %
