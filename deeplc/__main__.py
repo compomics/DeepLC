@@ -136,6 +136,8 @@ def run(
             mapper = pd.read_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "unimod/map_mq_file.csv"),index_col=0)["value"].to_dict()
             psm_list_pred.rename_modifications(mapper)
 
+    # Allow for calibration file to be empty (undefined), fill in if/elif if present
+    psm_list_cal = []
     if "modifications" in first_line_cal.split(",") and "seq" in first_line_cal.split(",") and file_cal:
         df_cal = pd.read_csv(file_cal)
         if len(df_cal.columns) < 2:
