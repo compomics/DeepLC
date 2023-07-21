@@ -427,7 +427,7 @@ class DeepLC:
         pd.DataFrame
             feature matrix
         """
-        self.n_jobs = 1
+        #self.n_jobs = 1
         logger.info("prepare feature extraction")
         if multiprocessing.current_process().daemon:
             logger.warning("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
