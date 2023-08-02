@@ -209,9 +209,6 @@ class DeepLC:
         deepcallc_mod=False,
         deeplc_retrain=False,
     ):  
-        # Force pygam calibration... TODO fix this
-        pygam_calibration=True
-
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()
@@ -771,15 +768,16 @@ class DeepLC:
         """
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
-            for seq,mod,ident in zip(seq_df["seq"],seq_df["modifications"],seq_df.index):
-                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident))
+            for seq,mod,tr,ident in zip(seq_df["seq"],seq_df["modifications"],seq_df["tr"],seq_df.index):
+                list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident,retention_time=tr))
             psm_list = PSMList(psm_list=list_of_psms)
+        
+        measured_tr = [psm.retention_time for psm in psm_list]
 
         predicted_tr = self.make_preds(
             psm_list,
             calibrate=False,
             mod_name=mod_name)
-        measured_tr = seq_df["tr"]
 
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [
@@ -824,6 +822,8 @@ class DeepLC:
             ptr = predicted_tr[ptr_index_start:ptr_index_end]
 
             if use_median:
+                print(measured_tr)
+                print(mtr)
                 mtr_mean.append(np.median(mtr))
                 ptr_mean.append(np.median(ptr))
             else:
@@ -1000,7 +1000,6 @@ class DeepLC:
             else:
                 calibrate_output = self.calibrate_preds_func(
                     psm_list,
-                    measured_tr=measured_tr,
                     correction_factor=correction_factor,
                     seq_df=seq_df,
                     use_median=use_median,
