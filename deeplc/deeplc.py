@@ -244,7 +244,12 @@ class DeepLC:
 
         self.reload_library = reload_library
 
-        tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
+        try:
+            tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
+        except RuntimeError:
+            logger.warning(
+                "DeepLC tried to set intra op threads, but was unable to do so."
+            )
 
         if "NUMEXPR_MAX_THREADS" not in os.environ:
             os.environ["NUMEXPR_MAX_THREADS"] = str(n_jobs)
@@ -427,7 +432,8 @@ class DeepLC:
         pd.DataFrame
             feature matrix
         """
-        #self.n_jobs = 1
+        # TODO for multiproc I am still expecting a pd dataframe, this is not the case anymore, they are dicts
+        self.n_jobs = 1
         logger.info("prepare feature extraction")
         if multiprocessing.current_process().daemon:
             logger.warning("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
