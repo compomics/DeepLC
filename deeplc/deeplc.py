@@ -128,6 +128,10 @@ def split_list(a, n):
     k, m = divmod(len(a), n)
     return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
 
+def divide_chunks(l, n):
+    for i in range(0, len(l), n): 
+        yield l[i:i + n]
+
 def reset_keras():
     """Reset Keras session."""
     sess = get_session()
@@ -202,6 +206,7 @@ class DeepLC:
         f_extractor=None,
         cnn_model=True,
         batch_num=250000,
+        batch_num_tf=1024,
         write_library=False,
         use_library=None,
         reload_library=False,
@@ -226,6 +231,7 @@ class DeepLC:
         self.cnn_model = cnn_model
 
         self.batch_num = batch_num
+        self.batch_num_tf = batch_num_tf
         self.dict_cal_divider = dict_cal_divider
         self.split_cal = split_cal
         self.n_jobs = n_jobs
@@ -569,7 +575,7 @@ class DeepLC:
         try:
             X
             ret_preds = mod.predict(
-                [X, X_sum, X_global, X_hc], batch_size=5120).flatten()
+                [X, X_sum, X_global, X_hc], batch_size=self.batch_num_tf).flatten()
         except UnboundLocalError:
 
             logger.debug("X is empty, skipping...")
@@ -629,56 +635,60 @@ class DeepLC:
                 mapper = pd.read_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "unimod/map_mq_file.csv"),index_col=0)["value"].to_dict()
                 psm_list.rename_modifications(mapper)
 
-        if len(psm_list) > 0:
-            if self.verbose:
-                logger.debug("Extracting features for the CNN model ...")
+        ret_preds_batches = []
+        for psm_list_t in divide_chunks(psm_list, self.batch_num):
+            ret_preds = []
+            if len(psm_list_t) > 0:
+                if self.verbose:
+                    logger.debug("Extracting features for the CNN model ...")
 
-            X = self.do_f_extraction_psm_list_parallel(psm_list)
-            X_sum = np.stack(list(X["matrix_sum"].values()))
-            X_global = np.concatenate((np.stack(list(X["matrix_all"].values())),
-                                    np.stack(list(X["pos_matrix"].values()))),
-                                    axis=1)
-            X_hc = np.stack(list(X["matrix_hc"].values()))
-            X = np.stack(list(X["matrix"].values()))
-        else:
-            return []
+                X = self.do_f_extraction_psm_list_parallel(psm_list_t)
+                X_sum = np.stack(list(X["matrix_sum"].values()))
+                X_global = np.concatenate((np.stack(list(X["matrix_all"].values())),
+                                        np.stack(list(X["pos_matrix"].values()))),
+                                        axis=1)
+                X_hc = np.stack(list(X["matrix_hc"].values()))
+                X = np.stack(list(X["matrix"].values()))
+            else:
+                return []
 
-        ret_preds = []
+            if isinstance(self.model, dict):
+                for m_group_name,m_name in self.model.items():
+                    ret_preds.append(self.make_preds_core(X=X, 
+                                        X_sum=X_sum, 
+                                        X_global=X_global, 
+                                        X_hc=X_hc,
+                                        calibrate=calibrate,
+                                        mod_name=m_name))
+                ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
+            elif mod_name is not None:
+                ret_preds = self.make_preds_core(X=X, 
+                                                X_sum=X_sum, 
+                                                X_global=X_global, 
+                                                X_hc=X_hc,
+                                                calibrate=calibrate,
+                                                mod_name=mod_name)
+            elif isinstance(self.model, list):
+                for m_name in self.model:
+                    ret_preds.append(self.make_preds_core(X=X, 
+                                        X_sum=X_sum, 
+                                        X_global=X_global, 
+                                        X_hc=X_hc,
+                                        calibrate=calibrate,
+                                        mod_name=m_name))
+                ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
+            else:
+                ret_preds = self.make_preds_core(X=X, 
+                                                X_sum=X_sum, 
+                                                X_global=X_global, 
+                                                X_hc=X_hc,
+                                                calibrate=calibrate,
+                                                mod_name=self.model)
+            ret_preds_batches.extend(ret_preds)
 
-        if isinstance(self.model, dict):
-            for m_group_name,m_name in self.model.items():
-                ret_preds.append(self.make_preds_core(X=X, 
-                                    X_sum=X_sum, 
-                                    X_global=X_global, 
-                                    X_hc=X_hc,
-                                    calibrate=calibrate,
-                                    mod_name=m_name))
-            ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
-        elif mod_name is not None:
-            ret_preds = self.make_preds_core(X=X, 
-                                             X_sum=X_sum, 
-                                             X_global=X_global, 
-                                             X_hc=X_hc,
-                                             calibrate=calibrate,
-                                             mod_name=mod_name)
-        elif isinstance(self.model, list):
-            for m_name in self.model:
-                ret_preds.append(self.make_preds_core(X=X, 
-                                    X_sum=X_sum, 
-                                    X_global=X_global, 
-                                    X_hc=X_hc,
-                                    calibrate=calibrate,
-                                    mod_name=m_name))
-            ret_preds = np.array([sum(a)/len(a) for a in zip(*ret_preds)])
-        else:
-            ret_preds = self.make_preds_core(X=X, 
-                                             X_sum=X_sum, 
-                                             X_global=X_global, 
-                                             X_hc=X_hc,
-                                             calibrate=calibrate,
-                                             mod_name=self.model)
-        return ret_preds
-        # todo make this multithreaded
+        return ret_preds_batches
+        # TODO make this multithreaded
+        # should be possible with the batched list
 
     def calibrate_preds_func_pygam(self,
                                    psm_list=None,
@@ -800,9 +810,9 @@ class DeepLC:
             logger.debug(
                 "Selecting the data points for calibration (used to fit the linear models between)"
             )
-
         # smooth between observed and predicted
         split_val = predicted_tr[-1] / self.split_cal
+
         for range_calib_number in np.arange(0.0, predicted_tr[-1], split_val):
             ptr_index_start = np.argmax(predicted_tr >= range_calib_number)
             ptr_index_end = np.argmax(predicted_tr >= range_calib_number + split_val)
@@ -822,8 +832,6 @@ class DeepLC:
             ptr = predicted_tr[ptr_index_start:ptr_index_end]
 
             if use_median:
-                print(measured_tr)
-                print(mtr)
                 mtr_mean.append(np.median(mtr))
                 ptr_mean.append(np.median(ptr))
             else:
