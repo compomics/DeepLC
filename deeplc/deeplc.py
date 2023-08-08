@@ -587,6 +587,8 @@ class DeepLC:
             except:
                 ret_preds = self.calibration_core(ret_preds,self.calibrate_dict,self.calibrate_min,self.calibrate_max)
         
+        clear_session()
+        gc.collect()
         return ret_preds
 
     def make_preds(self,
