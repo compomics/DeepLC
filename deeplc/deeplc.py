@@ -57,6 +57,9 @@ if IS_CLI_GUI or IS_FROZEN:
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
 
+# Supress warnings (or at least try...)
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import numpy as np
 import pandas as pd
@@ -115,9 +118,6 @@ def warn(*args, **kwargs):
     pass
 import warnings
 warnings.warn = warn
-
-# Supress warnings (or at least try...)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 warnings.filterwarnings('ignore', category=FutureWarning)
