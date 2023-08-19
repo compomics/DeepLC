@@ -890,12 +890,12 @@ class DeepLC:
                         infile="",
                         measured_tr=[],
                         correction_factor=1.0,
-                        location_peprec_retraining="",
                         location_retraining_models="",
                         psm_utils_obj=None,
                         sample_for_calibration_curve=None,
                         seq_df=None,
-                        use_median=True):
+                        use_median=True,
+                        return_plotly_report=True):
         """
         Find best model and calibrate.
 
@@ -929,7 +929,8 @@ class DeepLC:
             for seq,mod,ident,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
                 list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident,retention_time=tr))
             psm_list = PSMList(psm_list=list_of_psms)
-            
+        else:
+            psm_list = psm_utils_obj    
 
         if isinstance(self.model, str):
             self.model = [self.model]
@@ -959,6 +960,8 @@ class DeepLC:
         mod_calibrate_max_dict = {}
         pred_dict = {}
         mod_dict = {}
+        temp_obs = []
+        temp_pred = []
 
         if self.deeplc_retrain:
             # The following code is not required in most cases, but here it is used to clear variables that might cause problems
@@ -985,7 +988,7 @@ class DeepLC:
                 outpath=t_dir_models,
                 mods_transfer_learning=self.model,
                 freeze_layers=True,
-                n_epochs=10,
+                n_epochs=20,
                 freeze_after_concat=1,
             )
 
@@ -1044,7 +1047,7 @@ class DeepLC:
                 mod_calibrate_dict[m_group_name][m] = self.calibrate_dict
                 mod_calibrate_min_dict[m_group_name][m] = self.calibrate_min
                 mod_calibrate_max_dict[m_group_name][m] = self.calibrate_max
-            except:
+            except KeyError:
                 pred_dict[m_group_name] = {}
                 mod_dict[m_group_name] = {}
                 mod_calibrate_dict[m_group_name] = {}
@@ -1084,6 +1087,9 @@ class DeepLC:
                 best_model = copy.deepcopy(mod_dict[m_group_name])
                 best_perf = perf
 
+                temp_obs = np.array(measured_tr)
+                temp_pred = np.array(preds)
+
         self.calibrate_dict = best_calibrate_dict
         self.calibrate_min = best_calibrate_min
         self.calibrate_max = best_calibrate_max
@@ -1095,6 +1101,75 @@ class DeepLC:
         self.n_jobs = 1
 
         logger.debug("Model with the best performance got selected: %s" % (best_model))
+
+        if return_plotly_report:
+            plotly_return_dict = {}
+            plotly_df = pd.DataFrame(
+                            list(zip(temp_obs,temp_pred)),
+                            columns=["Observed retention time (min)","Predicted retention time (min)"]
+                        )
+            
+            plotly_return_dict["scatter"] = self._make_plotly_report_scatter(plotly_df)
+            plotly_return_dict["baseline_dist"] = self._make_plotly_report_dist_baseline(plotly_df)
+            return plotly_return_dict
+        
+        return {}
+        
+    def _make_plotly_report_scatter(self,df):
+        import plotly.express as px
+        fig = px.scatter(
+                    df,
+                    x="Observed retention time (min)", 
+                    y="Predicted retention time (min)"
+                )
+
+        fig.update_layout(shapes = [{'type': 'line', 'yref': 'paper', 'xref': 'paper', 
+                                    'y0': min(df["Observed retention time (min)"]), 
+                                    'y1': max(df["Observed retention time (min)"]), 
+                                    'x0': min(df["Observed retention time (min)"]), 
+                                    'x1': max(df["Observed retention time (min)"])}])
+
+        return fig
+
+    def _make_plotly_report_dist_baseline(self,df):
+        import plotly.figure_factory as ff
+
+        baseline_df = pd.read_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "baseline_performance/baseline_predictions.csv"))
+        baseline_df.fillna(0.0,inplace=True)
+
+        mae = sum(abs(df["Observed retention time (min)"]-df["Predicted retention time (min)"]))/len(df.index)
+        mae_rel = (mae/max(df["Observed retention time (min)"]))*100
+
+        #rel_mae_transfer_learning	rel_mae_new_model	rel_mae_calibrate
+        group_labels = ['Baseline performance'] # name of the dataset
+
+        
+
+        fig = ff.create_distplot(
+                    [list(baseline_df["rel_mae_transfer_learning"])], 
+                    group_labels,
+                    rug_text=list(baseline_df.index),
+                    )
+    
+        fig.update_xaxes(title_text="Relative Mean Absolute Error")
+        #fig.update_yaxes(title_text="Density")
+
+        fig.update_layout(title=f"Current DeepLC performance compared to {len(baseline_df.index)} datasets") 
+
+        percentile = round((baseline_df["rel_mae_transfer_learning"] < mae_rel).mean()*100,1)
+        fig.add_scatter(x=[mae_rel],
+                y=['distplot'],
+                mode='markers',
+                marker=dict(color='red', symbol='x'),
+                name=f"Current (percentile: {percentile}%)",
+                xaxis= 'x',
+                yaxis='y2')
+        
+        #improve the plot aesthetics:
+        fig.update_traces(selector=dict(type="histogram"), marker_line_color="black", marker_line_width=1.5)
+        #fig.update_layout(width=700, height=500)
+
+        return fig
 
     def split_seq(self, a, n):
         """
