@@ -929,7 +929,7 @@ class DeepLC:
             for seq,mod,ident,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
                 list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident,retention_time=tr))
             psm_list = PSMList(psm_list=list_of_psms)
-        else:
+        elif psm_utils_obj:
             psm_list = psm_utils_obj    
 
         if isinstance(self.model, str):
