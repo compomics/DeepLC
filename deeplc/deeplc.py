@@ -895,7 +895,7 @@ class DeepLC:
                         sample_for_calibration_curve=None,
                         seq_df=None,
                         use_median=True,
-                        return_plotly_report=True):
+                        return_plotly_report=False):
         """
         Find best model and calibrate.
 
