@@ -55,6 +55,7 @@ setup(
     ],
     extras_require={
         "gui": ["gooey>=1.0"],
+        "plot": ["plotly>=5"],
     },
     python_requires='>=3.7',
 )
