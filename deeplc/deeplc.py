@@ -70,7 +70,6 @@ import h5py
 
 from deeplc._exceptions import CalibrationError, DeepLCError
 from deeplc.trainl3 import train_en
-import deeplc.plot
 
 from psm_utils.io.peptide_record import peprec_to_proforma
 from psm_utils.psm import PSM
@@ -1104,6 +1103,7 @@ class DeepLC:
         logger.debug("Model with the best performance got selected: %s" % (best_model))
 
         if return_plotly_report:
+            import deeplc.plot
             plotly_return_dict = {}
             plotly_df = pd.DataFrame(
                             list(zip(temp_obs,temp_pred)),
