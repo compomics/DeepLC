@@ -536,10 +536,6 @@ class FeatExtractor():
             ret_list["pos_matrix"][row_index] = matrix_pos.flatten()
             ret_list["matrix_hc"][row_index] = matrix_hc
 
-        logger.debug(
-                "Feats: %s seconds" %
-                (time.time() - t1))
-        
         return ret_list
     
     
