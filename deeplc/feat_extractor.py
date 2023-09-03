@@ -422,48 +422,23 @@ class FeatExtractor():
             ret[:, n:] = ret[:, n:] - ret[:, :-n]
             return ret[:, n - 1:]
         
-        t1 = time.time()
-        logger.debug(
-                "Starttime: %s seconds" %
-                (time.time() - t1))
-
         ret_list = {}
         ret_list["matrix"] = {}
-        ret_list["matrix_sum"] = {} #{"index_name": row_index, "matrix_sum": matrix_sum}
-        ret_list["matrix_all"] = {} #{"index_name": row_index, "matrix_all": matrix_all}
-        ret_list["pos_matrix"] = {} #{"index_name": row_index, "pos_matrix": matrix_pos.flatten()}
+        ret_list["matrix_sum"] = {}
+        ret_list["matrix_all"] = {}
+        ret_list["pos_matrix"] = {}
         ret_list["matrix_hc"] = {}
-        #look_up_mod_subtract = {}
-        #look_up_mod_add = {}
 
-        logger.debug(
-                "Dicts: %s seconds" %
-                (time.time() - t1))
         # Reintroduce for CCS
         #if len(charges) == 0:
         #    charges = [-1] * len(indexes)
 
         # Iterate over all instances
         for psm,row_index in zip(psm_list,indexes):
-            #print(psm)
-            #print(psm.peptidoform)
-            #print(psm.peptidoform.sequence)
-            #print(psm.peptidoform.sequential_composition)
             peptidoform = psm.peptidoform
-
-            #logger.debug(
-            #    "Create_peptidoform: %s seconds" %
-            #    (time.time() - t1))
-            
-            #peptidoform.proforma_sequence
-            
             seq = peptidoform.sequence
             seq_len = len(seq)
             
-            #logger.debug(
-            #    "Get sequence: %s seconds" %
-            #    (time.time() - t1))
-
             # For now anything longer than padding length is cut away
             # (C-terminal cutting)
             if seq_len > padding_length:
@@ -471,23 +446,8 @@ class FeatExtractor():
                 seq_len = len(seq)
                 logger.debug(
                             "Truncating peptide (too long): %s" % (seq))
-                
-            
-            
 
             peptide_composition = [mass.std_aa_comp[aa] for aa in seq]
-
-            #logger.debug(
-            #    "Peptide composition: %s seconds" %
-            #    (time.time() - t1))
-
-            #peptide_composition[1] = peptide_composition[0]+peptide_composition[1]
-            #peptide_composition[-2] = peptide_composition[-2]+peptide_composition[-1]
-
-            # Add padding for peptides that are too short
-            # TODO is this still needed?
-            #padding = "".join(["X"] * (padding_length - len(seq)))
-            #seq = seq + padding
 
             # Initialize all feature matrixes
             matrix = np.zeros(
@@ -497,22 +457,13 @@ class FeatExtractor():
             matrix_pos = np.zeros(
                 (len(positions), len(
                     dict_index.keys())), dtype=np.float16)
-
-            #logger.debug(
-            #    "Init matrices: %s seconds" %
-            #    (time.time() - t1))
-
+            
             for i, position_composition in enumerate(peptide_composition):
-                
                 for k, v in position_composition.items():
                     try:
                         matrix[i, dict_index[k]] = v
                     except KeyError:
-                        continue
-            
-            #logger.debug(
-            #    "Peptide composition: %s seconds" %
-            #    (time.time() - t1))
+                        logger.debug(f"Could not add the following value: {v}")
 
             for p in positions_pos:
                 aa = seq[p]
@@ -529,10 +480,6 @@ class FeatExtractor():
                         matrix_pos[pn, dict_index_pos[atom]] = val
                     except KeyError:
                         logger.debug(f"Could not add the following atom: {atom}")
-
-            #logger.debug(
-            #    "Peptide positions: %s seconds" %
-            #   (time.time() - t1))
 
             for i, peptide_position in enumerate(peptidoform.parsed_sequence):
                 try:
@@ -571,12 +518,9 @@ class FeatExtractor():
                                 logger.debug(f"Could not add the following atom: {atom_position_composition}, second attempt, now ignored")
                                 continue
 
-            #logger.debug(
-            #    "Peptide onehot+mod: %s seconds" %
-            #    (time.time() - t1))
-
             matrix_all = np.sum(matrix, axis=0)
             matrix_all = np.append(matrix_all, seq_len)
+            
             # Reintroduce for CCS
             #if charge != -1:
             #    matrix_all = np.append(matrix_all,(seq.count("H"))/float(seq_len))
@@ -586,38 +530,16 @@ class FeatExtractor():
             #    matrix_all = np.append(matrix_all,charge)
             matrix_sum = rolling_sum(matrix.T, n=2)[:, ::2].T
 
-            #logger.debug(
-            #    "Matrix sum: %s seconds" %
-            #    (time.time() - t1))
-
-            ret_list["matrix"][row_index] = matrix #{"index_name": row_index, "matrix": matrix}
-            ret_list["matrix_sum"][row_index] = matrix_sum #{"index_name": row_index, "matrix_sum": matrix_sum}
-            ret_list["matrix_all"][row_index] = matrix_all #{"index_name": row_index, "matrix_all": matrix_all}
-            ret_list["pos_matrix"][row_index] = matrix_pos.flatten() #{"index_name": row_index, "pos_matrix": matrix_pos.flatten()}
-            ret_list["matrix_hc"][row_index] = matrix_hc #{"index_name": row_index, "matrix_hc": matrix_hc}
-
-            #logger.debug(
-            #    "To dict: %s seconds" %
-            #    (time.time() - t1))
-
+            ret_list["matrix"][row_index] = matrix 
+            ret_list["matrix_sum"][row_index] = matrix_sum
+            ret_list["matrix_all"][row_index] = matrix_all
+            ret_list["pos_matrix"][row_index] = matrix_pos.flatten()
+            ret_list["matrix_hc"][row_index] = matrix_hc
 
         logger.debug(
                 "Feats: %s seconds" %
                 (time.time() - t1))
-
-        #print(pd.DataFrame(np.array([np.array(ret_list.values()),
-        #                             np.array(ret_list_sum.values()),
-        #                             np.array(ret_list_pos.values()),
-        #                             np.array(ret_list_all.values()),
-        #                             np.array(ret_list_hc.values())])))
-
-        #ret_list = pd.DataFrame.from_dict(ret_list).T
-        #ret_list_sum = pd.DataFrame.from_dict(ret_list_sum).T
-        #ret_list_pos = pd.DataFrame.from_dict(ret_list_pos).T
-        #ret_list_all = pd.DataFrame.from_dict(ret_list_all).T
-        #ret_list_hc = pd.DataFrame.from_dict(ret_list_hc).T
-
-
+        
         return ret_list
     
     
@@ -679,19 +601,8 @@ class FeatExtractor():
         if self.cnn_feats:
             if self.verbose:
                 logger.debug("Extracting CNN features")
-            #try:
-            X_cnn = self.encode_atoms( # X_sum, X_cnn_pos, X_cnn_count, X_hc
+            X_cnn = self.encode_atoms(
                 psm_list, list(range(len(psm_list))), charges=charges)
-            #except:
-            #    X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc = self.encode_atoms(
-            #        [psm_list], list(range(len([psm_list]))), charges=charges)
-            #X_cnn = pd.concat(
-            #    [X_cnn, X_sum, X_cnn_pos, X_cnn_count, X_hc], axis=1)
-
-            #del X_sum
-            #del X_cnn_pos
-            #del X_cnn_count
-            #del X_hc
 
         if self.cnn_feats:
             X = X_cnn
