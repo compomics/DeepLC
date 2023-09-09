@@ -437,7 +437,7 @@ class DeepLC:
         """
         # TODO for multiproc I am still expecting a pd dataframe, this is not the case anymore, they are dicts
         self.n_jobs = 1
-        logger.info("prepare feature extraction")
+        logger.debug("prepare feature extraction")
         if multiprocessing.current_process().daemon:
             logger.warning("DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children.")
             psm_list_split = split_list(psm_list, self.n_jobs)
@@ -447,20 +447,20 @@ class DeepLC:
             pool = multiprocessing.Pool(self.n_jobs)
 
         if self.n_jobs == 1:
-            logger.info("start feature extraction")
+            logger.debug("start feature extraction")
             all_feats = self.do_f_extraction_psm_list(psm_list)
-            logger.info("got feature extraction results")
+            logger.debug("got feature extraction results")
         else:
-            logger.info("start feature extraction")
+            logger.debug("start feature extraction")
             all_feats_async = pool.map_async(
                     self.do_f_extraction_psm_list,
                     psm_list_split)
 
-            logger.info("wait for feature extraction")
+            logger.debug("wait for feature extraction")
             all_feats_async.wait()
-            logger.info("get feature extraction results")
+            logger.debug("get feature extraction results")
             all_feats = pd.concat(all_feats_async.get())
-            logger.info("got feature extraction results")
+            logger.debug("got feature extraction results")
 
             pool.close()
             pool.join()
@@ -552,7 +552,6 @@ class DeepLC:
 
         if len(X) == 0 and len(psm_list) > 0:
             if self.verbose:
-
                 logger.debug("Extracting features for the CNN model ...")
             #X = self.do_f_extraction_psm_list(psm_list)
             X = self.do_f_extraction_psm_list_parallel(psm_list)
@@ -577,7 +576,6 @@ class DeepLC:
             ret_preds = mod.predict(
                 [X, X_sum, X_global, X_hc], batch_size=self.batch_num_tf).flatten()
         except UnboundLocalError:
-
             logger.debug("X is empty, skipping...")
             ret_preds = []
 

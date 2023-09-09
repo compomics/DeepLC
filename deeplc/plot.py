@@ -46,6 +46,8 @@ def scatter(
     fig.update_layout(
         title="Predicted vs. observed retention times",
         showlegend=False,
+        xaxis_title="Observed retention time",
+        yaxis_title="Predicted retention time",
     )
     
     return fig
