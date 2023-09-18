@@ -444,7 +444,7 @@ class FeatExtractor():
             if seq_len > padding_length:
                 seq = seq[0:padding_length]
                 seq_len = len(seq)
-                logger.debug(
+                logger.warning(
                             "Truncating peptide (too long): %s" % (seq))
 
             peptide_composition = [mass.std_aa_comp[aa] for aa in seq]
@@ -462,8 +462,8 @@ class FeatExtractor():
                 for k, v in position_composition.items():
                     try:
                         matrix[i, dict_index[k]] = v
-                    except KeyError:
-                        logger.debug(f"Could not add the following value: {v}")
+                    except warning:
+                        logger.warning(f"Could not add the following value: {v}")
 
             for p in positions_pos:
                 aa = seq[p]
@@ -471,7 +471,9 @@ class FeatExtractor():
                     try:
                         matrix_pos[p, dict_index_pos[atom]] = val
                     except KeyError:
-                        logger.debug(f"Could not add the following atom: {atom}")
+                        logger.warning(f"Could not add the following atom: {atom}")
+                    except IndexError:
+                        logger.warning(f"Could not add the following atom: {p} {atom} {val}")
 
             for pn in positions_neg:
                 aa = seq[seq_len + pn]
@@ -479,22 +481,25 @@ class FeatExtractor():
                     try:
                         matrix_pos[pn, dict_index_pos[atom]] = val
                     except KeyError:
-                        logger.debug(f"Could not add the following atom: {atom}")
+                        logger.warning(f"Could not add the following atom: {atom}")
+                    except IndexError:
+                        logger.warning(f"Could not add the following atom: {pn} {atom} {val}")
 
             for i, peptide_position in enumerate(peptidoform.parsed_sequence):
                 try:
                     matrix_hc[i, dict_aa[peptide_position[0]]] = 1.
                 except KeyError:
-                    pass
+                    logger.warning(
+                            "Skipping the following (not in library): ", peptide_position[1])
                 except IndexError:
                     # Likely to be a sequence > 60 AA
-                    pass
+                    logger.warning(f"Could not add the following atom: {i} {peptide_position}")
 
                 if peptide_position[1] is not None:
                     try:
                         modification_composition = peptide_position[1][0].composition
                     except KeyError:
-                        logger.debug(
+                        logger.warning(
                             "Skipping the following (not in library): ", peptide_position[1])
                         continue
 
@@ -507,7 +512,7 @@ class FeatExtractor():
                                 matrix_pos[i - seq_len, dict_index_pos[atom_position_composition]] += atom_change
                         except KeyError:
                             try:
-                                logger.debug(f"Could not add the following atom: {atom_position_composition}, attempting to replace the [] part")
+                                logger.warning(f"Could not add the following atom: {atom_position_composition}, attempting to replace the [] part")
                                 atom_position_composition = sub("\[.*?\]", "", atom_position_composition)
                                 matrix[i, dict_index[atom_position_composition]] += atom_change
                                 if i in positions:
@@ -515,8 +520,11 @@ class FeatExtractor():
                                 elif i - seq_len in positions:
                                     matrix_pos[i - seq_len, dict_index_pos[atom_position_composition]] += atom_change
                             except KeyError:
-                                logger.debug(f"Could not add the following atom: {atom_position_composition}, second attempt, now ignored")
+                                logger.warning(f"Could not add the following atom: {atom_position_composition}, second attempt, now ignored")
                                 continue
+                        except IndexError:
+                            logger.warning(f"Could not add the following atom: {i} {atom_position_composition} {atom_change}")
+
 
             matrix_all = np.sum(matrix, axis=0)
             matrix_all = np.append(matrix_all, seq_len)
