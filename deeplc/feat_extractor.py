@@ -462,7 +462,7 @@ class FeatExtractor():
                 for k, v in position_composition.items():
                     try:
                         matrix[i, dict_index[k]] = v
-                    except warning:
+                    except IndexError:
                         logger.warning(f"Could not add the following value: {v}")
 
             for p in positions_pos:
