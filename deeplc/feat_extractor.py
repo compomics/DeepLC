@@ -492,7 +492,7 @@ class FeatExtractor():
                     matrix_hc[i, dict_aa[peptide_position[0]]] = 1.
                 except KeyError:
                     logger.warning(
-                            "Skipping the following (not in library): ", peptide_position[1])
+                            f"Skipping the following (not in library): {i} {peptide_position}")
                 except IndexError:
                     # Likely to be a sequence > 60 AA
                     logger.warning(f"Could not add the following atom: {i} {peptide_position}")
@@ -502,7 +502,7 @@ class FeatExtractor():
                         modification_composition = peptide_position[1][0].composition
                     except KeyError:
                         logger.warning(
-                            "Skipping the following (not in library): ", peptide_position[1])
+                            f"Skipping the following (not in library): {peptide_position[1]}")
                         continue
 
                     for atom_position_composition,atom_change in modification_composition.items():
