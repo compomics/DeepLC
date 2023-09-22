@@ -213,6 +213,7 @@ class DeepLC:
         pygam_calibration=True,
         deepcallc_mod=False,
         deeplc_retrain=False,
+        n_epochs=20,
     ):  
         # if a config file is defined overwrite standard parameters
         if config_file:
@@ -228,6 +229,7 @@ class DeepLC:
         self.calibrate_dict = {}
         self.calibrate_min = float("inf")
         self.calibrate_max = 0
+        self.n_epochs = n_epochs
         self.cnn_model = cnn_model
 
         self.batch_num = batch_num
@@ -986,7 +988,7 @@ class DeepLC:
                 outpath=t_dir_models,
                 mods_transfer_learning=self.model,
                 freeze_layers=True,
-                n_epochs=20,
+                n_epochs=self.n_epochs,
                 freeze_after_concat=1,
             )
 
