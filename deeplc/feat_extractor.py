@@ -504,6 +504,10 @@ class FeatExtractor():
                         logger.warning(
                             f"Skipping the following (not in library): {peptide_position[1]}")
                         continue
+                    except:
+                        logger.warning(
+                            f"Skipping the following (not in library): {peptide_position[1]}")
+                        continue
 
                     for atom_position_composition,atom_change in modification_composition.items():
                         try:
@@ -524,8 +528,14 @@ class FeatExtractor():
                             except KeyError:
                                 logger.warning(f"Could not add the following atom: {atom_position_composition}, second attempt, now ignored")
                                 continue
+                            except:
+                                logger.warning(f"Could not add the following atom: {atom_position_composition}, second attempt, now ignored")
+                                continue
                         except IndexError:
                             logger.warning(f"Could not add the following atom: {i} {atom_position_composition} {atom_change}")
+                        except:
+                            logger.warning(f"Could not add the following atom: {atom_position_composition}, second attempt, now ignored")
+                            continue
 
 
             matrix_all = np.sum(matrix, axis=0)
