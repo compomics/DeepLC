@@ -23,7 +23,7 @@ jobs:
         flake8 ./deeplc --count --select=E9,F63,F7,F82 --show-source --statistics
     - name: Build and publish to PyPI
       env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         python setup.py sdist bdist_wheel
