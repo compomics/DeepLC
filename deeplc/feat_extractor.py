@@ -417,6 +417,7 @@ class FeatExtractor():
         object :: pd.DataFrame
             feature matrix (np.matrix) of summed composition
         """
+        # TODO param flag for CCS prediction
         def rolling_sum(a, n=2):
             ret = np.cumsum(a, axis=1, dtype=np.float32)
             ret[:, n:] = ret[:, n:] - ret[:, :-n]
@@ -429,7 +430,7 @@ class FeatExtractor():
         ret_list["pos_matrix"] = {}
         ret_list["matrix_hc"] = {}
 
-        # Reintroduce for CCS
+        # TODO Reintroduce for CCS, check CCS flag
         #if len(charges) == 0:
         #    charges = [-1] * len(indexes)
 
@@ -541,7 +542,7 @@ class FeatExtractor():
             matrix_all = np.sum(matrix, axis=0)
             matrix_all = np.append(matrix_all, seq_len)
             
-            # Reintroduce for CCS
+            # TODO Reintroduce for CCS, check CCS flag
             #if charge != -1:
             #    matrix_all = np.append(matrix_all,(seq.count("H"))/float(seq_len))
             #    matrix_all = np.append(matrix_all,(seq.count("F")+seq.count("W")+seq.count("Y"))/float(seq_len))
@@ -584,6 +585,7 @@ class FeatExtractor():
         pd.DataFrame
             feature matrix
         """
+        # TODO Reintroduce for CCS, check CCS flag
         if len(seqs) > 0:
             list_of_psms = []
             for seq,mod,id in zip(seqs,mods,identifiers):
@@ -593,6 +595,7 @@ class FeatExtractor():
         if self.verbose:
             t0 = time.time()
 
+        # TODO pass CCS flag
         if self.add_sum_feat:
             if self.verbose:
                 logger.debug(

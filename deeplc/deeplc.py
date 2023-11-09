@@ -193,6 +193,7 @@ class DeepLC:
 
     library = {}
 
+    # TODO have a CCS flag here
     def __init__(
         self,
         main_path=os.path.dirname(os.path.realpath(__file__)),
@@ -314,13 +315,14 @@ class DeepLC:
             feature matrix
         """
         list_of_psms = []
+        # TODO include charge here
         if len(charges) > 0:
             for seq,mod,ident in zip(seqs,mods,identifiers):
                 list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=ident))
         else:
             for seq,mod,ident,z in zip(seqs,mods,identifiers,charges):
                 list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=ident))
-
+        # TODO include charge here
         psm_list = PSMList(psm_list=list_of_psms)
 
         return self.f_extractor.full_feat_extract(psm_list)
@@ -352,6 +354,7 @@ class DeepLC:
         else:
             for seq,mod,ident,z in zip(df_instances["seq"],df_instances["modifications"],df_instances.index,charges=df_instances["charges"]):
                 list_of_psms.append(PSM(peptide=peprec_to_proforma(seq,mod),spectrum_id=ident))
+        # TODO include charge here
         psm_list = PSMList(psm_list=list_of_psms)
 
         return self.f_extractor.full_feat_extract(psm_list)
@@ -627,12 +630,14 @@ class DeepLC:
         """
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
+            # TODO include charge here
             for seq,mod,ident in zip(seq_df["seq"],seq_df["modifications"],seq_df.index):
                 list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident))
             psm_list = PSMList(psm_list=list_of_psms)
         
         if len(infile) > 0:
             psm_list = read_file(infile)
+            # TODO is charge included here?
             if "msms" in infile and ".txt" in infile:
                 mapper = pd.read_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "unimod/map_mq_file.csv"),index_col=0)["value"].to_dict()
                 psm_list.rename_modifications(mapper)
@@ -703,6 +708,7 @@ class DeepLC:
         # TODO make sure either psm_list or seq_df is supplied
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
+            # TODO include charge here
             for seq,mod,ident,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
                 list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident,retention_time=tr))
             psm_list = PSMList(psm_list=list_of_psms)
@@ -780,6 +786,7 @@ class DeepLC:
         """
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
+            # TODO include charge here
             for seq,mod,tr,ident in zip(seq_df["seq"],seq_df["modifications"],seq_df["tr"],seq_df.index):
                 list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident,retention_time=tr))
             psm_list = PSMList(psm_list=list_of_psms)
@@ -926,16 +933,19 @@ class DeepLC:
         """
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
+            # TODO include charge here
             for seq,mod,ident,tr in zip(seq_df["seq"],seq_df["modifications"],seq_df.index,seq_df["tr"]):
                 list_of_psms.append(PSM(peptidoform=peprec_to_proforma(seq,mod),spectrum_id=ident,retention_time=tr))
             psm_list = PSMList(psm_list=list_of_psms)
         elif psm_utils_obj:
+            # TODO include charge here
             psm_list = psm_utils_obj    
 
         if isinstance(self.model, str):
             self.model = [self.model]
         
         if len(infile) > 0:
+            # TODO include charge here
             psm_list = read_file(infile)
             if "msms" in infile and ".txt" in infile:
                 mapper = pd.read_csv(os.path.join(os.path.dirname(os.path.realpath(__file__)), "unimod/map_mq_file.csv"),index_col=0)["value"].to_dict()
@@ -995,6 +1005,7 @@ class DeepLC:
             self.model = models
 
         if isinstance(sample_for_calibration_curve, int):
+            # TODO include charge here
             psm_list = random.sample(list(psm_list), sample_for_calibration_curve)
             measured_tr = [psm.retention_time for psm in psm_list]
 
