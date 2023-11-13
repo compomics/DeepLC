@@ -332,6 +332,7 @@ class FeatExtractor():
                      psm_list,
                      indexes,
                      charges=[],
+                     predict_ccs=False,
                      padding_length=60,
                      positions=set([0, 1, 2, 3, -1, -2, -3, -4]),
                      positions_pos=set([0, 1, 2, 3]),
@@ -430,15 +431,12 @@ class FeatExtractor():
         ret_list["pos_matrix"] = {}
         ret_list["matrix_hc"] = {}
 
-        # TODO Reintroduce for CCS, check CCS flag
-        #if len(charges) == 0:
-        #    charges = [-1] * len(indexes)
-
         # Iterate over all instances
         for psm,row_index in zip(psm_list,indexes):
             peptidoform = psm.peptidoform
             seq = peptidoform.sequence
             seq_len = len(seq)
+            charge = psm.get_precursor_charge()
             
             # For now anything longer than padding length is cut away
             # (C-terminal cutting)
@@ -541,14 +539,14 @@ class FeatExtractor():
 
             matrix_all = np.sum(matrix, axis=0)
             matrix_all = np.append(matrix_all, seq_len)
-            
-            # TODO Reintroduce for CCS, check CCS flag
-            #if charge != -1:
-            #    matrix_all = np.append(matrix_all,(seq.count("H"))/float(seq_len))
-            #    matrix_all = np.append(matrix_all,(seq.count("F")+seq.count("W")+seq.count("Y"))/float(seq_len))
-            #    matrix_all = np.append(matrix_all,(seq.count("D")+seq.count("E"))/float(seq_len))
-            #    matrix_all = np.append(matrix_all,(seq.count("K")+seq.count("R"))/float(seq_len))
-            #    matrix_all = np.append(matrix_all,charge)
+
+            if predict_ccs:
+                matrix_all = np.append(matrix_all,(seq.count("H"))/float(seq_len))
+                matrix_all = np.append(matrix_all,(seq.count("F")+seq.count("W")+seq.count("Y"))/float(seq_len))
+                matrix_all = np.append(matrix_all,(seq.count("D")+seq.count("E"))/float(seq_len))
+                matrix_all = np.append(matrix_all,(seq.count("K")+seq.count("R"))/float(seq_len))
+                matrix_all = np.append(matrix_all,charge)
+
             matrix_sum = rolling_sum(matrix.T, n=2)[:, ::2].T
 
             ret_list["matrix"][row_index] = matrix 
@@ -564,6 +562,7 @@ class FeatExtractor():
                           psm_list=[],
                           seqs=[],
                           mods=[],
+                          predict_ccs=False,
                           identifiers=[],
                           charges=[]):
         """
@@ -621,7 +620,7 @@ class FeatExtractor():
             if self.verbose:
                 logger.debug("Extracting CNN features")
             X_cnn = self.encode_atoms(
-                psm_list, list(range(len(psm_list))), charges=charges)
+                psm_list, list(range(len(psm_list))), charges=charges, predict_ccs=predict_ccs)
 
         if self.cnn_feats:
             X = X_cnn
