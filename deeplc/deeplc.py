@@ -328,7 +328,7 @@ class DeepLC:
 
         psm_list = PSMList(psm_list=list_of_psms)
 
-        return self.f_extractor.full_feat_extract(psm_list)
+        return self.f_extractor.full_feat_extract(psm_list,predict_ccs=self.predict_ccs)
 
     def do_f_extraction_pd(self,
                            df_instances,
@@ -360,7 +360,7 @@ class DeepLC:
 
         psm_list = PSMList(psm_list=list_of_psms)
 
-        return self.f_extractor.full_feat_extract(psm_list)
+        return self.f_extractor.full_feat_extract(psm_list,predict_ccs=self.predict_ccs)
 
     def do_f_extraction_pd_parallel(self, df_instances):
         """
@@ -421,7 +421,7 @@ class DeepLC:
         pd.DataFrame
             feature matrix
         """
-        return self.f_extractor.full_feat_extract(psm_list)
+        return self.f_extractor.full_feat_extract(psm_list,predict_ccs=self.predict_ccs)
 
     def do_f_extraction_psm_list_parallel(
                         self,
