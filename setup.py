@@ -5,31 +5,35 @@ with open("README.md", "r") as fh:
 
 
 setup(
-    name='deeplc',
-    version='2.2.24',
-    license='apache-2.0',
-    description='DeepLC: Retention time prediction for (modified) peptides using Deep Learning.',
+    name="deeplc",
+    version="2.2.25",
+    license="apache-2.0",
+    description="DeepLC: Retention time prediction for (modified) peptides using Deep Learning.",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
-    author='Robbin Bouwmeester, Niels Hulstaert, Arthur Declercq, Ralf Gabriels, Prof. Lennart Martens, Prof. Sven Degroeve',
-    author_email='Robbin.Bouwmeester@UGent.be',
-    url='http://compomics.github.io/projects/DeepLC',
+    author="Robbin Bouwmeester, Niels Hulstaert, Arthur Declercq, Ralf Gabriels, Prof. Lennart Martens, Prof. Sven Degroeve",
+    author_email="Robbin.Bouwmeester@UGent.be",
+    url="http://compomics.github.io/projects/DeepLC",
     project_urls={
-        'Documentation': 'http://compomics.github.io/projects/DeepLC',
-        'Source': 'https://github.com/compomics/DeepLC',
-        'Tracker': 'https://github.com/compomics/DeepLC/issues'
+        "Documentation": "http://compomics.github.io/projects/DeepLC",
+        "Source": "https://github.com/compomics/DeepLC",
+        "Tracker": "https://github.com/compomics/DeepLC/issues",
     },
     packages=find_packages(),
     include_package_data=True,
     entry_points={
-        'console_scripts': [
-            'deeplc=deeplc.__main__:main',
-            'deeplc-gui=deeplc.gui:start_gui',
+        "console_scripts": [
+            "deeplc=deeplc.__main__:main",
+            "deeplc-gui=deeplc.gui:start_gui",
         ]
     },
     keywords=[
-        'DeepLC', 'Proteomics', 'deep learning', 'peptides', 'retention time',
-        'prediction'
+        "DeepLC",
+        "Proteomics",
+        "deep learning",
+        "peptides",
+        "retention time",
+        "prediction",
     ],
     classifiers=[
         "Intended Audience :: Science/Research",
@@ -37,25 +41,25 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
-        "Development Status :: 4 - Beta"
+        "Development Status :: 4 - Beta",
     ],
     install_requires=[
-        'setuptools>=42.0.1',
-        'tensorflow>=2.2,<2.13.0',
-        'scipy>=1.4.1,<2',
-        'numpy>=1.17,<2',
-        'pandas>=0.25,<2',
-        'matplotlib>=3,<4',
-        'h5py>=2.10.0,<4',
-        'pygam>=0.8.0,<1',
-        'scikit-learn>=0.24.0,<2',
-        'deeplcretrainer>=0.1,<1',
-        'psm_utils>=0.2.3,<1',
-        'hdf5plugin>=4.1.1'
+        "setuptools>=42.0.1",
+        "tensorflow>=2.2,<2.13.0",
+        "scipy>=1.4.1,<2",
+        "numpy>=1.17,<2",
+        "pandas>=0.25,<2",
+        "matplotlib>=3,<4",
+        "h5py>=2.10.0,<4",
+        "pygam>=0.8.0,<1",
+        "scikit-learn>=0.24.0,<2",
+        "deeplcretrainer>=0.1,<1",
+        "psm_utils>=0.2.3,<1",
+        "hdf5plugin>=4.1.1",
     ],
     extras_require={
         "gui": ["gooey>=1.0"],
         "plot": ["plotly>=5"],
     },
-    python_requires='>=3.7',
+    python_requires=">=3.7",
 )

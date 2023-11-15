@@ -45,6 +45,8 @@ from tempfile import TemporaryDirectory
 from copy import deepcopy
 import random
 import math
+from collections import ChainMap
+from itertools import chain
 
 # If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
@@ -488,7 +490,19 @@ class DeepLC:
             logger.debug("wait for feature extraction")
             all_feats_async.wait()
             logger.debug("get feature extraction results")
-            all_feats = pd.concat(all_feats_async.get())
+            res = all_feats_async.get()
+            matrix_names = res[0].keys()
+            all_feats = {
+                matrix_name: dict(
+                    enumerate(
+                        chain.from_iterable((v[matrix_name].values() for v in res))
+                    )
+                )
+                for matrix_name in matrix_names
+            }
+
+            # all_feats = pd.concat(all_feats_async.get())
+
             logger.debug("got feature extraction results")
 
             pool.close()
