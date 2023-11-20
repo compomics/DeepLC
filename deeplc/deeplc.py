@@ -249,10 +249,12 @@ class DeepLC:
         self.n_jobs = n_jobs
 
         max_threads = multiprocessing.cpu_count()
+        # Hard limit the number of threads if not provided as
+        # most times it will run into a memory issue otherwise
         if not self.n_jobs:
-            self.n_jobs = max_threads
+            self.n_jobs = int(max_threads / 5.0) + 1
         elif self.n_jobs > max_threads:
-            self.n_jobs = max_threads
+            self.n_jobs = int(max_threads / 5.0) + 1
 
         self.use_library = use_library
         self.write_library = write_library
