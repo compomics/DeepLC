@@ -10,6 +10,9 @@ def scatter(
     df: pd.DataFrame,
     predicted_column: str = "Predicted retention time",
     observed_column: str = "Observed retention time",
+    xaxis_label: str = "Observed retention time",
+    yaxis_label: str = "Predicted retention time",
+    plot_title: str = "Predicted vs. observed retention times"
 ) -> go.Figure:
     """
     Plot a scatter plot of the predicted vs. observed retention times.
@@ -24,6 +27,12 @@ def scatter(
     observed_column : str, optional
         Name of the column containing the observed retention times, by default
         ``Observed retention time``.
+    xaxis_label : str, optional
+        X-axis label, by default ``Observed retention time``.
+    yaxis_label : str, optional
+        Y-axis label, by default ``Predicted retention time``.
+    plot_title : str, optional
+        Scatter plot title, by default ``Predicted vs. observed retention times``
 
     """
     # Draw scatter
@@ -44,10 +53,10 @@ def scatter(
     
     # Hide legend
     fig.update_layout(
-        title="Predicted vs. observed retention times",
+        title=plot_title,
         showlegend=False,
-        xaxis_title="Observed retention time",
-        yaxis_title="Predicted retention time",
+        xaxis_title=xaxis_label,
+        yaxis_title=yaxis_label,
     )
     
     return fig
