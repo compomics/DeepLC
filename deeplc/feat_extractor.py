@@ -12,7 +12,6 @@ __maintainer__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
 __email__ = ["Robbin.Bouwmeester@ugent.be", "Ralf.Gabriels@ugent.be"]
 
 # Native imports
-from operator import index
 import os
 import math
 import time
@@ -20,26 +19,13 @@ from configparser import ConfigParser
 import ast
 from re import sub
 import logging
-from copy import deepcopy
 
-# Numpy
 import numpy as np
-
-# Pandas
 import pandas as pd
-
 from psm_utils.io.peptide_record import peprec_to_proforma
 from psm_utils.psm import PSM
 from psm_utils.psm_list import PSMList
 from pyteomics import mass
-
-from functools import lru_cache
-
-from psm_utils.io.peptide_record import peprec_to_proforma
-from psm_utils.psm import PSM
-from psm_utils.psm_list import PSMList
-from psm_utils.io import read_file
-from psm_utils.io import write_file
 
 logger = logging.getLogger(__name__)
 
