@@ -31,22 +31,18 @@ DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
 
 LIBRARY = {}
 
-import os
-import sys
 import copy
 import gc
 import logging
+import math
 import multiprocessing
 import multiprocessing.dummy
-import pickle
+import random
+import sys
 import warnings
 from configparser import ConfigParser
-from tempfile import TemporaryDirectory
-from copy import deepcopy
-import random
-import math
-from collections import ChainMap
 from itertools import chain
+from tempfile import TemporaryDirectory
 
 # If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
@@ -65,29 +61,25 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from tensorflow.python.eager import context
-from tensorflow.keras.models import load_model
-import h5py
-
-from deeplc._exceptions import CalibrationError, DeepLCError
-from deeplc.trainl3 import train_en
-
+from deeplcretrainer import deeplcretrainer
+from psm_utils.io import read_file
 from psm_utils.io.peptide_record import peprec_to_proforma
 from psm_utils.psm import PSM
 from psm_utils.psm_list import PSMList
-from psm_utils.io import read_file
-from psm_utils.io import write_file
+from tensorflow.keras.models import load_model
+from tensorflow.python.eager import context
 
-from deeplcretrainer import deeplcretrainer
+from deeplc._exceptions import CalibrationError
+from deeplc.trainl3 import train_en
 
 # "Custom" activation function
 lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
 
 
 try:
-    from tensorflow.compat.v1.keras.backend import set_session
+    from tensorflow.compat.v1.keras.backend import set_session  # noqa: F401
 except ImportError:
-    from tensorflow.keras.backend import set_session
+    from tensorflow.keras.backend import set_session  # noqa: F401
 try:
     from tensorflow.compat.v1.keras.backend import clear_session
 except ImportError:
@@ -112,8 +104,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 # session = tf.compat.v1.Session(config=config)
 
 # Feature extraction
-from deeplc.feat_extractor import FeatExtractor
 from pygam import LinearGAM, s
+
+from deeplc.feat_extractor import FeatExtractor
 
 
 def warn(*args, **kwargs):

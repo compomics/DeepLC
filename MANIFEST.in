@@ -1,5 +1,3 @@
-include deeplc/expasy/*
-include deeplc/mod_to_smiles/*
 include deeplc/mods/*
 include deeplc/package_data/**/*
 include deeplc/unimod/*
