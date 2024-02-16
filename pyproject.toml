@@ -1,0 +1,65 @@
+[project]
+name = "deeplc"
+version = "2.2.27"
+description = "DeepLC: Retention time prediction for (modified) peptides using Deep Learning."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Robbin Bouwmeester", email = "robbin.bouwmeester@ugent.be" },
+    { name = "Niels Hulstaert" },
+    { name = "Arthur Declercq" },
+    { name = "Ralf Gabriels" },
+    { name = "Lennart Martens" },
+    { name = "Sven Degroeve" },
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Development Status :: 5 - Production/Stable",
+]
+requires-python = ">=3.7"
+keywords = [
+    "DeepLC",
+    "Proteomics",
+    "deep learning",
+    "peptides",
+    "retention time",
+    "prediction",
+]
+
+dependencies = [
+    "tensorflow>=2.2,<2.13.0",
+    "numpy>=1.17,<2",
+    "pandas>=0.25,<2",
+    "h5py>=2.10.0,<4",
+    "pygam>=0.8.0,<1",
+    "deeplcretrainer>=0.1,<1",
+    "psm_utils>=0.2.3,<1",
+    "hdf5plugin>=4.1.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "matplotlib>=3,<4"]
+gui = ["gooey>=1.0"]
+plot = ["plotly>=5"]
+deepcallc = ["scikit-learn<2,>=0.24.0"]
+
+[project.scripts]
+deeplc = "deeplc.__main__:main"
+deeplc-gui = "deeplc.gui:start_gui"
+
+[project.urls]
+GitHub = "https://github.com/compomics/deeplc"
+PyPi = "https://pypi.org/project/deeplc/"
+CompOmics = "https://www.compomics.com"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["deeplc"]
+include-package-data = true

@@ -12,17 +12,14 @@ import sys
 import warnings
 
 import pandas as pd
-from matplotlib import pyplot as plt
-
-from deeplc import __version__, DeepLC, FeatExtractor
-from deeplc._argument_parser import parse_arguments
-from deeplc._exceptions import DeepLCError
-
 from psm_utils.io.peptide_record import peprec_to_proforma
 from psm_utils.psm import PSM
 from psm_utils.psm_list import PSMList
 from psm_utils.io import read_file
-from psm_utils.io import write_file
+
+from deeplc import __version__, DeepLC, FeatExtractor
+from deeplc._argument_parser import parse_arguments
+from deeplc._exceptions import DeepLCError
 
 logger = logging.getLogger(__name__)
 
