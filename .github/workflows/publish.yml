@@ -2,8 +2,8 @@ name: Publish to PyPI and GitHub release
 
 on:
   push:
-    tags:
-    - 'v*'
+    # tags:
+    # - 'v*'
 
 jobs:
   python-package:
@@ -26,8 +26,8 @@ jobs:
     - name: Build package
       run: |
         python -m build . --sdist --wheel
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+    # - name: Publish to PyPI
+    #   uses: pypa/gh-action-pypi-publish@release/v1
     - name: Upload compiled wheels
       uses: actions/upload-artifact@v4
       with:
@@ -55,54 +55,54 @@ jobs:
     - name: Test built DeepLC exe
       run: dist/deeplc/deeplc.exe --ignore-gooey --help
     - name: Run Inno Setup
-      run: ISCC.exe ./deeplc_innosetup.iss /DMyAppVersion=$(python setup.py --version)
+      run: ISCC.exe ./deeplc_innosetup.iss /DAppVersion=${{  github.ref_name }}
     - name: Upload installer
       uses: actions/upload-artifact@v4
       with:
         name: dist
         path: dist/*.exe
 
-  git-release:
-    runs-on: ubuntu-latest
-    needs: [python-package, windows-installer]
-    steps:
-    - name: Download installer
-      uses: actions/download-artifact@v4
-      with:
-        name: dist
-        path: dist
-    - name: Create GitHub Release
-      uses: docker://antonyurchenko/git-release:v4
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        DRAFT_RELEASE: "false"
-        PRE_RELEASE: "false"
-        CHANGELOG_FILE: "CHANGELOG.md"
-      with:
-        args: |
-          dist/*
+  # git-release:
+  #   runs-on: ubuntu-latest
+  #   needs: [python-package, windows-installer]
+  #   steps:
+  #   - name: Download installer
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       name: dist
+  #       path: dist
+  #   - name: Create GitHub Release
+  #     uses: docker://antonyurchenko/git-release:v4
+  #     env:
+  #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       DRAFT_RELEASE: "false"
+  #       PRE_RELEASE: "false"
+  #       CHANGELOG_FILE: "CHANGELOG.md"
+  #     with:
+  #       args: |
+  #         dist/*
 
-  build-streamlit-image:
-    runs-on: ubuntu-latest
-    needs: python-package
-    steps:
-    - uses: actions/checkout@v4
-    - id: latest_release
-      uses: pozetroninc/github-action-get-latest-release@master
-      with:
-        owner: compomics
-        repo: DeepLC
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Build and push to ghcr.io
-      uses: docker/build-push-action@v5
-      with:
-        context: streamlit
-        push: true
-        tags: |
-          ghcr.io/compomics/deeplc-streamlit:${{ steps.latest_release.outputs.release }}
-          ghcr.io/compomics/deeplc-streamlit:latest
+  # build-streamlit-image:
+  #   runs-on: ubuntu-latest
+  #   needs: python-package
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - id: latest_release
+  #     uses: pozetroninc/github-action-get-latest-release@master
+  #     with:
+  #       owner: compomics
+  #       repo: DeepLC
+  #   - name: Login to GitHub Container Registry
+  #     uses: docker/login-action@v3
+  #     with:
+  #       registry: ghcr.io
+  #       username: ${{ github.repository_owner }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #   - name: Build and push to ghcr.io
+  #     uses: docker/build-push-action@v5
+  #     with:
+  #       context: streamlit
+  #       push: true
+  #       tags: |
+  #         ghcr.io/compomics/deeplc-streamlit:${{ steps.latest_release.outputs.release }}
+  #         ghcr.io/compomics/deeplc-streamlit:latest

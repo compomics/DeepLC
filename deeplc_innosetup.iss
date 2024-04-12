@@ -1,23 +1,23 @@
-#define MyAppName "DeepLC"
-#define MyAppPublisher "CompOmics"
-#define MyAppURL "https://github.com/compomics/DeepLC"
-#define MyAppExeName "deeplc.exe"
+#define AppName "DeepLC"
+#define AppPublisher "CompOmics"
+#define AppURL "https://github.com/compomics/DeepLC"
+#define AppExeName "deeplc.exe"
 
 [Setup]
 AppId={{5540C6D9-E2DE-42EC-90A7-8598F55EA165}
-AppName={#MyAppName}
-AppVersion={#MyAppVersion}
-AppPublisher={#MyAppPublisher}
-AppPublisherURL={#MyAppURL}
-AppSupportURL={#MyAppURL}
-AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\{#MyAppName}
+AppName={#AppName}
+AppVersion={#AppVersion}
+AppPublisher={#AppPublisher}
+AppPublisherURL={#AppURL}
+AppSupportURL={#AppURL}
+AppUpdatesURL={#AppURL}
+DefaultDirName={autopf}\{#AppName}
 DisableProgramGroupPage=yes
 LicenseFile=.\LICENSE
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir="dist"
-OutputBaseFilename="{#MyAppName}-{#MyAppVersion}-Windows64bit"
+OutputBaseFilename="{#AppName}-{#AppVersion}-Windows64bit"
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -32,8 +32,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "dist\deeplc\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
