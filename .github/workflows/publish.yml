@@ -31,7 +31,7 @@ jobs:
     - name: Upload compiled wheels
       uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: python-wheels
         path: dist/*.whl
 
   windows-installer:
@@ -59,7 +59,7 @@ jobs:
     - name: Upload installer
       uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: windows-installer
         path: dist/*.exe
 
   # git-release:
@@ -69,7 +69,6 @@ jobs:
   #   - name: Download installer
   #     uses: actions/download-artifact@v4
   #     with:
-  #       name: dist
   #       path: dist
   #   - name: Create GitHub Release
   #     uses: docker://antonyurchenko/git-release:v4
