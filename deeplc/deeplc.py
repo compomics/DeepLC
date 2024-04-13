@@ -4,7 +4,6 @@ Main code used to generate LC retention time predictions.
 This provides the main interface. For the library versions see the .yml file
 """
 
-
 __author__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
 __license__ = "Apache License, Version 2.0"
 __maintainer__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
@@ -217,6 +216,7 @@ class DeepLC:
         deeplc_retrain=False,
         predict_ccs=False,
         n_epochs=20,
+        single_model_mode=True,
     ):
         # if a config file is defined overwrite standard parameters
         if config_file:
@@ -267,7 +267,10 @@ class DeepLC:
         if path_model:
             self.model = path_model
         else:
-            self.model = DEFAULT_MODELS
+            if single_model_mode:
+                self.model = DEFAULT_MODELS[0]
+            else:
+                self.model = DEFAULT_MODELS
 
         if f_extractor:
             self.f_extractor = f_extractor
