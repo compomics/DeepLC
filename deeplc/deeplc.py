@@ -268,7 +268,7 @@ class DeepLC:
             self.model = path_model
         else:
             if single_model_mode:
-                self.model = DEFAULT_MODELS[0]
+                self.model = [DEFAULT_MODELS[0]]
             else:
                 self.model = DEFAULT_MODELS
 
