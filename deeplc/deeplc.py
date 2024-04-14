@@ -241,6 +241,10 @@ class DeepLC:
         self.split_cal = split_cal
         self.n_jobs = n_jobs
 
+        if self.n_jobs == None:
+            max_threads = multiprocessing.cpu_count()
+            self.n_jobs = max_threads
+
         self.use_library = use_library
         self.write_library = write_library
 
