@@ -184,8 +184,11 @@ Naming convention for the models is as follows:
 The different parts refer to:
 
 **full_hc** - flag to indicated a finished, trained, and fully optimized model
+
 **dataset** - name of the dataset used to fit the model (see the original publication, supplementary table 2)
+
 **fixed mods** - flag to indicate fixed modifications were added to peptides without explicit indication (e.g., carbamidomethyl of cysteine)
+
 **hash** - indicates different architectures, where "1fd8363d9af9dcad3be7553c39396960" indicates CNN filter lengths of 8, "cb975cfdd4105f97efa0b3afffe075cc" indicates CNN filter lengths of 4, and "8c22d89667368f2f02ad996469ba157e" indicates filter lengths of 2
 
 
