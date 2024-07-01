@@ -1,6 +1,6 @@
 [project]
 name = "deeplc"
-version = "2.2.36"
+version = "2.2.37"
 description = "DeepLC: Retention time prediction for (modified) peptides using Deep Learning."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -39,6 +39,7 @@ dependencies = [
     "deeplcretrainer>=0.1,<1",
     "psm_utils>=0.2.3,<1",
     "hdf5plugin>=4.1.1",
+	"scipy>=1.0.0,<1.14.0"
 ]
 
 [project.optional-dependencies]
