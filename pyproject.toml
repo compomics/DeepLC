@@ -31,7 +31,7 @@ keywords = [
 ]
 
 dependencies = [
-    "tensorflow>=2.2,<2.15.0",
+    "tensorflow>=2.15.0,<3",
     "numpy>=1.17,<2",
     "pandas>=0.25,<2",
     "h5py>=2.10.0,<4",
