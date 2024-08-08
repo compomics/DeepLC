@@ -76,7 +76,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         DRAFT_RELEASE: "false"
         PRE_RELEASE: "false"
-        CHANGELOG_FILE: "CHANGELOG.md"
       with:
         args: |
           dist/*
