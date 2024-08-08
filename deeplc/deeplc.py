@@ -22,9 +22,9 @@ import os
 
 deeplc_dir = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_MODELS = [
-    "mods/full_hc_PXD005573_mcp_1fd8363d9af9dcad3be7553c39396960.hdf5",
-    "mods/full_hc_PXD005573_mcp_8c22d89667368f2f02ad996469ba157e.hdf5",
-    "mods/full_hc_PXD005573_mcp_cb975cfdd4105f97efa0b3afffe075cc.hdf5",
+    "mods/full_hc_PXD005573_pub_1fd8363d9af9dcad3be7553c39396960.keras",
+    "mods/full_hc_PXD005573_pub_8c22d89667368f2f02ad996469ba157e.keras",
+    "mods/full_hc_PXD005573_pub_cb975cfdd4105f97efa0b3afffe075cc.keras",
 ]
 DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
 
@@ -75,18 +75,18 @@ from deeplc.trainl3 import train_en
 lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
 
 
-try:
-    from tensorflow.compat.v1.keras.backend import set_session  # noqa: F401
-except ImportError:
-    from tensorflow.keras.backend import set_session  # noqa: F401
-try:
-    from tensorflow.compat.v1.keras.backend import clear_session
-except ImportError:
-    from tensorflow.keras.backend import clear_session
-try:
-    from tensorflow.compat.v1.keras.backend import get_session
-except ImportError:
-    from tensorflow.keras.backend import get_session
+# try:
+#    from tensorflow.compat.v1.keras.backend import set_session  # noqa: F401
+# except ImportError:
+#    from tensorflow.keras.backend import set_session  # noqa: F401
+# try:
+#    from tensorflow.compat.v1.keras.backend import clear_session
+# except ImportError:
+#    from tensorflow.keras.backend import clear_session
+# try:
+#    from tensorflow.compat.v1.keras.backend import get_session
+# except ImportError:
+#    from tensorflow.keras.backend import get_session
 
 # Set to force CPU calculations
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -134,10 +134,10 @@ def divide_chunks(l, n):
 
 def reset_keras():
     """Reset Keras session."""
-    sess = get_session()
-    clear_session()
-    sess.close()
-    gc.collect()
+    # sess = get_session()
+    # clear_session()
+    # sess.close()
+    # gc.collect()
     # Set to force CPU calculations
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -641,7 +641,7 @@ class DeepLC:
                     self.calibrate_max,
                 )
 
-        clear_session()
+        # clear_session()
         gc.collect()
         return ret_preds
 
