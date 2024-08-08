@@ -134,10 +134,10 @@ def divide_chunks(l, n):
 
 def reset_keras():
     """Reset Keras session."""
-    sess = get_session()
-    clear_session()
-    sess.close()
-    gc.collect()
+    # sess = get_session()
+    # clear_session()
+    # sess.close()
+    # gc.collect()
     # Set to force CPU calculations
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
