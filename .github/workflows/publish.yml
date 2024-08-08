@@ -71,11 +71,12 @@ jobs:
       with:
         path: dist
     - name: Create GitHub Release
-      uses: docker://antonyurchenko/git-release:v4
+      uses: docker://antonyurchenko/git-release:v6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         DRAFT_RELEASE: "false"
         PRE_RELEASE: "false"
+        CHANGELOG_FILE: "CHANGELOG.md"
       with:
         args: |
           dist/*
