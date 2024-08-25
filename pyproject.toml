@@ -32,14 +32,14 @@ keywords = [
 
 dependencies = [
     "tensorflow>=2.15.0,<3",
-    "numpy>=1.17",
+    "numpy>=1.17,<2",
     "pandas>=0.25",
     "h5py>=2.10.0,<4",
     "pygam>=0.8.0",
     "deeplcretrainer>=1,<2",
     "psm_utils>=0.2.3",
     "hdf5plugin>=4.1.1",
-	"scipy>=1.0.0,<1.14.0"
+    "scipy>=1.0.0,<1.14.0"
 ]
 
 [project.optional-dependencies]
