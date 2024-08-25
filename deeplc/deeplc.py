@@ -71,10 +71,6 @@ from tensorflow.python.eager import context
 from deeplc._exceptions import CalibrationError
 from deeplc.trainl3 import train_en
 
-# "Custom" activation function
-lrelu = lambda x: tf.keras.activations.relu(x, alpha=0.1, max_value=20.0)
-
-
 # try:
 #    from tensorflow.compat.v1.keras.backend import set_session  # noqa: F401
 # except ImportError:
@@ -597,7 +593,6 @@ class DeepLC:
         if len(X) == 0 and len(psm_list) > 0:
             if self.verbose:
                 logger.debug("Extracting features for the CNN model ...")
-            # X = self.do_f_extraction_psm_list(psm_list)
             X = self.do_f_extraction_psm_list_parallel(psm_list)
 
             X_sum = np.stack(list(X["matrix_sum"].values()))
@@ -615,7 +610,7 @@ class DeepLC:
 
         ret_preds = []
 
-        mod = load_model(mod_name, custom_objects={"<lambda>": lrelu})
+        mod = load_model(mod_name)
         try:
             X
             ret_preds = mod.predict(
