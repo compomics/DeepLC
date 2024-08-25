@@ -71,32 +71,8 @@ from tensorflow.python.eager import context
 from deeplc._exceptions import CalibrationError
 from deeplc.trainl3 import train_en
 
-# try:
-#    from tensorflow.compat.v1.keras.backend import set_session  # noqa: F401
-# except ImportError:
-#    from tensorflow.keras.backend import set_session  # noqa: F401
-# try:
-#    from tensorflow.compat.v1.keras.backend import clear_session
-# except ImportError:
-#    from tensorflow.keras.backend import clear_session
-# try:
-#    from tensorflow.compat.v1.keras.backend import get_session
-# except ImportError:
-#    from tensorflow.keras.backend import get_session
-
 # Set to force CPU calculations
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
-
-# Set for TF V1.0 (counters some memory problems of nvidia 20 series GPUs)
-# config = tf.ConfigProto()
-# config.gpu_options.allow_growth = True
-# session = tf.Session(config=config)
-
-# Set for TF V2.0 (counters some memory problems of nvidia 20 series GPUs)
-# config = tf.compat.v1.ConfigProto()
-# config.gpu_options.allow_growth = True
-# session = tf.compat.v1.Session(config=config)
 
 # Feature extraction
 from pygam import LinearGAM, s
