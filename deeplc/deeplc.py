@@ -836,7 +836,7 @@ class DeepLC:
         # Fit a SplineTransformer model
         spline = SplineTransformer(degree=4, n_knots=int(len(measured_tr) / 100) + 5)
         spline_model = make_pipeline(spline, LinearRegression())
-        spline_model.fit(predicted_tr, measured_tr)
+        spline_model.fit(predicted_tr.reshape(-1, 1), measured_tr)
 
         # Determine the top 10% of data on either end
         n_top = int(len(predicted_tr) * 0.1)
@@ -845,13 +845,13 @@ class DeepLC:
         X_left = predicted_tr[:n_top]
         y_left = measured_tr[:n_top]
         linear_model_left = LinearRegression()
-        linear_model_left.fit(X_left, y_left)
+        linear_model_left.fit(X_left.reshape(-1, 1), y_left)
 
         # Fit a linear model on the top 10% (right-side extrapolation)
         X_right = predicted_tr[-n_top:]
         y_right = measured_tr[-n_top:]
         linear_model_right = LinearRegression()
-        linear_model_right.fit(X_right, y_right)
+        linear_model_right.fit(X_right.reshape(-1, 1), y_right)
 
         calibrate_min = min(predicted_tr)
         calibrate_max = max(predicted_tr)
