@@ -482,9 +482,9 @@ class DeepLC:
             return np.array(cal_preds)
         if self.pygam_calibration:
             linear_model_left, spline_model, linear_model_right = cal_dict
-            y_pred_spline = spline_model.predict(uncal_preds)
-            y_pred_left = linear_model_left.predict(uncal_preds)
-            y_pred_right = linear_model_right.predict(uncal_preds)
+            y_pred_spline = spline_model.predict(uncal_preds.reshape(-1, 1))
+            y_pred_left = linear_model_left.predict(uncal_preds.reshape(-1, 1))
+            y_pred_right = linear_model_right.predict(uncal_preds.reshape(-1, 1))
 
             # Use spline model within the range of X
             within_range = (uncal_preds >= cal_min()) & (uncal_preds <= cal_max())
