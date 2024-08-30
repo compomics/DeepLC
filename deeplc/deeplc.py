@@ -853,8 +853,8 @@ class DeepLC:
         linear_model_left.fit(X_left, y_left)
 
         # Fit a linear model on the top 10% (right-side extrapolation)
-        X_right = X[-n_top:]
-        y_right = y[-n_top:]
+        X_right = predicted_tr[-n_top:]
+        y_right = measured_tr[-n_top:]
         linear_model_right = LinearRegression()
         linear_model_right.fit(X_right, y_right)
 
