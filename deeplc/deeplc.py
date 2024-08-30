@@ -487,7 +487,7 @@ class DeepLC:
             y_pred_right = linear_model_right.predict(uncal_preds.reshape(-1, 1))
 
             # Use spline model within the range of X
-            within_range = (uncal_preds >= cal_min()) & (uncal_preds <= cal_max())
+            within_range = (uncal_preds >= cal_min) & (uncal_preds <= cal_max)
             within_range = (
                 within_range.ravel()
             )  # Ensure this is a 1D array for proper indexing
