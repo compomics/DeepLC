@@ -481,7 +481,7 @@ class DeepLC:
         if len(uncal_preds) == 0:
             return np.array(cal_preds)
         if self.pygam_calibration:
-            linear_model_left, spline_model, linear_model_right = uncal_preds
+            linear_model_left, spline_model, linear_model_right = cal_dict
             y_pred_spline = spline_model.predict(uncal_preds)
             y_pred_left = linear_model_left.predict(uncal_preds)
             y_pred_right = linear_model_right.predict(uncal_preds)
@@ -493,17 +493,15 @@ class DeepLC:
             )  # Ensure this is a 1D array for proper indexing
 
             # Create a prediction array initialized with spline predictions
-            y_pred = np.copy(y_pred_spline)
+            cal_preds = np.copy(y_pred_spline)
 
             # Replace predictions outside the range with the linear model predictions
-            y_pred[~within_range & (uncal_preds.ravel() < cal_min)] = y_pred_left[
+            cal_preds[~within_range & (uncal_preds.ravel() < cal_min)] = y_pred_left[
                 ~within_range & (uncal_preds.ravel() < cal_min)
             ]
-            y_pred[~within_range & (uncal_preds.ravel() > cal_max)] = y_pred_right[
+            cal_preds[~within_range & (uncal_preds.ravel() > cal_max)] = y_pred_right[
                 ~within_range & (uncal_preds.ravel() > cal_max)
             ]
-
-            cal_preds = cal_dict.predict(uncal_preds)
         else:
             for uncal_pred in uncal_preds:
                 try:
