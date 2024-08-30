@@ -80,8 +80,6 @@ from deeplc.trainl3 import train_en
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 # Feature extraction
-from pygam import LinearGAM, s
-
 from deeplc.feat_extractor import FeatExtractor
 
 
@@ -252,9 +250,6 @@ class DeepLC:
 
         self.pygam_calibration = pygam_calibration
         self.deeplc_retrain = deeplc_retrain
-
-        if self.pygam_calibration:
-            from pygam import LinearGAM, s
 
         self.deepcallc_mod = deepcallc_mod
 
