@@ -43,6 +43,11 @@ from configparser import ConfigParser
 from itertools import chain
 from tempfile import TemporaryDirectory
 
+from sklearn.preprocessing import SplineTransformer
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+
+
 # If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
 IS_FROZEN = getattr(sys, "frozen", False)
@@ -481,6 +486,28 @@ class DeepLC:
         if len(uncal_preds) == 0:
             return np.array(cal_preds)
         if self.pygam_calibration:
+            linear_model_left, spline_model, linear_model_right = uncal_preds
+            y_pred_spline = spline_model.predict(uncal_preds)
+            y_pred_left = linear_model_left.predict(uncal_preds)
+            y_pred_right = linear_model_right.predict(uncal_preds)
+
+            # Use spline model within the range of X
+            within_range = (uncal_preds >= cal_min()) & (uncal_preds <= cal_max())
+            within_range = (
+                within_range.ravel()
+            )  # Ensure this is a 1D array for proper indexing
+
+            # Create a prediction array initialized with spline predictions
+            y_pred = np.copy(y_pred_spline)
+
+            # Replace predictions outside the range with the linear model predictions
+            y_pred[~within_range & (uncal_preds.ravel() < cal_min)] = y_pred_left[
+                ~within_range & (uncal_preds.ravel() < cal_min)
+            ]
+            y_pred[~within_range & (uncal_preds.ravel() > cal_max)] = y_pred_right[
+                ~within_range & (uncal_preds.ravel() > cal_max)
+            ]
+
             cal_preds = cal_dict.predict(uncal_preds)
         else:
             for uncal_pred in uncal_preds:
@@ -763,8 +790,6 @@ class DeepLC:
         use_median=True,
         mod_name=None,
     ):
-        # TODO make a df to psm_list function
-        # TODO make sure either psm_list or seq_df is supplied
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
             # TODO include charge here
@@ -813,10 +838,33 @@ class DeepLC:
         # predicted_tr = list(predicted_tr)
         # measured_tr = list(measured_tr)
 
-        gam_model_cv = LinearGAM(s(0), verbose=True).fit(predicted_tr, measured_tr)
+        # Fit a SplineTransformer model
+        spline = SplineTransformer(degree=4, n_knots=int(len(measured_tr) / 100) + 5)
+        spline_model = make_pipeline(spline, LinearRegression())
+        spline_model.fit(predicted_tr, measured_tr)
+
+        # Determine the top 10% of data on either end
+        n_top = int(len(predicted_tr) * 0.1)
+
+        # Fit a linear model on the bottom 10% (left-side extrapolation)
+        X_left = predicted_tr[:n_top]
+        y_left = measured_tr[:n_top]
+        linear_model_left = LinearRegression()
+        linear_model_left.fit(X_left, y_left)
+
+        # Fit a linear model on the top 10% (right-side extrapolation)
+        X_right = X[-n_top:]
+        y_right = y[-n_top:]
+        linear_model_right = LinearRegression()
+        linear_model_right.fit(X_right, y_right)
+
         calibrate_min = min(predicted_tr)
         calibrate_max = max(predicted_tr)
-        return calibrate_min, calibrate_max, gam_model_cv
+        return (
+            calibrate_min,
+            calibrate_max,
+            [linear_model_left, spline_model, linear_model_right],
+        )
 
     def calibrate_preds_func(
         self,
