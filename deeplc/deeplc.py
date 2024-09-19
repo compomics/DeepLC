@@ -610,7 +610,7 @@ class DeepLC:
         try:
             X
             ret_preds = mod.predict(
-                [X, X_sum, X_global, X_hc], batch_size=self.batch_num_tf
+                [X, X_sum, X_global, X_hc], batch_size=self.batch_num_tf, verbose=int(self.verbose)
             ).flatten()
         except UnboundLocalError:
             logger.debug("X is empty, skipping...")
@@ -1170,6 +1170,7 @@ class DeepLC:
                 freeze_layers=True,
                 n_epochs=self.n_epochs,
                 freeze_after_concat=1,
+                verbose=self.verbose,
             )
 
             self.model = models
