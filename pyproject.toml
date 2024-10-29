@@ -34,12 +34,9 @@ dependencies = [
     "tensorflow>=2.15.0,<3",
     "numpy>=1.17,<2",
     "pandas>=0.25",
-    "h5py>=2.10.0,<4",
     "scikit-learn>=1.2.0",
     "deeplcretrainer>=1,<2",
-    "psm_utils>=0.2.3",
-    "hdf5plugin>=4.1.1",
-    "scipy>=1.0.0,<1.14.0"
+    "psm_utils>=0.2.3"
 ]
 
 [project.optional-dependencies]
