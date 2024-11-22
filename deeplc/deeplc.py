@@ -70,7 +70,11 @@ from psm_utils.io import read_file
 from psm_utils.io.peptide_record import peprec_to_proforma
 from psm_utils.psm import PSM
 from psm_utils.psm_list import PSMList
-from tensorflow.keras.models import load_model
+
+try:
+    from tensorflow.keras.models import load_model
+except:
+    from tensorflow.python.keras.models import load_model
 from tensorflow.python.eager import context
 
 from deeplc._exceptions import CalibrationError
