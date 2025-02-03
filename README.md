@@ -131,6 +131,50 @@ dlc.calibrate_preds(seq_df=cal_df)
 preds = dlc.make_preds(seq_df=pep_df)
 ```
 
+Minimal example with psm_utils:
+
+```python
+import pandas as pd
+
+from psm_utils.psm import PSM
+from psm_utils.psm_list import PSMList
+from psm_utils.io import write_file
+
+from deeplc import DeepLC
+
+infile = pd.read_csv("https://github.com/compomics/DeepLC/files/13298024/231108_DeepLC_input-peptides.csv")
+psm_list = []
+
+for idx,row in infile.iterrows():
+    seq = row["modifications"].replace("(","[").replace(")","]")
+    
+    if seq.startswith("["):
+        idx_nterm = seq.index("]")
+        seq = seq[:idx_nterm+1]+"-"+seq[idx_nterm+1:]
+        
+    psm_list.append(PSM(peptidoform=seq,spectrum_id=idx))
+
+psm_list = PSMList(psm_list=psm_list)
+
+infile = pd.read_csv("https://github.com/compomics/DeepLC/files/13298022/231108_DeepLC_input-calibration-file.csv")
+psm_list_calib = []
+
+for idx,row in infile.iterrows():
+    seq = row["seq"].replace("(","[").replace(")","]")
+    
+    if seq.startswith("["):
+        idx_nterm = seq.index("]")
+        seq = seq[:idx_nterm+1]+"-"+seq[idx_nterm+1:]
+        
+    psm_list_calib.append(PSM(peptidoform=seq,retention_time=row["tr"],spectrum_id=idx))
+
+psm_list_calib = PSMList(psm_list=psm_list_calib)
+
+dlc = DeepLC()
+dlc.calibrate_preds(psm_list_calib)
+preds = dlc.make_preds(seq_df=psm_list)
+```
+
 For a more elaborate example, see
 [examples/deeplc_example.py](https://github.com/compomics/DeepLC/blob/master/examples/deeplc_example.py)
 .
@@ -259,15 +303,7 @@ in the folder __unimod/__ for the naming of specific modifications.
 
 **__Q: I have a modification that is not in unimod. How can I add the modification?__**
 
-In the folder __unimod/__ there is the file __unimod_to_formula.csv__ that can be used to
-add modifications. In the CSV file add a name (**that is unique and not present yet**) and
-the change in atomic composition. For example:
-
-```
-Met->Hse,O,H(-2) C(-1) S(-1)
-```
-
-Make sure to use negative signs for the atoms subtracted.
+Unfortunately since the V3.0 this is not possible any more via the GUI or commandline. You will need to use [psm_utils](https://github.com/compomics/psm_utils), above a minimal example is shown where we convert an identification file into a psm_list which is accepted by DeepLC. Here the sequence can for example include just the composition (e.g., SEQUEN[Formula:C12H20O2]CE).
 
 **__Q: Help, all my predictions are between [0,10]. Why?__**
 
