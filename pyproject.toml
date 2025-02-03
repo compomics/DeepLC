@@ -1,6 +1,6 @@
 [project]
 name = "deeplc"
-version = "3.1.3"
+version = "3.1.4"
 description = "DeepLC: Retention time prediction for (modified) peptides using Deep Learning."
 readme = "README.md"
 license = { file = "LICENSE" }
