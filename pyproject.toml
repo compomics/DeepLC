@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Development Status :: 5 - Production/Stable",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 keywords = [
     "DeepLC",
     "Proteomics",
