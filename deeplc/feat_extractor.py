@@ -310,7 +310,7 @@ class FeatExtractor:
         dict_index={"C": 0, "H": 1, "N": 2, "O": 3, "S": 4, "P": 5},
     ):
         """
-        Extract all features we can extract... Probably the function your want to call by default
+        Extract all features we can extract... Probably the function you want to call by default
 
         Parameters
         ----------
@@ -324,7 +324,7 @@ class FeatExtractor:
             indicates padding length with 'X'-characters. Shorter sequences are padded. Longer sequences
             are sliced shorter (C-terminal > than padding length will be missing)
         positions : list
-            list of positions to include seperately, for the C-terminus
+            list of positions to include separately, for the C-terminus
             provide negative indices
         sum_mods : int
             value that is used to feed the second head of cerberus with summed information, for example,
@@ -336,19 +336,27 @@ class FeatExtractor:
         dict_index : dict
             index position of atom for compositional features for the whole peptide (each position)
         charges : list
-            optional list with charges, keep emtpy if these will not effect the predicted value
+            optional list with charges, keep empty if these will not effect the predicted value
 
         Returns
         -------
         object :: pd.DataFrame
             feature matrix (np.matrix) of all positions (up till padding length)
         object :: pd.DataFrame
-            feature matrix (np.matrix) of summed positions (up till paddint length / sum_mods)
+            feature matrix (np.matrix) of summed positions (up till padding length / sum_mods)
         object :: pd.DataFrame
             feature matrix (np.matrix) of specific positions (from positions argument)
         object :: pd.DataFrame
             feature matrix (np.matrix) of summed composition
         """
+
+        # Local helper to ensure each unique warning is logged only once.
+        logged_warnings = set()
+
+        def warn_once(message):
+            if message not in logged_warnings:
+                logged_warnings.add(message)
+                logger.warning(message)
 
         # TODO param flag for CCS prediction
         def rolling_sum(a, n=2):
@@ -375,11 +383,11 @@ class FeatExtractor:
             if seq_len > padding_length:
                 seq = seq[0:padding_length]
                 seq_len = len(seq)
-                logger.warning("Truncating peptide (too long): %s" % (seq))
+                warn_once("Truncating peptide (too long): %s" % (seq))
 
             peptide_composition = [mass.std_aa_comp[aa] for aa in seq]
 
-            # Initialize all feature matrixes
+            # Initialize all feature matrices
             matrix = np.zeros(
                 (padding_length, len(dict_index.keys())), dtype=np.float16
             )
@@ -395,11 +403,11 @@ class FeatExtractor:
                     try:
                         matrix[i, dict_index[k]] = v
                     except IndexError:
-                        logger.warning(
+                        warn_once(
                             f"Could not add the following value: pos {i} for atom {k} with value {v}"
                         )
                     except KeyError:
-                        logger.warning(
+                        warn_once(
                             f"Could not add the following value: pos {i} for atom {k} with value {v}"
                         )
 
@@ -409,11 +417,9 @@ class FeatExtractor:
                     try:
                         matrix_pos[p, dict_index_pos[atom]] = val
                     except KeyError:
-                        logger.warning(f"Could not add the following atom: {atom}")
+                        warn_once(f"Could not add the following atom: {atom}")
                     except IndexError:
-                        logger.warning(
-                            f"Could not add the following atom: {p} {atom} {val}"
-                        )
+                        warn_once(f"Could not add the following atom: {p} {atom} {val}")
 
             for pn in positions_neg:
                 aa = seq[seq_len + pn]
@@ -421,9 +427,9 @@ class FeatExtractor:
                     try:
                         matrix_pos[pn, dict_index_pos[atom]] = val
                     except KeyError:
-                        logger.warning(f"Could not add the following atom: {atom}")
+                        warn_once(f"Could not add the following atom: {atom}")
                     except IndexError:
-                        logger.warning(
+                        warn_once(
                             f"Could not add the following atom: {pn} {atom} {val}"
                         )
 
@@ -431,12 +437,11 @@ class FeatExtractor:
                 try:
                     matrix_hc[i, dict_aa[peptide_position[0]]] = 1.0
                 except KeyError:
-                    logger.warning(
+                    warn_once(
                         f"Skipping the following (not in library): {i} {peptide_position}"
                     )
                 except IndexError:
-                    # Likely to be a sequence > 60 AA
-                    logger.warning(
+                    warn_once(
                         f"Could not add the following atom: {i} {peptide_position}"
                     )
 
@@ -444,12 +449,12 @@ class FeatExtractor:
                     try:
                         modification_composition = peptide_position[1][0].composition
                     except KeyError:
-                        logger.warning(
+                        warn_once(
                             f"Skipping the following (not in library): {peptide_position[1]}"
                         )
                         continue
                     except:
-                        logger.warning(
+                        warn_once(
                             f"Skipping the following (not in library): {peptide_position[1]}"
                         )
                         continue
@@ -473,7 +478,7 @@ class FeatExtractor:
                                 ] += atom_change
                         except KeyError:
                             try:
-                                logger.warning(
+                                warn_once(
                                     f"Could not add the following atom: {atom_position_composition}, attempting to replace the [] part"
                                 )
                                 atom_position_composition = sub(
@@ -492,21 +497,21 @@ class FeatExtractor:
                                         dict_index_pos[atom_position_composition],
                                     ] += atom_change
                             except KeyError:
-                                logger.warning(
+                                warn_once(
                                     f"Could not add the following atom: {atom_position_composition}, second attempt, now ignored"
                                 )
                                 continue
                             except:
-                                logger.warning(
+                                warn_once(
                                     f"Could not add the following atom: {atom_position_composition}, second attempt, now ignored"
                                 )
                                 continue
                         except IndexError:
-                            logger.warning(
+                            warn_once(
                                 f"Could not add the following atom: {i} {atom_position_composition} {atom_change}"
                             )
                         except:
-                            logger.warning(
+                            warn_once(
                                 f"Could not add the following atom: {atom_position_composition}, second attempt, now ignored"
                             )
                             continue
