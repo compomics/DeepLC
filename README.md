@@ -298,12 +298,11 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 **__Q: What modification name should I use?__**
 
 The names from unimod are used. The PSI-MS name is used by default, but the Interim name
-is used as a fall-back if the PSI-MS name is not available. Please also see __unimod_to_formula.csv__
-in the folder __unimod/__ for the naming of specific modifications.
+is used as a fall-back if the PSI-MS name is not available. It should be fine as long as it is support by [proforma](https://pubs.acs.org/doi/10.1021/acs.jproteome.1c00771) and [psm_utils](https://github.com/compomics/psm_utils).
 
 **__Q: I have a modification that is not in unimod. How can I add the modification?__**
 
-Unfortunately since the V3.0 this is not possible any more via the GUI or commandline. You will need to use [psm_utils](https://github.com/compomics/psm_utils), above a minimal example is shown where we convert an identification file into a psm_list which is accepted by DeepLC. Here the sequence can for example include just the composition (e.g., SEQUEN[Formula:C12H20O2]CE).
+Unfortunately since the V3.0 this is not possible any more via the GUI or commandline. You will need to use [psm_utils](https://github.com/compomics/psm_utils), above a minimal example is shown where we convert an identification file into a psm_list which is accepted by DeepLC. Here the sequence can for example include just the composition in proforma format (e.g., SEQUEN[Formula:C12H20O2]CE).
 
 **__Q: Help, all my predictions are between [0,10]. Why?__**
 
