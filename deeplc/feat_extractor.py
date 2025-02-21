@@ -412,7 +412,11 @@ class FeatExtractor:
                         )
 
             for p in positions_pos:
-                aa = seq[p]
+                try:
+                    aa = seq[p]
+                except:
+                    warn_once(f"Unable to get the following position: {p}")
+                    continue
                 for atom, val in mass.std_aa_comp[aa].items():
                     try:
                         matrix_pos[p, dict_index_pos[atom]] = val
@@ -422,7 +426,11 @@ class FeatExtractor:
                         warn_once(f"Could not add the following atom: {p} {atom} {val}")
 
             for pn in positions_neg:
-                aa = seq[seq_len + pn]
+                try:
+                    aa = seq[seq_len + pn]
+                except:
+                    warn_once(f"Unable to get the following position: {p}")
+                    continue
                 for atom, val in mass.std_aa_comp[aa].items():
                     try:
                         matrix_pos[pn, dict_index_pos[atom]] = val
