@@ -74,17 +74,13 @@ def parse_arguments(gui=False):
 
     parser = ArgumentParser(
         prog="DeepLC",
-        description=(
-            "Retention time prediction for (modified) peptides using deep " "learning."
-        ),
+        description=("Retention time prediction for (modified) peptides using deep learning."),
         usage="deeplc [OPTIONS] --file_pred <peptide_file>",
         formatter_class=lambda prog: HelpFormatter(prog, max_help_position=42),
         add_help=False,
     )
 
-    io_args = parser.add_argument_group(
-        "Input and output files", **gooey_args["io_args"]
-    )
+    io_args = parser.add_argument_group("Input and output files", **gooey_args["io_args"])
     io_args.add_argument(
         "--file_pred",
         required=True,
@@ -97,9 +93,7 @@ def parse_arguments(gui=False):
         type=str,
         default=None,
         metavar="Input peptides for calibration" if gui else "",
-        help=(
-            "path to peptide CSV file with retention times to use for " "calibration"
-        ),
+        help=("path to peptide CSV file with retention times to use for calibration"),
         **gooey_args["file_cal"],
     )
     io_args.add_argument(
@@ -166,10 +160,7 @@ def parse_arguments(gui=False):
         dest="split_cal",
         default=50,
         metavar="split cal" if gui else "",
-        help=(
-            "number of splits in the chromatogram for piecewise linear "
-            "calibration fit"
-        ),
+        help=("number of splits in the chromatogram for piecewise linear calibration fit"),
         **gooey_args["split_cal"],
     )
     model_cal_args.add_argument(
@@ -265,8 +256,6 @@ def parse_arguments(gui=False):
     results = parser.parse_args()
 
     if not results.file_pred_out:
-        results.file_pred_out = (
-            os.path.splitext(results.file_pred)[0] + "_deeplc_predictions.csv"
-        )
+        results.file_pred_out = os.path.splitext(results.file_pred)[0] + "_deeplc_predictions.csv"
 
     return results

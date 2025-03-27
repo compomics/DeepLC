@@ -13,8 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-This project was made possible by MASSTRPLAN. MASSTRPLAN received funding 
-from the Marie Sklodowska-Curie EU Framework for Research and Innovation 
+This project was made possible by MASSTRPLAN. MASSTRPLAN received funding
+from the Marie Sklodowska-Curie EU Framework for Research and Innovation
 Horizon 2020, under Grant Agreement No. 675132.
 """
 
@@ -99,7 +99,7 @@ def train_en(X, y, n_jobs=16, cv=None):
     grid.fit(X, y)
 
     crossv_mod.set_params(**grid.best_params_)
-    
+
     ret_mod.set_params(**grid.best_params_)
     ret_mod.fit(X, y)
 

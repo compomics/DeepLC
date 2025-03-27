@@ -61,3 +61,13 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["deeplc"]
 include-package-data = true
+
+[tool.ruff]
+line-length = 99
+target-version = 'py311'
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I"]
+
+[tool.ruff.format]
+docstring-code-format = true

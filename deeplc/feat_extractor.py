@@ -51,15 +51,28 @@ class FeatExtractor:
     def __init__(
         self,
         main_path=os.path.dirname(os.path.realpath(__file__)),
-        lib_path_mod=os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "unimod/"
-        ),
+        lib_path_mod=os.path.join(os.path.dirname(os.path.realpath(__file__)), "unimod/"),
         lib_aa_composition=os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "aa_comp_rel.csv"
         ),
         split_size=7,
         verbose=True,
-        include_specific_posses=[0, 1, 2, 3, 4, 5, 6, -1, -2, -3, -4, -5, -6, -7],
+        include_specific_posses=[
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            -1,
+            -2,
+            -3,
+            -4,
+            -5,
+            -6,
+            -7,
+        ],
         add_sum_feat=False,
         ptm_add_feat=False,
         ptm_subtract_feat=False,
@@ -81,9 +94,7 @@ class FeatExtractor:
             ptm_add_feat = cparser.getboolean("featExtractor", "ptm_add_feat")
             ptm_subtract_feat = cparser.getboolean("featExtractor", "ptm_subtract_feat")
             add_rolling_feat = cparser.getboolean("featExtractor", "add_rolling_feat")
-            include_unnormalized = cparser.getboolean(
-                "featExtractor", "include_unnormalized"
-            )
+            include_unnormalized = cparser.getboolean("featExtractor", "include_unnormalized")
             include_specific_posses = ast.literal_eval(
                 cparser.get("featExtractor", "include_specific_posses")
             )
@@ -241,9 +252,7 @@ class FeatExtractor:
         look_up_mod_subtract = {}
         look_up_mod_add = {}
 
-        len_init = len(
-            [ao + str(spl_s) for spl_s in range(split_size) for ao in atoms_order]
-        )
+        len_init = len([ao + str(spl_s) for spl_s in range(split_size) for ao in atoms_order])
         for index_name, mod, seq in zip(identifiers, mods, seqs):
             mod_dict[index_name] = dict(
                 zip(
@@ -265,9 +274,7 @@ class FeatExtractor:
                     continue
 
         if self.verbose:
-            logger.debug(
-                "Time to calculate mod features: %s seconds" % (time.time() - t0)
-            )
+            logger.debug("Time to calculate mod features: %s seconds" % (time.time() - t0))
         df_ret = pd.DataFrame(mod_dict, dtype=int).T
         del mod_dict
         return df_ret
@@ -388,15 +395,9 @@ class FeatExtractor:
             peptide_composition = [mass.std_aa_comp[aa] for aa in seq]
 
             # Initialize all feature matrices
-            matrix = np.zeros(
-                (padding_length, len(dict_index.keys())), dtype=np.float16
-            )
-            matrix_hc = np.zeros(
-                (padding_length, len(dict_aa.keys())), dtype=np.float16
-            )
-            matrix_pos = np.zeros(
-                (len(positions), len(dict_index.keys())), dtype=np.float16
-            )
+            matrix = np.zeros((padding_length, len(dict_index.keys())), dtype=np.float16)
+            matrix_hc = np.zeros((padding_length, len(dict_aa.keys())), dtype=np.float16)
+            matrix_pos = np.zeros((len(positions), len(dict_index.keys())), dtype=np.float16)
 
             for i, position_composition in enumerate(peptide_composition):
                 for k, v in position_composition.items():
@@ -437,21 +438,15 @@ class FeatExtractor:
                     except KeyError:
                         warn_once(f"Could not add the following atom: {atom}")
                     except IndexError:
-                        warn_once(
-                            f"Could not add the following atom: {pn} {atom} {val}"
-                        )
+                        warn_once(f"Could not add the following atom: {pn} {atom} {val}")
 
             for i, peptide_position in enumerate(peptidoform.parsed_sequence):
                 try:
                     matrix_hc[i, dict_aa[peptide_position[0]]] = 1.0
                 except KeyError:
-                    warn_once(
-                        f"Skipping the following (not in library): {i} {peptide_position}"
-                    )
+                    warn_once(f"Skipping the following (not in library): {i} {peptide_position}")
                 except IndexError:
-                    warn_once(
-                        f"Could not add the following atom: {i} {peptide_position}"
-                    )
+                    warn_once(f"Could not add the following atom: {i} {peptide_position}")
 
                 if peptide_position[1] is not None:
                     try:
@@ -472,12 +467,11 @@ class FeatExtractor:
                         atom_change,
                     ) in modification_composition.items():
                         try:
-                            matrix[
-                                i, dict_index[atom_position_composition]
-                            ] += atom_change
+                            matrix[i, dict_index[atom_position_composition]] += atom_change
                             if i in positions:
                                 matrix_pos[
-                                    i, dict_index_pos[atom_position_composition]
+                                    i,
+                                    dict_index_pos[atom_position_composition],
                                 ] += atom_change
                             elif i - seq_len in positions:
                                 matrix_pos[
@@ -492,12 +486,11 @@ class FeatExtractor:
                                 atom_position_composition = sub(
                                     "\[.*?\]", "", atom_position_composition
                                 )
-                                matrix[
-                                    i, dict_index[atom_position_composition]
-                                ] += atom_change
+                                matrix[i, dict_index[atom_position_composition]] += atom_change
                                 if i in positions:
                                     matrix_pos[
-                                        i, dict_index_pos[atom_position_composition]
+                                        i,
+                                        dict_index_pos[atom_position_composition],
                                     ] += atom_change
                                 elif i - seq_len in positions:
                                     matrix_pos[
@@ -534,10 +527,12 @@ class FeatExtractor:
                     (seq.count("F") + seq.count("W") + seq.count("Y")) / float(seq_len),
                 )
                 matrix_all = np.append(
-                    matrix_all, (seq.count("D") + seq.count("E")) / float(seq_len)
+                    matrix_all,
+                    (seq.count("D") + seq.count("E")) / float(seq_len),
                 )
                 matrix_all = np.append(
-                    matrix_all, (seq.count("K") + seq.count("R")) / float(seq_len)
+                    matrix_all,
+                    (seq.count("K") + seq.count("R")) / float(seq_len),
                 )
                 matrix_all = np.append(matrix_all, charge)
 
@@ -584,7 +579,10 @@ class FeatExtractor:
             list_of_psms = []
             for seq, mod, id in zip(seqs, mods, identifiers):
                 list_of_psms.append(
-                    PSM(peptidoform=peprec_to_proforma(seq, mod), spectrum_id=id)
+                    PSM(
+                        peptidoform=peprec_to_proforma(seq, mod),
+                        spectrum_id=id,
+                    )
                 )
             psm_list = PSMList(psm_list=list_of_psms)
 
@@ -599,14 +597,10 @@ class FeatExtractor:
         if self.ptm_add_feat:
             if self.verbose:
                 logger.debug("Extracting compositional add features for modifications")
-            X_feats_add = self.get_feats_mods(
-                psm_list, split_size=self.split_size, add_str="_add"
-            )
+            X_feats_add = self.get_feats_mods(psm_list, split_size=self.split_size, add_str="_add")
         if self.ptm_subtract_feat:
             if self.verbose:
-                logger.debug(
-                    "Extracting compositional subtract features for modifications"
-                )
+                logger.debug("Extracting compositional subtract features for modifications")
             X_feats_neg = self.get_feats_mods(
                 psm_list,
                 split_size=self.split_size,
@@ -642,9 +636,7 @@ class FeatExtractor:
                 X = X_feats_neg
 
         if self.verbose:
-            logger.debug(
-                "Time to calculate all features: %s seconds" % (time.time() - t0)
-            )
+            logger.debug("Time to calculate all features: %s seconds" % (time.time() - t0))
         return X
 
 

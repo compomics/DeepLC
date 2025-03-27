@@ -1,8 +1,10 @@
 """Graphical user interface."""
+
 import sys
 from multiprocessing import freeze_support
 from pathlib import Path
 import importlib.resources
+
 try:
     from gooey import Gooey, local_resource_path
 except ImportError:
@@ -17,7 +19,7 @@ from deeplc.__main__ import main
 
 # Get path to package_data/images
 # Workaround with parent of specific file required for Python 3.9+ support
-with importlib.resources.path(img_module, 'config_icon.png') as resource:
+with importlib.resources.path(img_module, "config_icon.png") as resource:
     _IMG_DIR = Path(resource).parent
 
 
@@ -27,12 +29,13 @@ with importlib.resources.path(img_module, 'config_icon.png') as resource:
     tabbed_groups=True,
     default_size=(720, 480),
     monospace_display=True,
-    target=None if getattr(sys, 'frozen', False) else "deeplc-gui"
+    target=None if getattr(sys, "frozen", False) else "deeplc-gui",
 )
 def start_gui():
     """Run main with GUI enabled."""
     freeze_support()  # Required for multiprocessing with PyInstaller
     main(gui=True)
+
 
 if __name__ == "__main__":
     start_gui()

@@ -16,7 +16,6 @@ __credits__ = [
     "Sven Degroeve",
 ]
 
-
 # Default models, will be used if no other is specified. If no best model is
 # selected during calibration, the first model in the list will be used.
 import os
@@ -44,10 +43,9 @@ from configparser import ConfigParser
 from itertools import chain
 from tempfile import TemporaryDirectory
 
-from sklearn.preprocessing import SplineTransformer
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import make_pipeline
-
+from sklearn.preprocessing import SplineTransformer
 
 # If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
@@ -233,9 +231,7 @@ class DeepLC:
         try:
             tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
         except RuntimeError:
-            logger.warning(
-                "DeepLC tried to set intra op threads, but was unable to do so."
-            )
+            logger.warning("DeepLC tried to set intra op threads, but was unable to do so.")
 
         if "NUMEXPR_MAX_THREADS" not in os.environ:
             os.environ["NUMEXPR_MAX_THREADS"] = str(n_jobs)
@@ -300,20 +296,19 @@ class DeepLC:
 
         if not self.predict_ccs:
             for seq, mod, ident in zip(seqs, mods, identifiers):
-                list_of_psms.append(
-                    PSM(peptide=peprec_to_proforma(seq, mod), spectrum_id=ident)
-                )
+                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq, mod), spectrum_id=ident))
         else:
             for seq, mod, ident, z in zip(seqs, mods, identifiers, charges):
                 list_of_psms.append(
-                    PSM(peptide=peprec_to_proforma(seq, mod, z), spectrum_id=ident)
+                    PSM(
+                        peptide=peprec_to_proforma(seq, mod, z),
+                        spectrum_id=ident,
+                    )
                 )
 
         psm_list = PSMList(psm_list=list_of_psms)
 
-        return self.f_extractor.full_feat_extract(
-            psm_list, predict_ccs=self.predict_ccs
-        )
+        return self.f_extractor.full_feat_extract(psm_list, predict_ccs=self.predict_ccs)
 
     def do_f_extraction_pd(self, df_instances, charges=[]):
         """
@@ -336,11 +331,11 @@ class DeepLC:
         list_of_psms = []
         if len(charges) == 0:
             for seq, mod, ident in zip(
-                df_instances["seq"], df_instances["modifications"], df_instances.index
+                df_instances["seq"],
+                df_instances["modifications"],
+                df_instances.index,
             ):
-                list_of_psms.append(
-                    PSM(peptide=peprec_to_proforma(seq, mod), spectrum_id=ident)
-                )
+                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq, mod), spectrum_id=ident))
         else:
             for seq, mod, ident, z in zip(
                 df_instances["seq"],
@@ -357,9 +352,7 @@ class DeepLC:
 
         psm_list = PSMList(psm_list=list_of_psms)
 
-        return self.f_extractor.full_feat_extract(
-            psm_list, predict_ccs=self.predict_ccs
-        )
+        return self.f_extractor.full_feat_extract(psm_list, predict_ccs=self.predict_ccs)
 
     def do_f_extraction_pd_parallel(self, df_instances):
         """
@@ -414,9 +407,7 @@ class DeepLC:
         pd.DataFrame
             feature matrix
         """
-        return self.f_extractor.full_feat_extract(
-            psm_list, predict_ccs=self.predict_ccs
-        )
+        return self.f_extractor.full_feat_extract(psm_list, predict_ccs=self.predict_ccs)
 
     def do_f_extraction_psm_list_parallel(self, psm_list):
         """
@@ -454,9 +445,7 @@ class DeepLC:
             logger.debug("got feature extraction results")
         else:
             logger.debug("start feature extraction")
-            all_feats_async = pool.map_async(
-                self.do_f_extraction_psm_list, psm_list_split
-            )
+            all_feats_async = pool.map_async(self.do_f_extraction_psm_list, psm_list_split)
 
             logger.debug("wait for feature extraction")
             all_feats_async.wait()
@@ -465,9 +454,7 @@ class DeepLC:
             matrix_names = res[0].keys()
             all_feats = {
                 matrix_name: dict(
-                    enumerate(
-                        chain.from_iterable((v[matrix_name].values() for v in res))
-                    )
+                    enumerate(chain.from_iterable((v[matrix_name].values() for v in res)))
                 )
                 for matrix_name in matrix_names
             }
@@ -493,9 +480,7 @@ class DeepLC:
 
             # Use spline model within the range of X
             within_range = (uncal_preds >= cal_min) & (uncal_preds <= cal_max)
-            within_range = (
-                within_range.ravel()
-            )  # Ensure this is a 1D array for proper indexing
+            within_range = within_range.ravel()  # Ensure this is a 1D array for proper indexing
 
             # Create a prediction array initialized with spline predictions
             cal_preds = np.copy(y_pred_spline)
@@ -586,10 +571,10 @@ class DeepLC:
             predictions
         """
         if calibrate:
-            assert (
-                self.calibrate_dict
-            ), "DeepLC instance is not yet calibrated.\
+            assert self.calibrate_dict, (
+                "DeepLC instance is not yet calibrated.\
                                         Calibrate before making predictions, or use calibrate=False"
+            )
 
         if len(X) == 0 and len(psm_list) > 0:
             if self.verbose:
@@ -644,7 +629,12 @@ class DeepLC:
         return ret_preds
 
     def make_preds(
-        self, psm_list=None, infile="", calibrate=True, seq_df=None, mod_name=None
+        self,
+        psm_list=None,
+        infile="",
+        calibrate=True,
+        seq_df=None,
+        mod_name=None,
     ):
         """
         Make predictions for sequences, in batches if required.
@@ -690,11 +680,12 @@ class DeepLC:
                         )
                     )
             else:
-                for seq, mod, ident in zip(
-                    seq_df["seq"], seq_df["modifications"], seq_df.index
-                ):
+                for seq, mod, ident in zip(seq_df["seq"], seq_df["modifications"], seq_df.index):
                     list_of_psms.append(
-                        PSM(peptidoform=peprec_to_proforma(seq, mod), spectrum_id=ident)
+                        PSM(
+                            peptidoform=peprec_to_proforma(seq, mod),
+                            spectrum_id=ident,
+                        )
                     )
             psm_list = PSMList(psm_list=list_of_psms)
 
@@ -810,7 +801,10 @@ class DeepLC:
                     )
             else:
                 for seq, mod, ident, tr in zip(
-                    seq_df["seq"], seq_df["modifications"], seq_df.index, seq_df["tr"]
+                    seq_df["seq"],
+                    seq_df["modifications"],
+                    seq_df.index,
+                    seq_df["tr"],
                 ):
                     list_of_psms.append(
                         PSM(
@@ -828,9 +822,7 @@ class DeepLC:
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [
             (mtr, ptr)
-            for mtr, ptr in sorted(
-                zip(measured_tr, predicted_tr), key=lambda pair: pair[1]
-            )
+            for mtr, ptr in sorted(zip(measured_tr, predicted_tr), key=lambda pair: pair[1])
         ]
         measured_tr = np.array([mtr for mtr, ptr in tr_sort], dtype=np.float32)
         predicted_tr = np.array([ptr for mtr, ptr in tr_sort], dtype=np.float32)
@@ -848,9 +840,7 @@ class DeepLC:
             spline_model = linear_model
             linear_model_right = linear_model
         else:
-            spline = SplineTransformer(
-                degree=4, n_knots=int(len(measured_tr) / 500) + 5
-            )
+            spline = SplineTransformer(degree=4, n_knots=int(len(measured_tr) / 500) + 5)
             spline_model = make_pipeline(spline, LinearRegression())
             spline_model.fit(predicted_tr.reshape(-1, 1), measured_tr)
 
@@ -946,7 +936,10 @@ class DeepLC:
                     )
             else:
                 for seq, mod, tr, ident in zip(
-                    seq_df["seq"], seq_df["modifications"], seq_df["tr"], seq_df.index
+                    seq_df["seq"],
+                    seq_df["modifications"],
+                    seq_df["tr"],
+                    seq_df.index,
                 ):
                     list_of_psms.append(
                         PSM(
@@ -964,9 +957,7 @@ class DeepLC:
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [
             (mtr, ptr)
-            for mtr, ptr in sorted(
-                zip(measured_tr, predicted_tr), key=lambda pair: pair[1]
-            )
+            for mtr, ptr in sorted(zip(measured_tr, predicted_tr), key=lambda pair: pair[1])
         ]
         measured_tr = np.array([mtr for mtr, ptr in tr_sort])
         predicted_tr = np.array([ptr for mtr, ptr in tr_sort])
@@ -1017,18 +1008,12 @@ class DeepLC:
             raise CalibrationError(
                 "Not enough measured tr ({}) for the chosen number of splits ({}). "
                 "Choose a smaller split_cal parameter or provide more peptides for "
-                "fitting the calibration curve.".format(
-                    len(measured_tr), self.split_cal
-                )
+                "fitting the calibration curve.".format(len(measured_tr), self.split_cal)
             )
         if len(mtr_mean) == 0:
-            raise CalibrationError(
-                "The measured tr list is empty, not able to calibrate"
-            )
+            raise CalibrationError("The measured tr list is empty, not able to calibrate")
         if len(ptr_mean) == 0:
-            raise CalibrationError(
-                "The predicted tr list is empty, not able to calibrate"
-            )
+            raise CalibrationError("The predicted tr list is empty, not able to calibrate")
 
         # calculate calibration curves
         for i in range(0, len(ptr_mean)):
@@ -1051,7 +1036,10 @@ class DeepLC:
                     calibrate_min = v
                 if v > calibrate_max:
                     calibrate_max = v
-                calibrate_dict[str(round(v, self.bin_dist))] = [slope, intercept]
+                calibrate_dict[str(round(v, self.bin_dist))] = [
+                    slope,
+                    intercept,
+                ]
 
         return calibrate_min, calibrate_max, calibrate_dict
 
@@ -1115,7 +1103,10 @@ class DeepLC:
                     )
             else:
                 for seq, mod, ident, tr in zip(
-                    seq_df["seq"], seq_df["modifications"], seq_df.index, seq_df["tr"]
+                    seq_df["seq"],
+                    seq_df["modifications"],
+                    seq_df.index,
+                    seq_df["tr"],
                 ):
                     list_of_psms.append(
                         PSM(
@@ -1265,10 +1256,7 @@ class DeepLC:
                 perf = sum(abs(np.array(measured_tr) - np.array(preds)))
 
             if self.verbose:
-                logger.debug(
-                    "For %s model got a performance of: %s"
-                    % (m_name, perf / len(preds))
-                )
+                logger.debug("For %s model got a performance of: %s" % (m_name, perf / len(preds)))
 
             if perf < best_perf:
                 if self.deepcallc_mod:
@@ -1293,9 +1281,7 @@ class DeepLC:
         self.model = best_model
 
         if self.deepcallc_mod:
-            self.deepcallc_model = train_en(
-                pd.DataFrame(pred_dict["deepcallc"]), seq_df["tr"]
-            )
+            self.deepcallc_model = train_en(pd.DataFrame(pred_dict["deepcallc"]), seq_df["tr"])
 
         # self.n_jobs = 1
 
@@ -1307,12 +1293,13 @@ class DeepLC:
             plotly_return_dict = {}
             plotly_df = pd.DataFrame(
                 list(zip(temp_obs, temp_pred)),
-                columns=["Observed retention time", "Predicted retention time"],
+                columns=[
+                    "Observed retention time",
+                    "Predicted retention time",
+                ],
             )
             plotly_return_dict["scatter"] = deeplc.plot.scatter(plotly_df)
-            plotly_return_dict["baseline_dist"] = deeplc.plot.distribution_baseline(
-                plotly_df
-            )
+            plotly_return_dict["baseline_dist"] = deeplc.plot.distribution_baseline(plotly_df)
             return plotly_return_dict
 
         return {}
