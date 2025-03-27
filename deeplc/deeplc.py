@@ -4,6 +4,8 @@ Main code used to generate LC retention time predictions.
 This provides the main interface. For the library versions see the .yml file
 """
 
+from __future__ import annotations
+
 __author__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
 __license__ = "Apache License, Version 2.0"
 __maintainer__ = ["Robbin Bouwmeester", "Ralf Gabriels"]
@@ -16,26 +18,13 @@ __credits__ = [
     "Sven Degroeve",
 ]
 
-# Default models, will be used if no other is specified. If no best model is
-# selected during calibration, the first model in the list will be used.
-import os
-
-deeplc_dir = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_MODELS = [
-    "mods/full_hc_PXD005573_pub_1fd8363d9af9dcad3be7553c39396960.keras",
-    "mods/full_hc_PXD005573_pub_8c22d89667368f2f02ad996469ba157e.keras",
-    "mods/full_hc_PXD005573_pub_cb975cfdd4105f97efa0b3afffe075cc.keras",
-]
-DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
-
-LIBRARY = {}
 
 import copy
 import gc
 import logging
-import math
 import multiprocessing
 import multiprocessing.dummy
+import os
 import random
 import sys
 import warnings
@@ -43,9 +32,27 @@ from configparser import ConfigParser
 from itertools import chain
 from tempfile import TemporaryDirectory
 
+import numpy as np
+import pandas as pd
+from psm_utils import PSM, PSMList
+from psm_utils.io import read_file
+from psm_utils.io.peptide_record import peprec_to_proforma
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import SplineTransformer
+
+# Default models, will be used if no other is specified. If no best model is
+# selected during calibration, the first model in the list will be used.
+DEEPLC_DIR = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_MODELS = [
+    "mods/full_hc_PXD005573_pub_1fd8363d9af9dcad3be7553c39396960.keras",
+    "mods/full_hc_PXD005573_pub_8c22d89667368f2f02ad996469ba157e.keras",
+    "mods/full_hc_PXD005573_pub_cb975cfdd4105f97efa0b3afffe075cc.keras",
+]
+DEFAULT_MODELS = [os.path.join(DEEPLC_DIR, dm) for dm in DEFAULT_MODELS]
+
+LIBRARY = {}
+
 
 # If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
@@ -57,33 +64,26 @@ if IS_CLI_GUI or IS_FROZEN:
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
 
-# Supress warnings (or at least try...)
+# Suppress warnings (or at least try...)
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
-import numpy as np
-import pandas as pd
+# ruff: noqa: E402
 import tensorflow as tf
 from deeplcretrainer import deeplcretrainer
-from psm_utils.io import read_file
-from psm_utils.io.peptide_record import peprec_to_proforma
-from psm_utils.psm import PSM
-from psm_utils.psm_list import PSMList
 
 try:
     from tensorflow.keras.models import load_model
-except:
+except Exception:
     from tensorflow.python.keras.models import load_model
 from tensorflow.python.eager import context
 
 from deeplc._exceptions import CalibrationError
+from deeplc.feat_extractor import FeatExtractor
 from deeplc.trainl3 import train_en
 
 # Set to force CPU calculations
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
-# Feature extraction
-from deeplc.feat_extractor import FeatExtractor
 
 
 def warn(*args, **kwargs):
@@ -124,78 +124,92 @@ class DeepLC:
     """
     DeepLC predictor.
 
-    Parameters
-    ----------
-    main_path : str
-        main path of module
-    path_model : str, optional
-        path to prediction model(s); leave empty to select the best of the
-        default models based on the calibration peptides
-    verbose : bool, default=True
-        turn logging on/off
-    bin_dist : float, default=2
-        TODO
-    dict_cal_divider : int, default=50
-        sets precision for fast-lookup of retention times for calibration; e.g.
-        10 means a precision of 0.1 between the calibration anchor points
-    split_cal : int, default=50
-        number of splits in the chromatogram for piecewise linear calibration
-        fit
-    n_jobs : int, optional
-        number of CPU threads to use
-    config_file : str, optional
-        path to configuration file
-    f_extractor : object :: deeplc.FeatExtractor, optional
-        deeplc.FeatExtractor object to use
-    cnn_model : bool, default=True
-        use CNN model or not
-    batch_num : int, default=250000
-        prediction batch size (in peptides); lower to decrease memory footprint
-    write_library : bool, default=False
-        append new predictions to library for faster future results; requires
-        `use_library` option
-    use_library : str, optional
-        library file with previous predictions for faster results to read from,
-        or to write to
-    reload_library : bool, default=False
-        reload prediction library
-
     Methods
     -------
-    calibrate_preds(seqs=[], mods=[], identifiers=[], measured_tr=[], correction_factor=1.0, seq_df=None, use_median=True)
+    calibrate_preds
         Find best model and calibrate
-    make_preds(seqs=[], mods=[], identifiers=[], calibrate=True, seq_df=None, correction_factor=1.0, mod_name=None)
+    make_preds
         Make predictions
 
     """
 
     library = {}
 
-    # TODO have a CCS flag here
     def __init__(
         self,
-        main_path=os.path.dirname(os.path.realpath(__file__)),
-        path_model=None,
-        verbose=True,
-        bin_dist=2,
-        dict_cal_divider=50,
-        split_cal=50,
-        n_jobs=None,
-        config_file=None,
-        f_extractor=None,
-        cnn_model=True,
-        batch_num=250000,
-        batch_num_tf=1024,
-        write_library=False,
-        use_library=None,
-        reload_library=False,
-        pygam_calibration=True,
-        deepcallc_mod=False,
-        deeplc_retrain=False,
-        predict_ccs=False,
-        n_epochs=20,
-        single_model_mode=True,
+        main_path: str | None = None,
+        path_model: str | None = None,
+        verbose: bool = True,
+        bin_dist: float = 2.0,
+        dict_cal_divider: int = 50,
+        split_cal: int = 50,
+        n_jobs: int | None = None,
+        config_file: str | None = None,
+        f_extractor: FeatExtractor | None = None,
+        cnn_model: bool = True,
+        batch_num: int = 250000,
+        batch_num_tf: int = 1024,
+        write_library: bool = False,
+        use_library: str | None = None,
+        reload_library: bool = False,
+        pygam_calibration: bool = True,
+        deepcallc_mod: bool = False,
+        deeplc_retrain: bool = False,
+        predict_ccs: bool = False,
+        n_epochs: int = 20,
+        single_model_mode: bool = True,
     ):
+        """
+        Initialize the DeepLC predictor.
+
+        Parameters
+        ----------
+        main_path
+            Main path of the module.
+        path_model
+            Path to prediction model(s); if not provided, the best default model is selected based
+            on calibration peptides.
+        verbose
+            Turn logging on/off.
+        bin_dist
+            Precision factor for calibration lookup.
+        dict_cal_divider
+            Divider that sets the precision for fast lookup of retention times in calibration; e.g.
+            10 means a precision of 0.1 between the calibration anchor points
+        split_cal
+            Number of splits in the chromatogram for piecewise linear calibration.
+        n_jobs
+            Number of CPU threads to use.
+        config_file
+            Path to a configuration file.
+        f_extractor
+            deeplc.FeatExtractor object to use.
+        cnn_model
+            Flag indicating whether to use the CNN model.
+        batch_num
+            Prediction batch size (in peptides); lower values reduce memory footprint.
+        batch_num_tf
+            Batch size for TensorFlow predictions.
+        write_library
+            Whether to append new predictions to a library for faster future access.
+        use_library
+            Library file to read from or write to for prediction caching.
+        reload_library
+            Whether to reload the prediction library.
+        pygam_calibration
+            Flag to enable calibration using PyGAM.
+        deepcallc_mod
+            Flag specific to deepcallc mode.
+        deeplc_retrain
+            Flag indicating whether to perform retraining (transfer learning) of prediction models.
+        predict_ccs
+            Flag to control prediction of CCS values.
+        n_epochs
+            Number of epochs used in retraining if deeplc_retrain is enabled.
+        single_model_mode
+            Flag to use a single model instead of multiple default models.
+
+        """
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()
@@ -204,29 +218,31 @@ class DeepLC:
             split_cal = cparser.getint("DeepLC", "split_cal")
             n_jobs = cparser.getint("DeepLC", "n_jobs")
 
-        self.main_path = main_path
+        self.main_path = main_path or os.path.dirname(os.path.realpath(__file__))
+        self.path_model = self._get_model_paths(path_model, single_model_mode)
         self.verbose = verbose
         self.bin_dist = bin_dist
+        self.dict_cal_divider = dict_cal_divider
+        self.split_cal = split_cal
+        self.n_jobs = multiprocessing.cpu_count() if n_jobs is None else n_jobs
+        self.config_file = config_file
+        self.f_extractor = f_extractor or FeatExtractor()
+        self.cnn_model = cnn_model
+        self.batch_num = batch_num
+        self.batch_num_tf = batch_num_tf
+        self.write_library = write_library
+        self.use_library = use_library
+        self.reload_library = reload_library
+        self.pygam_calibration = pygam_calibration
+        self.deepcallc_mod = deepcallc_mod
+        self.deeplc_retrain = deeplc_retrain
+        self.predict_ccs = predict_ccs
+        self.n_epochs = n_epochs
+
+        # Calibration variables
         self.calibrate_dict = {}
         self.calibrate_min = float("inf")
         self.calibrate_max = 0
-        self.n_epochs = n_epochs
-        self.cnn_model = cnn_model
-
-        self.batch_num = batch_num
-        self.batch_num_tf = batch_num_tf
-        self.dict_cal_divider = dict_cal_divider
-        self.split_cal = split_cal
-        self.n_jobs = n_jobs
-
-        if self.n_jobs == None:
-            max_threads = multiprocessing.cpu_count()
-            self.n_jobs = max_threads
-
-        self.use_library = use_library
-        self.write_library = write_library
-
-        self.reload_library = reload_library
 
         try:
             tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
@@ -235,26 +251,6 @@ class DeepLC:
 
         if "NUMEXPR_MAX_THREADS" not in os.environ:
             os.environ["NUMEXPR_MAX_THREADS"] = str(n_jobs)
-
-        if path_model:
-            self.model = path_model
-        else:
-            if single_model_mode:
-                self.model = [DEFAULT_MODELS[0]]
-            else:
-                self.model = DEFAULT_MODELS
-
-        if f_extractor:
-            self.f_extractor = f_extractor
-        else:
-            self.f_extractor = FeatExtractor()
-
-        self.pygam_calibration = pygam_calibration
-        self.deeplc_retrain = deeplc_retrain
-
-        self.deepcallc_mod = deepcallc_mod
-
-        self.predict_ccs = predict_ccs
 
         if self.deepcallc_mod:
             self.write_library = False
@@ -273,139 +269,110 @@ class DeepLC:
                   |_|
               """
 
-    def do_f_extraction(self, seqs, mods, identifiers, charges=[]):
+    @staticmethod
+    def _get_model_paths(passed_model_path: str | None, single_model_mode: bool) -> list[str]:
+        """Get the model paths based on the passed model path and the single model mode."""
+        if passed_model_path:
+            return [passed_model_path]
+
+        if single_model_mode:
+            return [DEFAULT_MODELS[0]]
+
+        return DEFAULT_MODELS
+
+    def do_f_extraction(
+        self,
+        seqs: list[str],
+        mods: list[str | None],
+        identifiers: list[str],
+        charges: list[int] | None = None,
+    ):
         """
-        Extract all features we can extract; without parallelization; use if you
-        want to run feature extraction with a single core
+        Extract all features we can extract; without parallelization; use if you want to run
+        feature extraction with a single core.
 
         Parameters
         ----------
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : list
-            identifiers of the peptides; should correspond to seqs and mods
+        seqs
+            List of stripped peptide sequences for each entry.
+        mods
+            List of PEPREC-formatted modifications for each entry.
+        identifiers
+            List of identifiers for each entry.
+        charges
+            List of charges for each entry. Only required if CCS prediction is enabled.
 
         Returns
         -------
         pd.DataFrame
-            feature matrix
+            Feature matrix.
         """
-        list_of_psms = []
-
-        if not self.predict_ccs:
-            for seq, mod, ident in zip(seqs, mods, identifiers):
-                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq, mod), spectrum_id=ident))
-        else:
-            for seq, mod, ident, z in zip(seqs, mods, identifiers, charges):
-                list_of_psms.append(
-                    PSM(
-                        peptide=peprec_to_proforma(seq, mod, z),
-                        spectrum_id=ident,
-                    )
-                )
-
-        psm_list = PSMList(psm_list=list_of_psms)
-
+        psm_list = _lists_to_psm_list(seqs, mods, identifiers, charges, n_jobs=self.n_jobs)
         return self.f_extractor.full_feat_extract(psm_list, predict_ccs=self.predict_ccs)
 
-    def do_f_extraction_pd(self, df_instances, charges=[]):
+    def do_f_extraction_pd(self, dataframe: pd.DataFrame, charges: list[int] | None = None):
         """
-        Extract all features we can extract; without parallelization; use if
-        you want to run feature extraction with a single thread; and use a
-        defined dataframe
+        Extract all features we can extract; without parallelization; use if you want to run
+        feature extraction with a single thread; and use a defined dataframe.
 
         Parameters
         ----------
-        df_instances : object :: pd.DataFrame
-            dataframe containing the sequences (column:seq), modifications
-            (column:modifications) and naming (column:index)
-
-        Returns
-        -------
-        pd.DataFrame
-            feature matrix
-        """
-
-        list_of_psms = []
-        if len(charges) == 0:
-            for seq, mod, ident in zip(
-                df_instances["seq"],
-                df_instances["modifications"],
-                df_instances.index,
-            ):
-                list_of_psms.append(PSM(peptide=peprec_to_proforma(seq, mod), spectrum_id=ident))
-        else:
-            for seq, mod, ident, z in zip(
-                df_instances["seq"],
-                df_instances["modifications"],
-                df_instances.index,
-                charges=df_instances["charges"],
-            ):
-                list_of_psms.append(
-                    PSM(
-                        peptide=peprec_to_proforma(seq, mod, charge=z),
-                        spectrum_id=ident,
-                    )
-                )
-
-        psm_list = PSMList(psm_list=list_of_psms)
-
-        return self.f_extractor.full_feat_extract(psm_list, predict_ccs=self.predict_ccs)
-
-    def do_f_extraction_pd_parallel(self, df_instances):
-        """
-        Extract all features we can extract; with parallelization; use if you
-        want to run feature extraction with multiple threads; and use a defined
         dataframe
-
-        Parameters
-        ----------
-        df_instances : object :: pd.DataFrame
-            dataframe containing the sequences (column:seq), modifications
-            (column:modifications) and naming (column:index)
+            Dataframe containing the sequences (column:seq), modifications (column:modifications),
+            identifiers (index), and optionally charges (column:charge).
+        charges
+            List of charges for each entry. Only required if CCS prediction is enabled and not
+            present in the dataframe.
 
         Returns
         -------
         pd.DataFrame
-            feature matrix
+            Feature matrix.
+
         """
-        # self.n_jobs = 1
+        psm_list = _dataframe_to_psm_list(dataframe, charges, n_jobs=self.n_jobs)
+        return self.f_extractor.full_feat_extract(psm_list, predict_ccs=self.predict_ccs)
 
-        df_instances_split = np.array_split(df_instances, math.ceil(self.n_jobs / 4.0))
-        if multiprocessing.current_process().daemon:
-            logger.warning(
-                "DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children."
-            )
-            pool = multiprocessing.dummy.Pool(1)
-        else:
-            pool = multiprocessing.Pool(math.ceil(self.n_jobs / 4.0))
+    def do_f_extraction_pd_parallel(
+        self, dataframe: pd.DataFrame, charges: list[int] | None = None
+    ):
+        """
+        Extract all features we can extract; with parallelization; use if you want to run feature
+        extraction with multiple threads; and use a defined dataframe.
 
-        if self.n_jobs == 1:
-            df = self.do_f_extraction_pd(df_instances)
-        else:
-            df = pd.concat(pool.map(self.do_f_extraction_pd, df_instances_split))
-            pool.close()
-            pool.join()
-        return df
+        Parameters
+        ----------
+        dataframe
+            Dataframe containing the sequences (column:seq), modifications (column:modifications),
+            identifiers (index), and optionally charges (column:charge).
+        charges
+            List of charges for each entry. Only required if CCS prediction is enabled and not
+            present in the dataframe.
+
+        Returns
+        -------
+        pd.DataFrame
+            Feature matrix.
+
+        """
+        psm_list = _dataframe_to_psm_list(dataframe, charges, n_jobs=self.n_jobs)
+        return self.do_f_extraction_psm_list_parallel(psm_list)
 
     def do_f_extraction_psm_list(self, psm_list):
         """
-        Extract all features we can extract; without parallelization; use if
-        you want to run feature extraction with a single thread; and use a
-        defined dataframe
+        Extract all features we can extract; without parallelization; use if you want to run
+        feature extraction with a single thread; and use a defined dataframe
 
         Parameters
         ----------
-        df_instances : object :: pd.DataFrame
-            dataframe containing the sequences (column:seq), modifications
-            (column:modifications) and naming (column:index)
+        psm_list
+            PSMList with PSMs to extract features for.
 
         Returns
         -------
         pd.DataFrame
             feature matrix
+
         """
         return self.f_extractor.full_feat_extract(psm_list, predict_ccs=self.predict_ccs)
 
@@ -417,36 +384,22 @@ class DeepLC:
 
         Parameters
         ----------
-        df_instances : object :: pd.DataFrame
-            dataframe containing the sequences (column:seq), modifications
-            (column:modifications) and naming (column:index)
+        psm_list
+            PSMList with PSMs to extract features for.
 
         Returns
         -------
         pd.DataFrame
             feature matrix
+
         """
-        # TODO for multiproc I am still expecting a pd dataframe, this is not the case anymore, they are dicts
-        # self.n_jobs = 1
         logger.debug("prepare feature extraction")
-        if multiprocessing.current_process().daemon:
-            logger.warning(
-                "DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children."
-            )
-            psm_list_split = split_list(psm_list, self.n_jobs)
-            pool = multiprocessing.dummy.Pool(1)
-        elif self.n_jobs > 1:
-            psm_list_split = split_list(psm_list, self.n_jobs)
-            pool = multiprocessing.Pool(self.n_jobs)
 
-        if self.n_jobs == 1:
-            logger.debug("start feature extraction")
-            all_feats = self.do_f_extraction_psm_list(psm_list)
-            logger.debug("got feature extraction results")
-        else:
-            logger.debug("start feature extraction")
+        psm_list_split = split_list(psm_list, self.n_jobs)
+
+        logger.debug("start feature extraction")
+        with multiprocessing.Pool(self.n_jobs) as pool:
             all_feats_async = pool.map_async(self.do_f_extraction_psm_list, psm_list_split)
-
             logger.debug("wait for feature extraction")
             all_feats_async.wait()
             logger.debug("get feature extraction results")
@@ -454,17 +407,11 @@ class DeepLC:
             matrix_names = res[0].keys()
             all_feats = {
                 matrix_name: dict(
-                    enumerate(chain.from_iterable((v[matrix_name].values() for v in res)))
+                    enumerate(chain.from_iterable(v[matrix_name].values() for v in res))
                 )
                 for matrix_name in matrix_names
             }
-
-            # all_feats = pd.concat(all_feats_async.get())
-
             logger.debug("got feature extraction results")
-
-            pool.close()
-            pool.join()
 
         return all_feats
 
@@ -1325,3 +1272,71 @@ class DeepLC:
         k, m = divmod(len(a), n)
         result = (a[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n))
         return result
+
+
+def _get_pool(n_jobs: int) -> multiprocessing.pool.Pool | multiprocessing.dummy.Pool:
+    """Get a Pool object for parallel processing."""
+    if multiprocessing.current_process().daemon:
+        logger.warning(
+            "DeepLC is running in a daemon process. Disabling multiprocessing as daemonic "
+            "processes can't have children."
+        )
+        return multiprocessing.dummy.Pool(1)
+    elif n_jobs == 1:
+        return multiprocessing.dummy.Pool(1)
+    else:
+        max_n_jobs = multiprocessing.cpu_count()
+        if n_jobs > max_n_jobs:
+            logger.warning(
+                f"Number of jobs ({n_jobs}) exceeds the number of CPUs ({max_n_jobs}). "
+                f"Setting number of jobs to {max_n_jobs}."
+            )
+            return multiprocessing.Pool(max_n_jobs)
+        else:
+            return multiprocessing.Pool(n_jobs)
+
+
+def _lists_to_psm_list(
+    sequences: list[str],
+    modifications: list[str | None],
+    identifiers: list[str],
+    charges: list[int] | None,
+    n_jobs: int = 1,
+) -> PSMList:
+    """Convert lists of sequences, modifications, identifiers, and charges into a PSMList."""
+    if not charges:
+        charges = [None] * len(sequences)
+
+    def create_psm(args):
+        sequence, modifications, identifier, charge = args
+        return PSM(
+            peptidoform=peprec_to_proforma(sequence, modifications, charge=charge),
+            spectrum_id=identifier,
+        )
+
+    args_list = list(zip(sequences, modifications, identifiers, charges, strict=True))
+    with _get_pool(n_jobs) as pool:
+        list_of_psms = pool.map(create_psm, args_list)
+    return PSMList(psm_list=list_of_psms)
+
+
+# TODO: I'm not sure what the expected behavior was for charges; they were parsed
+# from the dataframe, while the passed list was used to check whether it they should get
+# parsed. I'll allow both with a priority for the passed charges.
+def _dataframe_to_psm_list(
+    dataframe: pd.DataFrame,
+    charges: list[int] | None,
+    n_jobs: int = 1,
+) -> PSMList:
+    """Convert a DataFrame with sequences, modifications, and identifiers into a PSMList."""
+    sequences = dataframe["seq"]
+    modifications = dataframe["modifications"]
+    identifiers = dataframe.index
+
+    if not charges:
+        if "charge" in dataframe.columns:
+            charges = dataframe["charge"]
+        else:
+            charges = list(None) * len(sequences)
+
+    return _lists_to_psm_list(sequences, modifications, identifiers, charges, n_jobs=n_jobs)
