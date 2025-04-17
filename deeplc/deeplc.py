@@ -221,6 +221,17 @@ class DeepLC:
         self.split_cal = split_cal
         self.n_jobs = n_jobs
 
+        ################################################
+        #                                              #
+        #              !!!WARNING!!!                   #
+        #                                              #
+        #! DUE TO ISSUES WITH MULTITHREADING SET TO 1 !#
+        #                                              #
+        #                                              #
+        ################################################
+        
+        self.n_jobs = 1
+
         if self.n_jobs == None:
             max_threads = multiprocessing.cpu_count()
             self.n_jobs = max_threads
