@@ -12,20 +12,21 @@ __credits__ = [
     "Robbin Bouwmeester",
     "Ralf Gabriels",
     "Arthur Declercq",
+    "Alireza Nameni"
     "Lennart Martens",
     "Sven Degroeve",
 ]
-
 
 # Default models, will be used if no other is specified. If no best model is
 # selected during calibration, the first model in the list will be used.
 import os
 
+
 deeplc_dir = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_MODELS = [
-    "mods/full_hc_PXD005573_pub_1fd8363d9af9dcad3be7553c39396960.keras",
-    "mods/full_hc_PXD005573_pub_8c22d89667368f2f02ad996469ba157e.keras",
-    "mods/full_hc_PXD005573_pub_cb975cfdd4105f97efa0b3afffe075cc.keras",
+    "mods/full_hc_PXD005573_pub_1fd8363d9af9dcad3be7553c39396960.pt",
+    "mods/full_hc_PXD005573_pub_8c22d89667368f2f02ad996469ba157e.pt",
+    "mods/full_hc_PXD005573_pub_cb975cfdd4105f97efa0b3afffe075cc.pt",
 ]
 DEFAULT_MODELS = [os.path.join(deeplc_dir, dm) for dm in DEFAULT_MODELS]
 
@@ -43,11 +44,9 @@ import warnings
 from configparser import ConfigParser
 from itertools import chain
 from tempfile import TemporaryDirectory
-
 from sklearn.preprocessing import SplineTransformer
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import make_pipeline
-
 
 # If CLI/GUI/frozen: disable Tensorflow info and warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
@@ -59,24 +58,14 @@ if IS_CLI_GUI or IS_FROZEN:
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
 
-# Supress warnings (or at least try...)
-logging.getLogger("tensorflow").setLevel(logging.ERROR)
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-
+import torch
+from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from deeplcretrainer import deeplcretrainer
 from psm_utils.io import read_file
 from psm_utils.io.peptide_record import peprec_to_proforma
 from psm_utils.psm import PSM
 from psm_utils.psm_list import PSMList
-
-try:
-    from tensorflow.keras.models import load_model
-except:
-    from tensorflow.python.keras.models import load_model
-from tensorflow.python.eager import context
 
 from deeplc._exceptions import CalibrationError
 from deeplc.trainl3 import train_en
@@ -103,23 +92,218 @@ logger = logging.getLogger(__name__)
 
 
 def split_list(a, n):
+    """
+        Splits a list into `n` nearly equal chunks.
+
+        Parameters
+        ----------
+        a : list
+            The list to be split.
+        n : int
+            The number of chunks.
+
+        Returns
+        -------
+        list
+            A generator yielding chunks of the original list.
+        """
     k, m = divmod(len(a), n)
-    return (a[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n))
+    return (a[i * k + min(i, m): (i + 1) * k + min(i + 1, m)] for i in range(n))
 
 
 def divide_chunks(l, n):
+    """
+    Divides a list into chunks of size `n`.
+
+    Parameters
+    ----------
+    l : list
+        The list to be divided.
+    n : int
+        The size of each chunk.
+
+    Returns
+    -------
+    generator
+        A generator yielding chunks of the original list.
+    """
     for i in range(0, len(l), n):
-        yield l[i : i + n]
+        yield l[i: i + n]
 
 
-def reset_keras():
-    """Reset Keras session."""
-    # sess = get_session()
-    # clear_session()
-    # sess.close()
-    # gc.collect()
-    # Set to force CPU calculations
-    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+class DeepLCDataset(Dataset):
+    """
+    Custom Dataset class for DeepLC used for loading features from peptide sequences.
+
+    Parameters
+    ----------
+    X : ndarray
+        Feature matrix for input data.
+    X_sum : ndarray
+        Feature matrix for sum of input data.
+    X_global : ndarray
+        Feature matrix for global input data.
+    X_hc : ndarray
+        Feature matrix for high-order context features.
+    target : ndarray, optional
+        The target retention times. Default is None.
+    """
+
+    def __init__(self, X, X_sum, X_global, X_hc, target=None):
+        self.X = torch.from_numpy(X).float()
+        self.X_sum = torch.from_numpy(X_sum).float()
+        self.X_global = torch.from_numpy(X_global).float()
+        self.X_hc = torch.from_numpy(X_hc).float()
+
+        if target is not None:
+            self.target = torch.from_numpy(target).float()  # Add target values if provided
+        else:
+            self.target = None  # If no target is provided, set it to None
+
+    def __len__(self):
+        return self.X.shape[0]
+
+    def __getitem__(self, idx):
+        if self.target is not None:
+            # Return both features and target during training
+            return (
+                self.X[idx],
+                self.X_sum[idx],
+                self.X_global[idx],
+                self.X_hc[idx],
+                self.target[idx]
+            )
+        else:
+            # Return only features during prediction
+            return (
+                self.X[idx],
+                self.X_sum[idx],
+                self.X_global[idx],
+                self.X_hc[idx]
+            )
+
+
+class DeepLCFineTuner:
+    """
+    Class for fine-tuning a DeepLC model.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model to fine-tune.
+    train_data : torch.utils.data.Dataset
+        Dataset containing the training data.
+    device : str, optional, default='cpu'
+        The device on which to run the model ('cpu' or 'cuda').
+    learning_rate : float, optional, default=0.001
+        The learning rate for the optimizer.
+    epochs : int, optional, default=10
+        Number of training epochs.
+    batch_size : int, optional, default=256
+        Batch size for training.
+    validation_data : torch.utils.data.Dataset or None, optional
+        If provided, used directly for validation. Otherwise, a fraction of
+        `train_data` will be held out.
+    validation_split : float, optional, default=0.1
+        Fraction of `train_data` to reserve for validation when
+        `validation_data` is None.
+    patience : int, optional, default=5
+        Number of epochs with no improvement on validation loss before stopping.
+    """
+
+    def __init__(self, model, train_data, device="cpu", learning_rate=0.001, epochs=10, batch_size=256, validation_data=None,
+        validation_split=0.1, patience=5):
+        self.model = model.to(device)
+        self.train_data = train_data
+        self.device = device
+        self.learning_rate = learning_rate
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.validation_data = validation_data
+        self.validation_split = validation_split
+        self.patience = patience
+
+    def _freeze_layers(self, unfreeze_keywords="33_1"):
+        """
+        Freezes all layers except those that contain the unfreeze_keyword
+        in their name.
+        """
+
+        for name, param in self.model.named_parameters():
+
+            param.requires_grad = (unfreeze_keywords in name)
+        print(f"[INFO] Trainable parameters:")
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                print(f"  - {name}")
+
+    def prepare_data(self, data, shuffle=True):
+        return DataLoader(data, batch_size=self.batch_size, shuffle=shuffle)
+
+    def fine_tune(self):
+        logger.info("Starting fine-tuning...")
+        if self.validation_data is None:
+            # Split the training data into training and validation sets
+            val_size = int(len(self.train_data) * self.validation_split)
+            train_size = len(self.train_data) - val_size
+            train_dataset, val_dataset = torch.utils.data.random_split(
+                self.train_data, [train_size, val_size]
+            )
+        else:
+            train_dataset = self.train_data
+            val_dataset = self.validation_data
+        train_loader = self.prepare_data(train_dataset)
+        val_loader = self.prepare_data(val_dataset, shuffle=False)
+
+        optimizer = torch.optim.Adam(
+            filter(lambda p: p.requires_grad, self.model.parameters()),
+            lr=self.learning_rate
+        )
+        loss_fn = torch.nn.L1Loss()
+        best_model_wts = copy.deepcopy(self.model.state_dict())
+        best_val_loss = float("inf")
+        epochs_no_improve = 0
+
+        for epoch in range(self.epochs):
+            running_loss = 0.0
+            self.model.train()
+            for batch in train_loader:
+                batch_X, batch_X_sum, batch_X_global, batch_X_hc, target = batch
+
+                target = target.view(-1, 1)
+
+                optimizer.zero_grad()
+                outputs = self.model(batch_X, batch_X_sum, batch_X_global, batch_X_hc)
+                loss = loss_fn(outputs, target)
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item()
+            avg_loss = running_loss / len(train_loader)
+
+            self.model.eval()
+            val_loss = 0.0
+            with torch.no_grad():
+                for batch in val_loader:
+                    batch_X, batch_X_sum, batch_X_global, batch_X_hc, target = batch
+                    target = target.view(-1, 1)
+                    outputs = self.model(batch_X, batch_X_sum, batch_X_global, batch_X_hc)
+                    val_loss += loss_fn(outputs, target).item()
+            avg_val_loss = val_loss / len(val_loader)
+
+            logger.info(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.4f}, Validation Loss: {avg_val_loss:.4f}")
+            print(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.4f}, Validation Loss: {avg_val_loss:.4f}")
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                best_model_wts = copy.deepcopy(self.model.state_dict())
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
+                if epochs_no_improve >= self.patience:
+                    logger.info(f"Early stopping triggered {epoch + 1}")
+                    print(f"Early stopping triggered {epoch + 1}")
+                    break
+        self.model.load_state_dict(best_model_wts)
+        return self.model
 
 
 class DeepLC:
@@ -149,18 +333,33 @@ class DeepLC:
         path to configuration file
     f_extractor : object :: deeplc.FeatExtractor, optional
         deeplc.FeatExtractor object to use
-    cnn_model : bool, default=True
+    cnn_model : bool, default=True, optional
         use CNN model or not
     batch_num : int, default=250000
         prediction batch size (in peptides); lower to decrease memory footprint
-    write_library : bool, default=False
+    write_library : bool, default=False, optional
         append new predictions to library for faster future results; requires
         `use_library` option
     use_library : str, optional
         library file with previous predictions for faster results to read from,
         or to write to
-    reload_library : bool, default=False
+    reload_library : bool, default=False, optional
         reload prediction library
+    pygam_calibration : bool, default=True, optional
+        use pygam for calibration
+    deepcallc_mod : bool, default=False, optional
+        use DeepCallC model
+    deeplc_retrain : bool, default=False, optional
+        retrain DeepLC model on the provided data
+    predict_ccs : bool, default=False, optional
+        predict CCS values
+    n_epochs : int, default=20, optional
+        number of epochs for model fine-tuning (if applicable)
+    single_model_mode : bool, default=True, optional
+        use single model mode (if applicable)
+    """
+
+    """
 
     Methods
     -------
@@ -175,29 +374,30 @@ class DeepLC:
 
     # TODO have a CCS flag here
     def __init__(
-        self,
-        main_path=os.path.dirname(os.path.realpath(__file__)),
-        path_model=None,
-        verbose=True,
-        bin_dist=2,
-        dict_cal_divider=50,
-        split_cal=50,
-        n_jobs=None,
-        config_file=None,
-        f_extractor=None,
-        cnn_model=True,
-        batch_num=250000,
-        batch_num_tf=1024,
-        write_library=False,
-        use_library=None,
-        reload_library=False,
-        pygam_calibration=True,
-        deepcallc_mod=False,
-        deeplc_retrain=False,
-        predict_ccs=False,
-        n_epochs=20,
-        single_model_mode=True,
+            self,
+            main_path=os.path.dirname(os.path.realpath(__file__)),
+            path_model=None,
+            verbose=True,
+            bin_dist=2,
+            dict_cal_divider=50,
+            split_cal=50,
+            n_jobs=None,
+            config_file=None,
+            f_extractor=None,
+            cnn_model=True,
+            batch_num=250000,
+            batch_num_tl=128,
+            write_library=False,
+            use_library=None,
+            reload_library=False,
+            pygam_calibration=True,
+            deepcallc_mod=False,
+            deeplc_retrain=False,
+            predict_ccs=False,
+            n_epochs=100,
+            single_model_mode=True,
     ):
+
         # if a config file is defined overwrite standard parameters
         if config_file:
             cparser = ConfigParser()
@@ -214,15 +414,15 @@ class DeepLC:
         self.calibrate_max = 0
         self.n_epochs = n_epochs
         self.cnn_model = cnn_model
-
+        self.model_cache = {}
         self.batch_num = batch_num
-        self.batch_num_tf = batch_num_tf
+        self.batch_num_tf = batch_num_tl
         self.dict_cal_divider = dict_cal_divider
         self.split_cal = split_cal
         self.n_jobs = n_jobs
 
         if self.n_jobs == None:
-            max_threads = multiprocessing.cpu_count()
+            max_threads = 1
             self.n_jobs = max_threads
 
         self.use_library = use_library
@@ -230,15 +430,8 @@ class DeepLC:
 
         self.reload_library = reload_library
 
-        try:
-            tf.config.threading.set_intra_op_parallelism_threads(n_jobs)
-        except RuntimeError:
-            logger.warning(
-                "DeepLC tried to set intra op threads, but was unable to do so."
-            )
-
-        if "NUMEXPR_MAX_THREADS" not in os.environ:
-            os.environ["NUMEXPR_MAX_THREADS"] = str(n_jobs)
+        # if "NUMEXPR_MAX_THREADS" not in os.environ:
+        #     os.environ["NUMEXPR_MAX_THREADS"] = str(n_jobs)
 
         if path_model:
             self.model = path_model
@@ -290,6 +483,8 @@ class DeepLC:
             naming of the mods; should correspond to seqs and identifiers
         identifiers : list
             identifiers of the peptides; should correspond to seqs and mods
+        charges : list, optional
+            list of charges; should correspond to seqs, mods and identifiers
 
         Returns
         -------
@@ -301,12 +496,12 @@ class DeepLC:
         if not self.predict_ccs:
             for seq, mod, ident in zip(seqs, mods, identifiers):
                 list_of_psms.append(
-                    PSM(peptide=peprec_to_proforma(seq, mod), spectrum_id=ident)
+                    PSM(peptidoform=peprec_to_proforma(seq, mod), spectrum_id=ident)
                 )
         else:
             for seq, mod, ident, z in zip(seqs, mods, identifiers, charges):
                 list_of_psms.append(
-                    PSM(peptide=peprec_to_proforma(seq, mod, z), spectrum_id=ident)
+                    PSM(peptidoform=peprec_to_proforma(seq, mod, z), spectrum_id=ident)
                 )
 
         psm_list = PSMList(psm_list=list_of_psms)
@@ -326,6 +521,8 @@ class DeepLC:
         df_instances : object :: pd.DataFrame
             dataframe containing the sequences (column:seq), modifications
             (column:modifications) and naming (column:index)
+        charges : list, optional
+            list of charges; should correspond to seqs, mods and identifiers
 
         Returns
         -------
@@ -336,21 +533,21 @@ class DeepLC:
         list_of_psms = []
         if len(charges) == 0:
             for seq, mod, ident in zip(
-                df_instances["seq"], df_instances["modifications"], df_instances.index
+                    df_instances["seq"], df_instances["modifications"], df_instances.index
             ):
                 list_of_psms.append(
-                    PSM(peptide=peprec_to_proforma(seq, mod), spectrum_id=ident)
+                    PSM(peptidoform=peprec_to_proforma(seq, mod), spectrum_id=ident)
                 )
         else:
             for seq, mod, ident, z in zip(
-                df_instances["seq"],
-                df_instances["modifications"],
-                df_instances.index,
-                charges=df_instances["charges"],
+                    df_instances["seq"],
+                    df_instances["modifications"],
+                    df_instances.index,
+                    charges=df_instances["charges"],
             ):
                 list_of_psms.append(
                     PSM(
-                        peptide=peprec_to_proforma(seq, mod, charge=z),
+                        peptidoform=peprec_to_proforma(seq, mod, charge=z),
                         spectrum_id=ident,
                     )
                 )
@@ -380,14 +577,14 @@ class DeepLC:
         """
         # self.n_jobs = 1
 
-        df_instances_split = np.array_split(df_instances, math.ceil(self.n_jobs / 4.0))
+        df_instances_split = np.array_split(df_instances, math.ceil(self.n_jobs))
         if multiprocessing.current_process().daemon:
             logger.warning(
                 "DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children."
             )
             pool = multiprocessing.dummy.Pool(1)
         else:
-            pool = multiprocessing.Pool(math.ceil(self.n_jobs / 4.0))
+            pool = multiprocessing.Pool(math.ceil(self.n_jobs))
 
         if self.n_jobs == 1:
             df = self.do_f_extraction_pd(df_instances)
@@ -399,15 +596,12 @@ class DeepLC:
 
     def do_f_extraction_psm_list(self, psm_list):
         """
-        Extract all features we can extract; without parallelization; use if
-        you want to run feature extraction with a single thread; and use a
-        defined dataframe
+        Extract all features from a list of PSM objects without parallelization.
 
         Parameters
         ----------
-        df_instances : object :: pd.DataFrame
-            dataframe containing the sequences (column:seq), modifications
-            (column:modifications) and naming (column:index)
+        psm_list : object :: PSMList
+            list of PSM objects containing peptide sequences and identifiers.
 
         Returns
         -------
@@ -420,15 +614,12 @@ class DeepLC:
 
     def do_f_extraction_psm_list_parallel(self, psm_list):
         """
-        Extract all features we can extract; without parallelization; use if
-        you want to run feature extraction with a single thread; and use a
-        defined dataframe
+        Extract all features from a list of PSM objects using parallelization.
 
         Parameters
         ----------
-        df_instances : object :: pd.DataFrame
-            dataframe containing the sequences (column:seq), modifications
-            (column:modifications) and naming (column:index)
+        psm_list : object :: PSMList
+            list of PSM objects containing peptide sequences and identifiers.
 
         Returns
         -------
@@ -482,6 +673,25 @@ class DeepLC:
         return all_feats
 
     def calibration_core(self, uncal_preds, cal_dict, cal_min, cal_max):
+        """
+        Perform calibration on uncalibrated predictions.
+
+        Parameters
+        ----------
+        uncal_preds : list or ndarray
+            The uncalibrated predicted retention times.
+        cal_dict : dict
+            Dictionary containing calibration parameters for different retention times.
+        cal_min : float
+            The minimum value for the calibration range.
+        cal_max : float
+            The maximum value for the calibration range.
+
+        Returns
+        -------
+        np.array
+            The calibrated retention time predictions.
+        """
         cal_preds = []
         if len(uncal_preds) == 0:
             return np.array(cal_preds)
@@ -503,10 +713,10 @@ class DeepLC:
             # Replace predictions outside the range with the linear model predictions
             cal_preds[~within_range & (uncal_preds.ravel() < cal_min)] = y_pred_left[
                 ~within_range & (uncal_preds.ravel() < cal_min)
-            ]
+                ]
             cal_preds[~within_range & (uncal_preds.ravel() > cal_max)] = y_pred_right[
                 ~within_range & (uncal_preds.ravel() > cal_max)
-            ]
+                ]
         else:
             for uncal_pred in uncal_preds:
                 try:
@@ -527,6 +737,23 @@ class DeepLC:
         return np.array(cal_preds)
 
     def make_preds_core_library(self, psm_list=[], calibrate=True, mod_name=None):
+        """
+        Make predictions for sequences using a pre-computed library.
+
+        Parameters
+        ----------
+        psm_list : list of PSM, optional
+            A list of PSM objects for which predictions are to be made.
+        calibrate : bool, optional, default=True
+            Whether to calibrate the predictions or not.
+        mod_name : str, optional
+            The model name to use for prediction.
+
+        Returns
+        -------
+        np.array
+            The predicted retention times for the peptides.
+        """
         ret_preds = []
         for psm in psm_list:
             ret_preds.append(LIBRARY[psm.peptidoform.proforma + "|" + mod_name])
@@ -550,34 +777,32 @@ class DeepLC:
         return ret_preds
 
     def make_preds_core(
-        self,
-        X=[],
-        X_sum=[],
-        X_global=[],
-        X_hc=[],
-        psm_list=[],
-        calibrate=True,
-        mod_name=None,
+            self,
+            X=[],
+            X_sum=[],
+            X_global=[],
+            X_hc=[],
+            psm_list=[],
+            calibrate=True,
+            mod_name=None,
     ):
         """
         Make predictions for sequences
         Parameters
         ----------
-        seq_df : object :: pd.DataFrame
-            dataframe containing the sequences (column:seq), modifications
-            (column:modifications) and naming (column:index); will use parallel
-            by default!
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : list
-            identifiers of the peptides; should correspond to seqs and mods
-        calibrate : boolean
-            calibrate predictions or just return the predictions
-        correction_factor : float
-            correction factor to apply to predictions
-        mod_name : str or None
+        X : ndarray, optional
+            Feature matrix representing the peptide sequences.
+        X_sum : ndarray, optional
+            Sum of features.
+        X_global : ndarray, optional
+            Global features for the peptides.
+        X_hc : ndarray, optional
+            High-order context features for the peptides.
+        psm_list : list, optional
+            List of PSM objects representing the peptide sequences and modifications.
+        calibrate : bool, optional, default=True
+            Whether to calibrate the predictions using the calibration dictionary.
+        mod_name : str, optional
             specify a model to use instead of the model assigned originally to
             this instance of the object
         Returns
@@ -588,8 +813,7 @@ class DeepLC:
         if calibrate:
             assert (
                 self.calibrate_dict
-            ), "DeepLC instance is not yet calibrated.\
-                                        Calibrate before making predictions, or use calibrate=False"
+            ), "DeepLC instance is not yet calibrated. Calibrate before making predictions, or use calibrate=False"
 
         if len(X) == 0 and len(psm_list) > 0:
             if self.verbose:
@@ -609,16 +833,21 @@ class DeepLC:
         elif len(X) == 0 and len(psm_list) == 0:
             return []
 
+        dataset = DeepLCDataset(X, X_sum, X_global, X_hc)
+        loader = DataLoader(dataset, batch_size=self.batch_num_tf, shuffle=False)
+
         ret_preds = []
 
-        mod = load_model(mod_name)
+        mod = torch.load(mod_name, weights_only=False, map_location=torch.device("cpu"))
+        mod.eval()
         try:
-            X
-            ret_preds = mod.predict(
-                [X, X_sum, X_global, X_hc],
-                batch_size=self.batch_num_tf,
-                verbose=int(self.verbose),
-            ).flatten()
+            with torch.no_grad():
+                for batch in loader:
+                    batch_X, batch_X_sum, batch_X_global, batch_X_hc = batch
+                    batch_preds = mod(batch_X, batch_X_sum, batch_X_global, batch_X_hc)
+                    ret_preds.append(batch_preds.detach().cpu().numpy())
+
+            ret_preds = np.concatenate(ret_preds, axis=0)
         except UnboundLocalError:
             logger.debug("X is empty, skipping...")
             ret_preds = []
@@ -644,27 +873,21 @@ class DeepLC:
         return ret_preds
 
     def make_preds(
-        self, psm_list=None, infile="", calibrate=True, seq_df=None, mod_name=None
+            self, psm_list=None, infile="", calibrate=True, seq_df=None, mod_name=None
     ):
         """
         Make predictions for sequences, in batches if required.
 
         Parameters
         ----------
-        seq_df : object :: pd.DataFrame
-            dataframe containing the sequences (column:seq), modifications
-            (column:modifications) and naming (column:index); will use parallel
-            by default!
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : list
-            identifiers of the peptides; should correspond to seqs and mods
-        calibrate : boolean
-            calibrate predictions or just return the predictions
-        correction_factor : float
-            correction factor to apply to predictions
+        psm_list : list, optional
+            List of PSM objects representing peptide sequences and modifications.
+        infile : str, optional
+            Path to a file containing peptide data (for example, in mzML or another format).
+        calibrate : bool, optional, default=True
+            Whether to calibrate the predictions using the calibration model.
+        seq_df : pd.DataFrame, optional
+            A DataFrame containing peptide sequences, modifications, and identifiers.
         mod_name : str or None
             specify a model to use instead of the model assigned originally to
             this instance of the object
@@ -678,10 +901,10 @@ class DeepLC:
             list_of_psms = []
             if self.predict_ccs:
                 for seq, mod, ident, z in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df.index,
-                    seq_df["charge"],
+                        seq_df["seq"],
+                        seq_df["modifications"],
+                        seq_df.index,
+                        seq_df["charge"],
                 ):
                     list_of_psms.append(
                         PSM(
@@ -691,7 +914,7 @@ class DeepLC:
                     )
             else:
                 for seq, mod, ident in zip(
-                    seq_df["seq"], seq_df["modifications"], seq_df.index
+                        seq_df["seq"], seq_df["modifications"], seq_df.index
                 ):
                     list_of_psms.append(
                         PSM(peptidoform=peprec_to_proforma(seq, mod), spectrum_id=ident)
@@ -782,24 +1005,53 @@ class DeepLC:
         # should be possible with the batched list
 
     def calibrate_preds_func_pygam(
-        self,
-        psm_list=None,
-        correction_factor=1.0,
-        seq_df=None,
-        measured_tr=None,
-        use_median=True,
-        mod_name=None,
+            self,
+            psm_list=None,
+            correction_factor=1.0,
+            seq_df=None,
+            measured_tr=None,
+            use_median=True,
+            mod_name=None,
     ):
+        """
+        Calibrate retention time predictions using a Pygam model.
+
+        Parameters
+        ----------
+        psm_list : list of PSM, optional
+            List of PSM objects for calibration.
+        correction_factor : float, optional, default=1.0
+            A factor to correct the predicted retention times.
+        seq_df : pd.DataFrame, optional
+            A DataFrame containing sequences, modifications, and observed retention times.
+        measured_tr : list, optional
+            A list of measured retention times to compare against.
+        use_median : bool, optional, default=True
+            Whether to use the median for calibration.
+        mod_name : str, optional
+            The model to use for calibration.
+
+        Returns
+        -------
+        float
+            the minimum value where a calibration curve was fitted, lower values
+            will be extrapolated from the minimum fit of the calibration curve
+        float
+            the maximum value where a calibration curve was fitted, higher values
+            will be extrapolated from the maximum fit of the calibration curve
+        list
+            a list of linear models for left, spline, and right extrapolation
+        """
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
             # TODO include charge here
             if self.predict_ccs:
                 for seq, mod, ident, tr, z in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df.index,
-                    seq_df["tr"],
-                    seq_df["charge"],
+                        seq_df["seq"],
+                        seq_df["modifications"],
+                        seq_df.index,
+                        seq_df["tr"],
+                        seq_df["charge"],
                 ):
                     list_of_psms.append(
                         PSM(
@@ -810,7 +1062,7 @@ class DeepLC:
                     )
             else:
                 for seq, mod, ident, tr in zip(
-                    seq_df["seq"], seq_df["modifications"], seq_df.index, seq_df["tr"]
+                        seq_df["seq"], seq_df["modifications"], seq_df.index, seq_df["tr"]
                 ):
                     list_of_psms.append(
                         PSM(
@@ -879,27 +1131,20 @@ class DeepLC:
         )
 
     def calibrate_preds_func(
-        self,
-        psm_list=None,
-        correction_factor=1.0,
-        seq_df=None,
-        use_median=True,
-        mod_name=None,
+            self,
+            psm_list=None,
+            correction_factor=1.0,
+            seq_df=None,
+            use_median=True,
+            mod_name=None,
     ):
         """
         Make calibration curve for predictions
 
         Parameters
         ----------
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : list
-            identifiers of the peptides; should correspond to seqs and mods
-        measured_tr : list
-            measured tr of the peptides; should correspond to seqs, identifiers,
-            and mods
+        psm_list : list of PSM
+            List of PSM objects for calibration.
         correction_factor : float
             correction factor that needs to be applied to the supplied measured
             trs
@@ -931,11 +1176,11 @@ class DeepLC:
             # TODO include charge here
             if self.predict_ccs:
                 for seq, mod, tr, ident, z in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df["tr"],
-                    seq_df.index,
-                    seq_df["charge"],
+                        seq_df["seq"],
+                        seq_df["modifications"],
+                        seq_df["tr"],
+                        seq_df.index,
+                        seq_df["charge"],
                 ):
                     list_of_psms.append(
                         PSM(
@@ -946,7 +1191,7 @@ class DeepLC:
                     )
             else:
                 for seq, mod, tr, ident in zip(
-                    seq_df["seq"], seq_df["modifications"], seq_df["tr"], seq_df.index
+                        seq_df["seq"], seq_df["modifications"], seq_df["tr"], seq_df.index
                 ):
                     list_of_psms.append(
                         PSM(
@@ -1043,9 +1288,9 @@ class DeepLC:
             # optimized predictions using a dict to find calibration curve very
             # fast
             for v in np.arange(
-                round(ptr_mean[i], self.bin_dist),
-                round(ptr_mean[i + 1], self.bin_dist),
-                1 / ((self.bin_dist) * self.dict_cal_divider),
+                    round(ptr_mean[i], self.bin_dist),
+                    round(ptr_mean[i + 1], self.bin_dist),
+                    1 / ((self.bin_dist) * self.dict_cal_divider),
             ):
                 if v < calibrate_min:
                     calibrate_min = v
@@ -1056,41 +1301,43 @@ class DeepLC:
         return calibrate_min, calibrate_max, calibrate_dict
 
     def calibrate_preds(
-        self,
-        psm_list=None,
-        infile="",
-        measured_tr=[],
-        correction_factor=1.0,
-        location_retraining_models="",
-        psm_utils_obj=None,
-        sample_for_calibration_curve=None,
-        seq_df=None,
-        use_median=True,
-        return_plotly_report=False,
+            self,
+            psm_list=None,
+            infile="",
+            measured_tr=[],
+            correction_factor=1.0,
+            location_retraining_models="",
+            psm_utils_obj=None,
+            sample_for_calibration_curve=None,
+            seq_df=None,
+            use_median=True,
+            return_plotly_report=False,
     ):
         """
         Find best model and calibrate.
 
         Parameters
         ----------
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : list
-            identifiers of the peptides; should correspond to seqs and mods
+        psm_list : list of PSM, optional
+            List of PSM objects for calibration.
+        infile : str, optional
+            Path to a file containing peptide data.
         measured_tr : list
-            measured tr of the peptides; should correspond to seqs, identifiers,
-            and mods
+            measured tr of the peptides.
         correction_factor : float
-            correction factor that needs to be applied to the supplied measured
-            trs
+            correction factor that needs to be applied to the supplied measured trs
+        psm_utils_obj : object, optional
+            An instance of PSM utilities object for data handling.
+        sample_for_calibration_curve : int, optional
+            The number of samples to use for the calibration curve.
         seq_df : object :: pd.DataFrame
             a pd.DataFrame that contains the sequences, modifications and
             observed retention times to fit a calibration curve
         use_median : boolean
             flag to indicate we need to use the median valuein a window to
             perform calibration
+        return_plotly_report : bool, optional, default=False
+            If True, a Plotly report of the calibration will be returned.
 
         Returns
         -------
@@ -1100,11 +1347,11 @@ class DeepLC:
             list_of_psms = []
             if self.predict_ccs:
                 for seq, mod, ident, tr, z in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df.index,
-                    seq_df["tr"],
-                    seq_df["charge"],
+                        seq_df["seq"],
+                        seq_df["modifications"],
+                        seq_df.index,
+                        seq_df["tr"],
+                        seq_df["charge"],
                 ):
                     list_of_psms.append(
                         PSM(
@@ -1115,7 +1362,7 @@ class DeepLC:
                     )
             else:
                 for seq, mod, ident, tr in zip(
-                    seq_df["seq"], seq_df["modifications"], seq_df.index, seq_df["tr"]
+                        seq_df["seq"], seq_df["modifications"], seq_df.index, seq_df["tr"]
                 ):
                     list_of_psms.append(
                         PSM(
@@ -1163,36 +1410,47 @@ class DeepLC:
         temp_pred = []
 
         if self.deeplc_retrain:
-            # The following code is not required in most cases, but here it is used to clear variables that might cause problems
-            _ = tf.Variable([1])
+            logger.info("Preparing for model fine-tuning...")
 
-            context._context = None
-            context._create_context()
+            X = self.do_f_extraction_psm_list_parallel(psm_list)
+            X_sum = np.stack(list(X["matrix_sum"].values()))
+            X_global = np.concatenate(
+                (
+                    np.stack(list(X["matrix_all"].values())),
+                    np.stack(list(X["pos_matrix"].values())),
+                ),
+                axis=1,
+            )
+            X_hc = np.stack(list(X["matrix_hc"].values()))
+            X = np.stack(list(X["matrix"].values()))
+            dataset = DeepLCDataset(X, X_sum, X_global, X_hc, np.array(measured_tr))
 
-            tf.config.threading.set_inter_op_parallelism_threads(1)
+            base_model_path = self.model[0] if isinstance(self.model, list) else self.model
+            base_model = torch.load(base_model_path, weights_only=False, map_location=torch.device("cpu"))
+            base_model.eval()
 
-            if len(location_retraining_models) > 0:
-                t_dir_models = TemporaryDirectory().name
-                os.mkdir(t_dir_models)
+            fine_tuner = DeepLCFineTuner(
+                model=base_model,
+                train_data=dataset,
+                batch_size=self.batch_num_tf,
+                epochs=self.n_epochs,
+            )
+            # fine_tuner._freeze_layers()
+            fine_tuned_model = fine_tuner.fine_tune()
+
+            if not location_retraining_models:
+                temp_dir_obj = TemporaryDirectory()
+                t_dir_models = temp_dir_obj.name
+                self._temp_dir_obj = temp_dir_obj
             else:
                 t_dir_models = location_retraining_models
-                try:
-                    os.mkdir(t_dir_models)
-                except:
-                    pass
+                os.makedirs(t_dir_models, exist_ok=True)
 
-            # Here we will apply transfer learning we specify previously trained models in the 'mods_transfer_learning'
-            models = deeplcretrainer.retrain(
-                {"deeplc_transferlearn": psm_list},
-                outpath=t_dir_models,
-                mods_transfer_learning=self.model,
-                freeze_layers=True,
-                n_epochs=self.n_epochs,
-                freeze_after_concat=1,
-                verbose=self.verbose,
-            )
-
-            self.model = models
+                # Define path to save fine-tuned model
+            fine_tuned_model_path = os.path.join(t_dir_models, "fine_tuned_model.pth")
+            print("Saving fine-tuned model to:", fine_tuned_model_path)
+            torch.save(fine_tuned_model, fine_tuned_model_path)
+            self.model = [fine_tuned_model_path]
 
         if isinstance(sample_for_calibration_curve, int):
             psm_list = random.sample(list(psm_list), sample_for_calibration_curve)
@@ -1336,5 +1594,5 @@ class DeepLC:
 
         # since chunking is not alway possible do the modulo of residues
         k, m = divmod(len(a), n)
-        result = (a[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n))
+        result = (a[i * k + min(i, m): (i + 1) * k + min(i + 1, m)] for i in range(n))
         return result
