@@ -232,16 +232,13 @@ class DeepLCFineTuner:
         for name, param in self.model.named_parameters():
 
             param.requires_grad = (unfreeze_keywords in name)
-        print(f"[INFO] Trainable parameters:")
-        for name, param in self.model.named_parameters():
-            if param.requires_grad:
-                print(f"  - {name}")
+
 
     def prepare_data(self, data, shuffle=True):
         return DataLoader(data, batch_size=self.batch_size, shuffle=shuffle)
 
     def fine_tune(self):
-        logger.info("Starting fine-tuning...")
+        logger.debug("Starting fine-tuning...")
         if self.validation_data is None:
             # Split the training data into training and validation sets
             val_size = int(len(self.train_data) * self.validation_split)
@@ -290,8 +287,7 @@ class DeepLCFineTuner:
                     val_loss += loss_fn(outputs, target).item()
             avg_val_loss = val_loss / len(val_loader)
 
-            logger.info(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.4f}, Validation Loss: {avg_val_loss:.4f}")
-            print(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.4f}, Validation Loss: {avg_val_loss:.4f}")
+            logger.debug(f"Epoch {epoch + 1}/{self.epochs}, Loss: {avg_loss:.4f}, Validation Loss: {avg_val_loss:.4f}")
             if avg_val_loss < best_val_loss:
                 best_val_loss = avg_val_loss
                 best_model_wts = copy.deepcopy(self.model.state_dict())
@@ -299,8 +295,7 @@ class DeepLCFineTuner:
             else:
                 epochs_no_improve += 1
                 if epochs_no_improve >= self.patience:
-                    logger.info(f"Early stopping triggered {epoch + 1}")
-                    print(f"Early stopping triggered {epoch + 1}")
+                    logger.debug(f"Early stopping triggered {epoch + 1}")
                     break
         self.model.load_state_dict(best_model_wts)
         return self.model
@@ -672,6 +667,37 @@ class DeepLC:
 
         return all_feats
 
+    def _prepare_feature_matrices(self, psm_list):
+        """
+        Extract features in parallel and assemble the four input matrices.
+
+        Parameters
+        ----------
+        psm_list : list of PSM
+            List of peptide‐spectrum matches for which to extract features.
+
+        Returns
+        -------
+        X : ndarray, shape (n_peptides, n_features)
+        X_sum : ndarray, shape (n_peptides, n_sum_features)
+        X_global : ndarray, shape (n_peptides, n_global_features * 2)
+        X_hc : ndarray, shape (n_peptides, n_hc_features)
+        """
+        feats = self.do_f_extraction_psm_list_parallel(psm_list)
+        X = np.stack(list(feats["matrix"].values()))
+        X_sum = np.stack(list(feats["matrix_sum"].values()))
+        X_global = np.concatenate(
+            (
+                np.stack(list(feats["matrix_all"].values())),
+                np.stack(list(feats["pos_matrix"].values())),
+            ),
+            axis=1,
+        )
+        X_hc = np.stack(list(feats["matrix_hc"].values()))
+        return X, X_sum, X_global, X_hc
+
+
+
     def calibration_core(self, uncal_preds, cal_dict, cal_min, cal_max):
         """
         Perform calibration on uncalibrated predictions.
@@ -818,18 +844,7 @@ class DeepLC:
         if len(X) == 0 and len(psm_list) > 0:
             if self.verbose:
                 logger.debug("Extracting features for the CNN model ...")
-            X = self.do_f_extraction_psm_list_parallel(psm_list)
-
-            X_sum = np.stack(list(X["matrix_sum"].values()))
-            X_global = np.concatenate(
-                (
-                    np.stack(list(X["matrix_all"].values())),
-                    np.stack(list(X["pos_matrix"].values())),
-                ),
-                axis=1,
-            )
-            X_hc = np.stack(list(X["matrix_hc"].values()))
-            X = np.stack(list(X["matrix"].values()))
+            X, X_sum, X_global, X_hc = self._prepare_feature_matrices(psm_list)
         elif len(X) == 0 and len(psm_list) == 0:
             return []
 
@@ -940,17 +955,7 @@ class DeepLC:
                 if self.verbose:
                     logger.debug("Extracting features for the CNN model ...")
 
-                X = self.do_f_extraction_psm_list_parallel(psm_list_t)
-                X_sum = np.stack(list(X["matrix_sum"].values()))
-                X_global = np.concatenate(
-                    (
-                        np.stack(list(X["matrix_all"].values())),
-                        np.stack(list(X["pos_matrix"].values())),
-                    ),
-                    axis=1,
-                )
-                X_hc = np.stack(list(X["matrix_hc"].values()))
-                X = np.stack(list(X["matrix"].values()))
+                X, X_sum, X_global, X_hc = self._prepare_feature_matrices(psm_list_t)
             else:
                 return []
 
@@ -1410,19 +1415,9 @@ class DeepLC:
         temp_pred = []
 
         if self.deeplc_retrain:
-            logger.info("Preparing for model fine-tuning...")
+            logger.debug("Preparing for model fine-tuning...")
 
-            X = self.do_f_extraction_psm_list_parallel(psm_list)
-            X_sum = np.stack(list(X["matrix_sum"].values()))
-            X_global = np.concatenate(
-                (
-                    np.stack(list(X["matrix_all"].values())),
-                    np.stack(list(X["pos_matrix"].values())),
-                ),
-                axis=1,
-            )
-            X_hc = np.stack(list(X["matrix_hc"].values()))
-            X = np.stack(list(X["matrix"].values()))
+            X, X_sum, X_global, X_hc = self._prepare_feature_matrices(psm_list)
             dataset = DeepLCDataset(X, X_sum, X_global, X_hc, np.array(measured_tr))
 
             base_model_path = self.model[0] if isinstance(self.model, list) else self.model
@@ -1448,7 +1443,6 @@ class DeepLC:
 
                 # Define path to save fine-tuned model
             fine_tuned_model_path = os.path.join(t_dir_models, "fine_tuned_model.pth")
-            print("Saving fine-tuned model to:", fine_tuned_model_path)
             torch.save(fine_tuned_model, fine_tuned_model_path)
             self.model = [fine_tuned_model_path]
 
