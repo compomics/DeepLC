@@ -9,6 +9,7 @@ authors = [
     { name = "Niels Hulstaert" },
     { name = "Arthur Declercq" },
     { name = "Ralf Gabriels" },
+    { name = "Alireza Nameni" },
     { name = "Lennart Martens" },
     { name = "Sven Degroeve" },
 ]
@@ -31,11 +32,11 @@ keywords = [
 ]
 
 dependencies = [
-    "tensorflow>=2.15.0,<3",
+    "torch>=2.6.0,<3",
+    "onnx2torch>=0.1.5",
     "numpy>=1.17",
     "pandas>=0.25",
     "scikit-learn>=1.2.0",
-    "deeplcretrainer>=1,<2",
     "psm_utils>=0.2.3"
 ]
 
