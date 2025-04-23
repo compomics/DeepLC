@@ -92,44 +92,23 @@ logger = logging.getLogger(__name__)
 
 
 def split_list(a, n):
-    """
-        Splits a list into `n` nearly equal chunks.
-
-        Parameters
-        ----------
-        a : list
-            The list to be split.
-        n : int
-            The number of chunks.
-
-        Returns
-        -------
-        list
-            A generator yielding chunks of the original list.
-        """
     k, m = divmod(len(a), n)
-    return (a[i * k + min(i, m): (i + 1) * k + min(i + 1, m)] for i in range(n))
+    return (a[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n))
 
 
 def divide_chunks(l, n):
-    """
-    Divides a list into chunks of size `n`.
-
-    Parameters
-    ----------
-    l : list
-        The list to be divided.
-    n : int
-        The size of each chunk.
-
-    Returns
-    -------
-    generator
-        A generator yielding chunks of the original list.
-    """
     for i in range(0, len(l), n):
-        yield l[i: i + n]
+        yield l[i : i + n]
 
+
+def reset_keras():
+    """Reset Keras session."""
+    # sess = get_session()
+    # clear_session()
+    # sess.close()
+    # gc.collect()
+    # Set to force CPU calculations
+    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 class DeepLCDataset(Dataset):
     """
@@ -478,8 +457,6 @@ class DeepLC:
             naming of the mods; should correspond to seqs and identifiers
         identifiers : list
             identifiers of the peptides; should correspond to seqs and mods
-        charges : list, optional
-            list of charges; should correspond to seqs, mods and identifiers
 
         Returns
         -------
@@ -491,12 +468,12 @@ class DeepLC:
         if not self.predict_ccs:
             for seq, mod, ident in zip(seqs, mods, identifiers):
                 list_of_psms.append(
-                    PSM(peptidoform=peprec_to_proforma(seq, mod), spectrum_id=ident)
+                    PSM(peptide=peprec_to_proforma(seq, mod), spectrum_id=ident)
                 )
         else:
             for seq, mod, ident, z in zip(seqs, mods, identifiers, charges):
                 list_of_psms.append(
-                    PSM(peptidoform=peprec_to_proforma(seq, mod, z), spectrum_id=ident)
+                    PSM(peptide=peprec_to_proforma(seq, mod, z), spectrum_id=ident)
                 )
 
         psm_list = PSMList(psm_list=list_of_psms)
@@ -516,8 +493,6 @@ class DeepLC:
         df_instances : object :: pd.DataFrame
             dataframe containing the sequences (column:seq), modifications
             (column:modifications) and naming (column:index)
-        charges : list, optional
-            list of charges; should correspond to seqs, mods and identifiers
 
         Returns
         -------
@@ -528,21 +503,21 @@ class DeepLC:
         list_of_psms = []
         if len(charges) == 0:
             for seq, mod, ident in zip(
-                    df_instances["seq"], df_instances["modifications"], df_instances.index
+                df_instances["seq"], df_instances["modifications"], df_instances.index
             ):
                 list_of_psms.append(
-                    PSM(peptidoform=peprec_to_proforma(seq, mod), spectrum_id=ident)
+                    PSM(peptide=peprec_to_proforma(seq, mod), spectrum_id=ident)
                 )
         else:
             for seq, mod, ident, z in zip(
-                    df_instances["seq"],
-                    df_instances["modifications"],
-                    df_instances.index,
-                    charges=df_instances["charges"],
+                df_instances["seq"],
+                df_instances["modifications"],
+                df_instances.index,
+                charges=df_instances["charges"],
             ):
                 list_of_psms.append(
                     PSM(
-                        peptidoform=peprec_to_proforma(seq, mod, charge=z),
+                        peptide=peprec_to_proforma(seq, mod, charge=z),
                         spectrum_id=ident,
                     )
                 )
@@ -572,14 +547,14 @@ class DeepLC:
         """
         # self.n_jobs = 1
 
-        df_instances_split = np.array_split(df_instances, math.ceil(self.n_jobs))
+        df_instances_split = np.array_split(df_instances, math.ceil(self.n_jobs / 4.0))
         if multiprocessing.current_process().daemon:
             logger.warning(
                 "DeepLC is running in a daemon process. Disabling multiprocessing as daemonic processes can't have children."
             )
             pool = multiprocessing.dummy.Pool(1)
         else:
-            pool = multiprocessing.Pool(math.ceil(self.n_jobs))
+            pool = multiprocessing.Pool(math.ceil(self.n_jobs / 4.0))
 
         if self.n_jobs == 1:
             df = self.do_f_extraction_pd(df_instances)
@@ -591,12 +566,15 @@ class DeepLC:
 
     def do_f_extraction_psm_list(self, psm_list):
         """
-        Extract all features from a list of PSM objects without parallelization.
+        Extract all features we can extract; without parallelization; use if
+        you want to run feature extraction with a single thread; and use a
+        defined dataframe
 
         Parameters
         ----------
-        psm_list : object :: PSMList
-            list of PSM objects containing peptide sequences and identifiers.
+        df_instances : object :: pd.DataFrame
+            dataframe containing the sequences (column:seq), modifications
+            (column:modifications) and naming (column:index)
 
         Returns
         -------
@@ -609,12 +587,15 @@ class DeepLC:
 
     def do_f_extraction_psm_list_parallel(self, psm_list):
         """
-        Extract all features from a list of PSM objects using parallelization.
+        Extract all features we can extract; without parallelization; use if
+        you want to run feature extraction with a single thread; and use a
+        defined dataframe
 
         Parameters
         ----------
-        psm_list : object :: PSMList
-            list of PSM objects containing peptide sequences and identifiers.
+        df_instances : object :: pd.DataFrame
+            dataframe containing the sequences (column:seq), modifications
+            (column:modifications) and naming (column:index)
 
         Returns
         -------
@@ -803,32 +784,34 @@ class DeepLC:
         return ret_preds
 
     def make_preds_core(
-            self,
-            X=[],
-            X_sum=[],
-            X_global=[],
-            X_hc=[],
-            psm_list=[],
-            calibrate=True,
-            mod_name=None,
+        self,
+        X=[],
+        X_sum=[],
+        X_global=[],
+        X_hc=[],
+        psm_list=[],
+        calibrate=True,
+        mod_name=None,
     ):
         """
         Make predictions for sequences
         Parameters
         ----------
-        X : ndarray, optional
-            Feature matrix representing the peptide sequences.
-        X_sum : ndarray, optional
-            Sum of features.
-        X_global : ndarray, optional
-            Global features for the peptides.
-        X_hc : ndarray, optional
-            High-order context features for the peptides.
-        psm_list : list, optional
-            List of PSM objects representing the peptide sequences and modifications.
-        calibrate : bool, optional, default=True
-            Whether to calibrate the predictions using the calibration dictionary.
-        mod_name : str, optional
+        seq_df : object :: pd.DataFrame
+            dataframe containing the sequences (column:seq), modifications
+            (column:modifications) and naming (column:index); will use parallel
+            by default!
+        seqs : list
+            peptide sequence list; should correspond to mods and identifiers
+        mods : list
+            naming of the mods; should correspond to seqs and identifiers
+        identifiers : list
+            identifiers of the peptides; should correspond to seqs and mods
+        calibrate : boolean
+            calibrate predictions or just return the predictions
+        correction_factor : float
+            correction factor to apply to predictions
+        mod_name : str or None
             specify a model to use instead of the model assigned originally to
             this instance of the object
         Returns
@@ -839,7 +822,8 @@ class DeepLC:
         if calibrate:
             assert (
                 self.calibrate_dict
-            ), "DeepLC instance is not yet calibrated. Calibrate before making predictions, or use calibrate=False"
+            ), "DeepLC instance is not yet calibrated.\
+                                        Calibrate before making predictions, or use calibrate=False"
 
         if len(X) == 0 and len(psm_list) > 0:
             if self.verbose:
@@ -888,21 +872,27 @@ class DeepLC:
         return ret_preds
 
     def make_preds(
-            self, psm_list=None, infile="", calibrate=True, seq_df=None, mod_name=None
+        self, psm_list=None, infile="", calibrate=True, seq_df=None, mod_name=None
     ):
         """
         Make predictions for sequences, in batches if required.
 
         Parameters
         ----------
-        psm_list : list, optional
-            List of PSM objects representing peptide sequences and modifications.
-        infile : str, optional
-            Path to a file containing peptide data (for example, in mzML or another format).
-        calibrate : bool, optional, default=True
-            Whether to calibrate the predictions using the calibration model.
-        seq_df : pd.DataFrame, optional
-            A DataFrame containing peptide sequences, modifications, and identifiers.
+        seq_df : object :: pd.DataFrame
+            dataframe containing the sequences (column:seq), modifications
+            (column:modifications) and naming (column:index); will use parallel
+            by default!
+        seqs : list
+            peptide sequence list; should correspond to mods and identifiers
+        mods : list
+            naming of the mods; should correspond to seqs and identifiers
+        identifiers : list
+            identifiers of the peptides; should correspond to seqs and mods
+        calibrate : boolean
+            calibrate predictions or just return the predictions
+        correction_factor : float
+            correction factor to apply to predictions
         mod_name : str or None
             specify a model to use instead of the model assigned originally to
             this instance of the object
@@ -916,10 +906,10 @@ class DeepLC:
             list_of_psms = []
             if self.predict_ccs:
                 for seq, mod, ident, z in zip(
-                        seq_df["seq"],
-                        seq_df["modifications"],
-                        seq_df.index,
-                        seq_df["charge"],
+                    seq_df["seq"],
+                    seq_df["modifications"],
+                    seq_df.index,
+                    seq_df["charge"],
                 ):
                     list_of_psms.append(
                         PSM(
@@ -929,7 +919,7 @@ class DeepLC:
                     )
             else:
                 for seq, mod, ident in zip(
-                        seq_df["seq"], seq_df["modifications"], seq_df.index
+                    seq_df["seq"], seq_df["modifications"], seq_df.index
                 ):
                     list_of_psms.append(
                         PSM(peptidoform=peprec_to_proforma(seq, mod), spectrum_id=ident)
@@ -1010,53 +1000,24 @@ class DeepLC:
         # should be possible with the batched list
 
     def calibrate_preds_func_pygam(
-            self,
-            psm_list=None,
-            correction_factor=1.0,
-            seq_df=None,
-            measured_tr=None,
-            use_median=True,
-            mod_name=None,
+        self,
+        psm_list=None,
+        correction_factor=1.0,
+        seq_df=None,
+        measured_tr=None,
+        use_median=True,
+        mod_name=None,
     ):
-        """
-        Calibrate retention time predictions using a Pygam model.
-
-        Parameters
-        ----------
-        psm_list : list of PSM, optional
-            List of PSM objects for calibration.
-        correction_factor : float, optional, default=1.0
-            A factor to correct the predicted retention times.
-        seq_df : pd.DataFrame, optional
-            A DataFrame containing sequences, modifications, and observed retention times.
-        measured_tr : list, optional
-            A list of measured retention times to compare against.
-        use_median : bool, optional, default=True
-            Whether to use the median for calibration.
-        mod_name : str, optional
-            The model to use for calibration.
-
-        Returns
-        -------
-        float
-            the minimum value where a calibration curve was fitted, lower values
-            will be extrapolated from the minimum fit of the calibration curve
-        float
-            the maximum value where a calibration curve was fitted, higher values
-            will be extrapolated from the maximum fit of the calibration curve
-        list
-            a list of linear models for left, spline, and right extrapolation
-        """
         if type(seq_df) == pd.core.frame.DataFrame:
             list_of_psms = []
             # TODO include charge here
             if self.predict_ccs:
                 for seq, mod, ident, tr, z in zip(
-                        seq_df["seq"],
-                        seq_df["modifications"],
-                        seq_df.index,
-                        seq_df["tr"],
-                        seq_df["charge"],
+                    seq_df["seq"],
+                    seq_df["modifications"],
+                    seq_df.index,
+                    seq_df["tr"],
+                    seq_df["charge"],
                 ):
                     list_of_psms.append(
                         PSM(
@@ -1067,7 +1028,7 @@ class DeepLC:
                     )
             else:
                 for seq, mod, ident, tr in zip(
-                        seq_df["seq"], seq_df["modifications"], seq_df.index, seq_df["tr"]
+                    seq_df["seq"], seq_df["modifications"], seq_df.index, seq_df["tr"]
                 ):
                     list_of_psms.append(
                         PSM(
@@ -1136,20 +1097,27 @@ class DeepLC:
         )
 
     def calibrate_preds_func(
-            self,
-            psm_list=None,
-            correction_factor=1.0,
-            seq_df=None,
-            use_median=True,
-            mod_name=None,
+        self,
+        psm_list=None,
+        correction_factor=1.0,
+        seq_df=None,
+        use_median=True,
+        mod_name=None,
     ):
         """
         Make calibration curve for predictions
 
         Parameters
         ----------
-        psm_list : list of PSM
-            List of PSM objects for calibration.
+        seqs : list
+            peptide sequence list; should correspond to mods and identifiers
+        mods : list
+            naming of the mods; should correspond to seqs and identifiers
+        identifiers : list
+            identifiers of the peptides; should correspond to seqs and mods
+        measured_tr : list
+            measured tr of the peptides; should correspond to seqs, identifiers,
+            and mods
         correction_factor : float
             correction factor that needs to be applied to the supplied measured
             trs
@@ -1181,11 +1149,11 @@ class DeepLC:
             # TODO include charge here
             if self.predict_ccs:
                 for seq, mod, tr, ident, z in zip(
-                        seq_df["seq"],
-                        seq_df["modifications"],
-                        seq_df["tr"],
-                        seq_df.index,
-                        seq_df["charge"],
+                    seq_df["seq"],
+                    seq_df["modifications"],
+                    seq_df["tr"],
+                    seq_df.index,
+                    seq_df["charge"],
                 ):
                     list_of_psms.append(
                         PSM(
@@ -1196,7 +1164,7 @@ class DeepLC:
                     )
             else:
                 for seq, mod, tr, ident in zip(
-                        seq_df["seq"], seq_df["modifications"], seq_df["tr"], seq_df.index
+                    seq_df["seq"], seq_df["modifications"], seq_df["tr"], seq_df.index
                 ):
                     list_of_psms.append(
                         PSM(
@@ -1293,9 +1261,9 @@ class DeepLC:
             # optimized predictions using a dict to find calibration curve very
             # fast
             for v in np.arange(
-                    round(ptr_mean[i], self.bin_dist),
-                    round(ptr_mean[i + 1], self.bin_dist),
-                    1 / ((self.bin_dist) * self.dict_cal_divider),
+                round(ptr_mean[i], self.bin_dist),
+                round(ptr_mean[i + 1], self.bin_dist),
+                1 / ((self.bin_dist) * self.dict_cal_divider),
             ):
                 if v < calibrate_min:
                     calibrate_min = v
@@ -1306,43 +1274,41 @@ class DeepLC:
         return calibrate_min, calibrate_max, calibrate_dict
 
     def calibrate_preds(
-            self,
-            psm_list=None,
-            infile="",
-            measured_tr=[],
-            correction_factor=1.0,
-            location_retraining_models="",
-            psm_utils_obj=None,
-            sample_for_calibration_curve=None,
-            seq_df=None,
-            use_median=True,
-            return_plotly_report=False,
+        self,
+        psm_list=None,
+        infile="",
+        measured_tr=[],
+        correction_factor=1.0,
+        location_retraining_models="",
+        psm_utils_obj=None,
+        sample_for_calibration_curve=None,
+        seq_df=None,
+        use_median=True,
+        return_plotly_report=False,
     ):
         """
         Find best model and calibrate.
 
         Parameters
         ----------
-        psm_list : list of PSM, optional
-            List of PSM objects for calibration.
-        infile : str, optional
-            Path to a file containing peptide data.
+        seqs : list
+            peptide sequence list; should correspond to mods and identifiers
+        mods : list
+            naming of the mods; should correspond to seqs and identifiers
+        identifiers : list
+            identifiers of the peptides; should correspond to seqs and mods
         measured_tr : list
-            measured tr of the peptides.
+            measured tr of the peptides; should correspond to seqs, identifiers,
+            and mods
         correction_factor : float
-            correction factor that needs to be applied to the supplied measured trs
-        psm_utils_obj : object, optional
-            An instance of PSM utilities object for data handling.
-        sample_for_calibration_curve : int, optional
-            The number of samples to use for the calibration curve.
+            correction factor that needs to be applied to the supplied measured
+            trs
         seq_df : object :: pd.DataFrame
             a pd.DataFrame that contains the sequences, modifications and
             observed retention times to fit a calibration curve
         use_median : boolean
             flag to indicate we need to use the median valuein a window to
             perform calibration
-        return_plotly_report : bool, optional, default=False
-            If True, a Plotly report of the calibration will be returned.
 
         Returns
         -------
@@ -1352,11 +1318,11 @@ class DeepLC:
             list_of_psms = []
             if self.predict_ccs:
                 for seq, mod, ident, tr, z in zip(
-                        seq_df["seq"],
-                        seq_df["modifications"],
-                        seq_df.index,
-                        seq_df["tr"],
-                        seq_df["charge"],
+                    seq_df["seq"],
+                    seq_df["modifications"],
+                    seq_df.index,
+                    seq_df["tr"],
+                    seq_df["charge"],
                 ):
                     list_of_psms.append(
                         PSM(
@@ -1367,7 +1333,7 @@ class DeepLC:
                     )
             else:
                 for seq, mod, ident, tr in zip(
-                        seq_df["seq"], seq_df["modifications"], seq_df.index, seq_df["tr"]
+                    seq_df["seq"], seq_df["modifications"], seq_df.index, seq_df["tr"]
                 ):
                     list_of_psms.append(
                         PSM(
@@ -1588,5 +1554,5 @@ class DeepLC:
 
         # since chunking is not alway possible do the modulo of residues
         k, m = divmod(len(a), n)
-        result = (a[i * k + min(i, m): (i + 1) * k + min(i + 1, m)] for i in range(n))
+        result = (a[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n))
         return result
