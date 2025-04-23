@@ -29,14 +29,16 @@ import random
 import sys
 import warnings
 from configparser import ConfigParser
-from itertools import chain
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import numpy as np
 import pandas as pd
-from psm_utils import PSM, PSMList
+from dask import compute, delayed
+from psm_utils import PSM, Peptidoform, PSMList
 from psm_utils.io import read_file
 from psm_utils.io.peptide_record import peprec_to_proforma
+from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import SplineTransformer
@@ -79,8 +81,8 @@ except Exception:
 from tensorflow.python.eager import context
 
 from deeplc._exceptions import CalibrationError
-from deeplc.feat_extractor import FeatExtractor
-from deeplc.trainl3 import train_en
+from deeplc.feat_extractor import aggregate_encodings, encode_peptidoform, unpack_features
+from deeplc.trainl3 import train_elastic_net
 
 # Set to force CPU calculations
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -93,7 +95,6 @@ def warn(*args, **kwargs):
 import warnings
 
 warnings.warn = warn
-
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -105,9 +106,10 @@ def split_list(a, n):
     return (a[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n))
 
 
-def divide_chunks(l, n):
-    for i in range(0, len(l), n):
-        yield l[i : i + n]
+def divide_chunks(list_, n_chunks):
+    """Yield successive n-sized chunks from list_."""
+    for i in range(0, len(list_), n_chunks):
+        yield list_[i : i + n_chunks]
 
 
 def reset_keras():
@@ -140,14 +142,15 @@ class DeepLC:
         main_path: str | None = None,
         path_model: str | None = None,
         verbose: bool = True,
-        bin_dist: float = 2.0,
+        bin_distance: float = 2.0,
         dict_cal_divider: int = 50,
         split_cal: int = 50,
         n_jobs: int | None = None,
         config_file: str | None = None,
-        f_extractor: FeatExtractor | None = None,
+        f_extractor: None = None,
         cnn_model: bool = True,
-        batch_num: int = 250000,
+        # batch_num: int = 250000,
+        batch_num: int = int(1e6),
         batch_num_tf: int = 1024,
         write_library: bool = False,
         use_library: str | None = None,
@@ -183,7 +186,7 @@ class DeepLC:
         config_file
             Path to a configuration file.
         f_extractor
-            deeplc.FeatExtractor object to use.
+            Deprecated.
         cnn_model
             Flag indicating whether to use the CNN model.
         batch_num
@@ -221,12 +224,11 @@ class DeepLC:
         self.main_path = main_path or os.path.dirname(os.path.realpath(__file__))
         self.path_model = self._get_model_paths(path_model, single_model_mode)
         self.verbose = verbose
-        self.bin_dist = bin_dist
+        self.bin_distance = bin_distance
         self.dict_cal_divider = dict_cal_divider
         self.split_cal = split_cal
         self.n_jobs = multiprocessing.cpu_count() if n_jobs is None else n_jobs
         self.config_file = config_file
-        self.f_extractor = f_extractor or FeatExtractor()
         self.cnn_model = cnn_model
         self.batch_num = batch_num
         self.batch_num_tf = batch_num_tf
@@ -238,6 +240,15 @@ class DeepLC:
         self.deeplc_retrain = deeplc_retrain
         self.predict_ccs = predict_ccs
         self.n_epochs = n_epochs
+
+        # Apparently...
+        self.model = self.path_model
+
+        if f_extractor:
+            warnings.DeprecationWarning("f_extractor argument is deprecated.")
+
+        # TODO REMOVE!!!
+        self.verbose = True
 
         # Calibration variables
         self.calibrate_dict = {}
@@ -280,145 +291,59 @@ class DeepLC:
 
         return DEFAULT_MODELS
 
-    def do_f_extraction(
+    def _extract_features(
         self,
-        seqs: list[str],
-        mods: list[str | None],
-        identifiers: list[str],
-        charges: list[int] | None = None,
-    ):
-        """
-        Extract all features we can extract; without parallelization; use if you want to run
-        feature extraction with a single core.
+        peptidoforms: list[str | Peptidoform] | PSMList,
+        chunk_size: int = 10000,
+    ) -> dict[str, dict[int, np.ndarray]]:
+        """Extract features for all peptidoforms."""
+        if isinstance(peptidoforms, PSMList):
+            peptidoforms = [psm.peptidoform for psm in peptidoforms]
 
-        Parameters
-        ----------
-        seqs
-            List of stripped peptide sequences for each entry.
-        mods
-            List of PEPREC-formatted modifications for each entry.
-        identifiers
-            List of identifiers for each entry.
-        charges
-            List of charges for each entry. Only required if CCS prediction is enabled.
+        logger.debug("Running feature extraction in single-threaded mode...")
+        if self.n_jobs <= 1:
+            encodings = [
+                encode_peptidoform(pf, predict_ccs=self.predict_ccs) for pf in peptidoforms
+            ]
 
-        Returns
-        -------
-        pd.DataFrame
-            Feature matrix.
-        """
-        psm_list = _lists_to_psm_list(seqs, mods, identifiers, charges, n_jobs=self.n_jobs)
-        return self.f_extractor.full_feat_extract(psm_list, predict_ccs=self.predict_ccs)
+        else:
+            logger.debug("Preparing feature extraction with Dask")
+            # Process peptidoforms in larger chunks to reduce task overhead.
+            peptidoform_strings = [str(pep) for pep in peptidoforms]  # Faster pickling of strings
 
-    def do_f_extraction_pd(self, dataframe: pd.DataFrame, charges: list[int] | None = None):
-        """
-        Extract all features we can extract; without parallelization; use if you want to run
-        feature extraction with a single thread; and use a defined dataframe.
+            def chunked_encode(chunk):
+                return [encode_peptidoform(pf, predict_ccs=self.predict_ccs) for pf in chunk]
 
-        Parameters
-        ----------
-        dataframe
-            Dataframe containing the sequences (column:seq), modifications (column:modifications),
-            identifiers (index), and optionally charges (column:charge).
-        charges
-            List of charges for each entry. Only required if CCS prediction is enabled and not
-            present in the dataframe.
+            tasks = [
+                delayed(chunked_encode)(peptidoform_strings[i : i + chunk_size])
+                for i in range(0, len(peptidoform_strings), chunk_size)
+            ]
 
-        Returns
-        -------
-        pd.DataFrame
-            Feature matrix.
+            logger.debug("Starting feature extraction with Dask")
+            chunks_encodings = compute(*tasks, scheduler="processes", workers=self.n_jobs)
 
-        """
-        psm_list = _dataframe_to_psm_list(dataframe, charges, n_jobs=self.n_jobs)
-        return self.f_extractor.full_feat_extract(psm_list, predict_ccs=self.predict_ccs)
+            # Flatten the list of lists.
+            encodings = [enc for chunk in chunks_encodings for enc in chunk]
 
-    def do_f_extraction_pd_parallel(
-        self, dataframe: pd.DataFrame, charges: list[int] | None = None
-    ):
-        """
-        Extract all features we can extract; with parallelization; use if you want to run feature
-        extraction with multiple threads; and use a defined dataframe.
+        # Aggregate the encodings into a single dictionary.
+        aggregated_encodings = aggregate_encodings(encodings)
 
-        Parameters
-        ----------
-        dataframe
-            Dataframe containing the sequences (column:seq), modifications (column:modifications),
-            identifiers (index), and optionally charges (column:charge).
-        charges
-            List of charges for each entry. Only required if CCS prediction is enabled and not
-            present in the dataframe.
+        logger.debug("Finished feature extraction")
 
-        Returns
-        -------
-        pd.DataFrame
-            Feature matrix.
+        return aggregated_encodings
 
-        """
-        psm_list = _dataframe_to_psm_list(dataframe, charges, n_jobs=self.n_jobs)
-        return self.do_f_extraction_psm_list_parallel(psm_list)
-
-    def do_f_extraction_psm_list(self, psm_list):
-        """
-        Extract all features we can extract; without parallelization; use if you want to run
-        feature extraction with a single thread; and use a defined dataframe
-
-        Parameters
-        ----------
-        psm_list
-            PSMList with PSMs to extract features for.
-
-        Returns
-        -------
-        pd.DataFrame
-            feature matrix
-
-        """
-        return self.f_extractor.full_feat_extract(psm_list, predict_ccs=self.predict_ccs)
-
-    def do_f_extraction_psm_list_parallel(self, psm_list):
-        """
-        Extract all features we can extract; without parallelization; use if
-        you want to run feature extraction with a single thread; and use a
-        defined dataframe
-
-        Parameters
-        ----------
-        psm_list
-            PSMList with PSMs to extract features for.
-
-        Returns
-        -------
-        pd.DataFrame
-            feature matrix
-
-        """
-        logger.debug("prepare feature extraction")
-
-        psm_list_split = split_list(psm_list, self.n_jobs)
-
-        logger.debug("start feature extraction")
-        with multiprocessing.Pool(self.n_jobs) as pool:
-            all_feats_async = pool.map_async(self.do_f_extraction_psm_list, psm_list_split)
-            logger.debug("wait for feature extraction")
-            all_feats_async.wait()
-            logger.debug("get feature extraction results")
-            res = all_feats_async.get()
-            matrix_names = res[0].keys()
-            all_feats = {
-                matrix_name: dict(
-                    enumerate(chain.from_iterable(v[matrix_name].values() for v in res))
-                )
-                for matrix_name in matrix_names
-            }
-            logger.debug("got feature extraction results")
-
-        return all_feats
-
-    def calibration_core(self, uncal_preds, cal_dict, cal_min, cal_max):
-        cal_preds = []
+    def _apply_calibration_core(
+        self,
+        uncal_preds: np.ndarray,
+        cal_dict: dict | list[BaseEstimator],
+        cal_min: float,
+        cal_max: float,
+    ) -> np.ndarray:
+        """Apply calibration to the predictions."""
         if len(uncal_preds) == 0:
-            return np.array(cal_preds)
+            return np.array([])
+
+        cal_preds = []
         if self.pygam_calibration:
             linear_model_left, spline_model, linear_model_right = cal_dict
             y_pred_spline = spline_model.predict(uncal_preds.reshape(-1, 1))
@@ -442,340 +367,222 @@ class DeepLC:
         else:
             for uncal_pred in uncal_preds:
                 try:
-                    slope, intercept = cal_dict[str(round(uncal_pred, self.bin_dist))]
+                    slope, intercept = cal_dict[str(round(uncal_pred, self.bin_distance))]
                     cal_preds.append(slope * (uncal_pred) + intercept)
                 except KeyError:
                     # outside of the prediction range ... use the last
                     # calibration curve
                     if uncal_pred <= cal_min:
-                        slope, intercept = cal_dict[str(round(cal_min, self.bin_dist))]
+                        slope, intercept = cal_dict[str(round(cal_min, self.bin_distance))]
                         cal_preds.append(slope * (uncal_pred) + intercept)
                     elif uncal_pred >= cal_max:
-                        slope, intercept = cal_dict[str(round(cal_max, self.bin_dist))]
+                        slope, intercept = cal_dict[str(round(cal_max, self.bin_distance))]
                         cal_preds.append(slope * (uncal_pred) + intercept)
                     else:
-                        slope, intercept = cal_dict[str(round(cal_max, self.bin_dist))]
+                        slope, intercept = cal_dict[str(round(cal_max, self.bin_distance))]
                         cal_preds.append(slope * (uncal_pred) + intercept)
+
         return np.array(cal_preds)
 
-    def make_preds_core_library(self, psm_list=[], calibrate=True, mod_name=None):
+    def _make_preds_core_library(self, psm_list=None, calibrate=True, mod_name=None):
+        """Get predictions stored in library and calibrate them if needed."""
+        psm_list = [] if psm_list is None else psm_list
         ret_preds = []
         for psm in psm_list:
             ret_preds.append(LIBRARY[psm.peptidoform.proforma + "|" + mod_name])
 
         if calibrate:
-            try:
-                ret_preds = self.calibration_core(
-                    ret_preds,
+            if isinstance(self.calibrate_min, dict):
+                # if multiple models are used, use the model name to get the
+                # calibration values (DeepCallC mode)
+                calibrate_dict, calibrate_min, calibrate_max = (
                     self.calibrate_dict[mod_name],
                     self.calibrate_min[mod_name],
                     self.calibrate_max[mod_name],
                 )
-            except:
-                ret_preds = self.calibration_core(
-                    ret_preds,
+            else:
+                # if only one model is used, use the same calibration values
+                calibrate_dict, calibrate_min, calibrate_max = (
                     self.calibrate_dict,
                     self.calibrate_min,
                     self.calibrate_max,
                 )
+
+            ret_preds = self._apply_calibration_core(
+                ret_preds, calibrate_dict, calibrate_min, calibrate_max
+            )
 
         return ret_preds
 
-    def make_preds_core(
+    def _make_preds_core(
         self,
-        X=[],
-        X_sum=[],
-        X_global=[],
-        X_hc=[],
-        psm_list=[],
+        X: np.ndarray | None = None,
+        X_sum: np.ndarray | None = None,
+        X_global: np.ndarray | None = None,
+        X_hc: np.ndarray | None = None,
         calibrate=True,
         mod_name=None,
-    ):
-        """
-        Make predictions for sequences
-        Parameters
-        ----------
-        seq_df : object :: pd.DataFrame
-            dataframe containing the sequences (column:seq), modifications
-            (column:modifications) and naming (column:index); will use parallel
-            by default!
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : list
-            identifiers of the peptides; should correspond to seqs and mods
-        calibrate : boolean
-            calibrate predictions or just return the predictions
-        correction_factor : float
-            correction factor to apply to predictions
-        mod_name : str or None
-            specify a model to use instead of the model assigned originally to
-            this instance of the object
-        Returns
-        -------
-        np.array
-            predictions
-        """
+    ) -> np.ndarray:
+        """Make predictions."""
+        # Check calibration state
         if calibrate:
             assert self.calibrate_dict, (
-                "DeepLC instance is not yet calibrated.\
-                                        Calibrate before making predictions, or use calibrate=False"
+                "DeepLC instance is not yet calibrated. Calibrate before making predictions, or "
+                "use `calibrate=False`"
             )
 
-        if len(X) == 0 and len(psm_list) > 0:
-            if self.verbose:
-                logger.debug("Extracting features for the CNN model ...")
-            X = self.do_f_extraction_psm_list_parallel(psm_list)
-
-            X_sum = np.stack(list(X["matrix_sum"].values()))
-            X_global = np.concatenate(
-                (
-                    np.stack(list(X["matrix_all"].values())),
-                    np.stack(list(X["pos_matrix"].values())),
-                ),
-                axis=1,
-            )
-            X_hc = np.stack(list(X["matrix_hc"].values()))
-            X = np.stack(list(X["matrix"].values()))
-        elif len(X) == 0 and len(psm_list) == 0:
-            return []
+        if len(X) == 0:
+            return np.array([])
 
         ret_preds = []
-
-        mod = load_model(mod_name)
-        try:
-            X
-            ret_preds = mod.predict(
-                [X, X_sum, X_global, X_hc],
-                batch_size=self.batch_num_tf,
-                verbose=int(self.verbose),
-            ).flatten()
-        except UnboundLocalError:
-            logger.debug("X is empty, skipping...")
-            ret_preds = []
+        model = load_model(mod_name)
+        ret_preds = model.predict(
+            [X, X_sum, X_global, X_hc],
+            batch_size=self.batch_num_tf,
+            verbose=int(self.verbose),
+        ).flatten()
 
         if calibrate:
-            try:
-                ret_preds = self.calibration_core(
-                    ret_preds,
+            if isinstance(self.calibrate_min, dict):
+                # if multiple models are used, use the model name to get the
+                # calibration values (DeepCallC mode)
+                calibrate_dict, calibrate_min, calibrate_max = (
                     self.calibrate_dict[mod_name],
                     self.calibrate_min[mod_name],
                     self.calibrate_max[mod_name],
                 )
-            except:
-                ret_preds = self.calibration_core(
-                    ret_preds,
+            else:
+                # if only one model is used, use the same calibration values
+                calibrate_dict, calibrate_min, calibrate_max = (
                     self.calibrate_dict,
                     self.calibrate_min,
                     self.calibrate_max,
                 )
 
-        # clear_session()
+            ret_preds = self._apply_calibration_core(
+                ret_preds, calibrate_dict, calibrate_min, calibrate_max
+            )
+
         gc.collect()
         return ret_preds
 
     def make_preds(
         self,
-        psm_list=None,
-        infile="",
-        calibrate=True,
-        seq_df=None,
-        mod_name=None,
+        psm_list: PSMList | None = None,
+        infile: str | Path | None = None,
+        seq_df: pd.DataFrame | None = None,
+        calibrate: bool = True,
+        mod_name: str | None = None,
     ):
         """
         Make predictions for sequences, in batches if required.
 
         Parameters
         ----------
-        seq_df : object :: pd.DataFrame
-            dataframe containing the sequences (column:seq), modifications
-            (column:modifications) and naming (column:index); will use parallel
-            by default!
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : list
-            identifiers of the peptides; should correspond to seqs and mods
-        calibrate : boolean
-            calibrate predictions or just return the predictions
-        correction_factor : float
-            correction factor to apply to predictions
-        mod_name : str or None
-            specify a model to use instead of the model assigned originally to
-            this instance of the object
+        psm_list
+            PSMList object containing the peptidoforms to predict for.
+        infile
+            Path to a file containing the peptidoforms to predict for.
+        seq_df
+            DataFrame containing the sequences (column:seq), modifications
+            (column:modifications) and naming (column:index).
+        calibrate
+            calibrate predictions or just return the predictions.
+        mod_name
+            specify a model to use instead of the model assigned originally to this instance of the
+            object.
 
         Returns
         -------
         np.array
             predictions
         """
-        if type(seq_df) == pd.core.frame.DataFrame:
-            list_of_psms = []
-            if self.predict_ccs:
-                for seq, mod, ident, z in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df.index,
-                    seq_df["charge"],
-                ):
-                    list_of_psms.append(
-                        PSM(
-                            peptidoform=peprec_to_proforma(seq, mod, charge=z),
-                            spectrum_id=ident,
-                        )
-                    )
+        if psm_list is None:
+            if seq_df is not None:
+                psm_list = _dataframe_to_psm_list(seq_df)
+            elif infile is not None:
+                psm_list = _file_to_psm_list(infile)
             else:
-                for seq, mod, ident in zip(seq_df["seq"], seq_df["modifications"], seq_df.index):
-                    list_of_psms.append(
-                        PSM(
-                            peptidoform=peprec_to_proforma(seq, mod),
-                            spectrum_id=ident,
-                        )
-                    )
-            psm_list = PSMList(psm_list=list_of_psms)
+                raise ValueError("Either `psm_list` or `seq_df` or `infile` must be provided.")
 
-        if len(infile) > 0:
-            psm_list = read_file(infile)
-            if "msms" in infile and ".txt" in infile:
-                mapper = pd.read_csv(
-                    os.path.join(
-                        os.path.dirname(os.path.realpath(__file__)),
-                        "unimod/map_mq_file.csv",
-                    ),
-                    index_col=0,
-                )["value"].to_dict()
-                psm_list.rename_modifications(mapper)
+        if len(psm_list) == 0:
+            logger.warning("No PSMs to predict for.")
+            return []
 
         ret_preds_batches = []
         for psm_list_t in divide_chunks(psm_list, self.batch_num):
             ret_preds = []
-            if len(psm_list_t) > 0:
-                if self.verbose:
-                    logger.debug("Extracting features for the CNN model ...")
 
-                X = self.do_f_extraction_psm_list_parallel(psm_list_t)
-                X_sum = np.stack(list(X["matrix_sum"].values()))
-                X_global = np.concatenate(
-                    (
-                        np.stack(list(X["matrix_all"].values())),
-                        np.stack(list(X["pos_matrix"].values())),
-                    ),
-                    axis=1,
-                )
-                X_hc = np.stack(list(X["matrix_hc"].values()))
-                X = np.stack(list(X["matrix"].values()))
-            else:
-                return []
+            # Extract features for the CNN model
+            features = self._extract_features(psm_list_t)
+            X_sum, X_global, X_hc, X = unpack_features(features)
 
-            if isinstance(self.model, dict):
-                for m_group_name, m_name in self.model.items():
-                    ret_preds.append(
-                        self.make_preds_core(
-                            X=X,
-                            X_sum=X_sum,
-                            X_global=X_global,
-                            X_hc=X_hc,
-                            calibrate=calibrate,
-                            mod_name=m_name,
-                        )
-                    )
-                ret_preds = np.array([sum(a) / len(a) for a in zip(*ret_preds)])
-            elif mod_name is not None:
-                ret_preds = self.make_preds_core(
-                    X=X,
-                    X_sum=X_sum,
-                    X_global=X_global,
-                    X_hc=X_hc,
-                    calibrate=calibrate,
-                    mod_name=mod_name,
-                )
+            # Check if model was provided, and if not, whether multiple models are selected in
+            # the DeepLC object or not.
+            if mod_name:
+                model_names = [mod_name]
+            elif isinstance(self.model, dict):
+                model_names = [m_name for m_group_name, m_name in self.model.items()]
             elif isinstance(self.model, list):
-                for m_name in self.model:
-                    ret_preds.append(
-                        self.make_preds_core(
+                model_names = self.model
+            elif isinstance(self.model, str):
+                model_names = [self.model]
+            else:
+                raise ValueError("Invalid model name provided.")
+
+            # Get predictions
+            if len(model_names) > 1:
+                # Iterate over models if multiple were selected
+                model_predictions = []
+                for model_name in model_names:
+                    model_predictions.append(
+                        self._make_preds_core(
                             X=X,
                             X_sum=X_sum,
                             X_global=X_global,
                             X_hc=X_hc,
                             calibrate=calibrate,
-                            mod_name=m_name,
+                            mod_name=model_name,
                         )
                     )
-                ret_preds = np.array([sum(a) / len(a) for a in zip(*ret_preds)])
+                # Average the predictions from all models
+                ret_preds = np.array([sum(a) / len(a) for a in zip(*ret_preds, strict=True)])
+                # ret_preds = np.mean(model_predictions, axis=0)
+
             else:
-                ret_preds = self.make_preds_core(
+                # Use the single model
+                ret_preds = self._make_preds_core(
                     X=X,
                     X_sum=X_sum,
                     X_global=X_global,
                     X_hc=X_hc,
                     calibrate=calibrate,
-                    mod_name=self.model,
+                    mod_name=model_names[0],
                 )
-            ret_preds_batches.extend(ret_preds)
 
-        return ret_preds_batches
-        # TODO make this multithreaded
-        # should be possible with the batched list
+            ret_preds_batches.append(ret_preds)
 
-    def calibrate_preds_func_pygam(
+        all_ret_preds = np.concatenate(ret_preds_batches, axis=0)
+
+        return all_ret_preds
+
+    def _calibrate_preds_pygam(
         self,
-        psm_list=None,
-        correction_factor=1.0,
-        seq_df=None,
-        measured_tr=None,
-        use_median=True,
-        mod_name=None,
-    ):
-        if type(seq_df) == pd.core.frame.DataFrame:
-            list_of_psms = []
-            # TODO include charge here
-            if self.predict_ccs:
-                for seq, mod, ident, tr, z in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df.index,
-                    seq_df["tr"],
-                    seq_df["charge"],
-                ):
-                    list_of_psms.append(
-                        PSM(
-                            peptidoform=peprec_to_proforma(seq, mod, charge=z),
-                            spectrum_id=ident,
-                            retention_time=tr,
-                        )
-                    )
-            else:
-                for seq, mod, ident, tr in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df.index,
-                    seq_df["tr"],
-                ):
-                    list_of_psms.append(
-                        PSM(
-                            peptidoform=peprec_to_proforma(seq, mod),
-                            spectrum_id=ident,
-                            retention_time=tr,
-                        )
-                    )
-            psm_list = PSMList(psm_list=list_of_psms)
-
-            measured_tr = [psm.retention_time for psm in psm_list]
-
-        predicted_tr = self.make_preds(psm_list, calibrate=False, mod_name=mod_name)
+        measured_tr: np.ndarray,
+        predicted_tr: np.ndarray,
+    ) -> tuple[float, float, list[BaseEstimator]]:
+        """Make calibration curve for predictions using PyGAM."""
+        logger.debug("Getting predictions for calibration...")
 
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [
             (mtr, ptr)
-            for mtr, ptr in sorted(zip(measured_tr, predicted_tr), key=lambda pair: pair[1])
+            for mtr, ptr in sorted(
+                zip(measured_tr, predicted_tr, strict=True), key=lambda pair: pair[1]
+            )
         ]
         measured_tr = np.array([mtr for mtr, ptr in tr_sort], dtype=np.float32)
         predicted_tr = np.array([ptr for mtr, ptr in tr_sort], dtype=np.float32)
-
-        # predicted_tr = list(predicted_tr)
-        # measured_tr = list(measured_tr)
 
         # Fit a SplineTransformer model
         if self.deeplc_retrain:
@@ -815,96 +622,19 @@ class DeepLC:
             [linear_model_left, spline_model, linear_model_right],
         )
 
-    def calibrate_preds_func(
+    def _calibrate_preds_piecewise_linear(
         self,
-        psm_list=None,
-        correction_factor=1.0,
-        seq_df=None,
-        use_median=True,
-        mod_name=None,
-    ):
-        """
-        Make calibration curve for predictions
-
-        Parameters
-        ----------
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : list
-            identifiers of the peptides; should correspond to seqs and mods
-        measured_tr : list
-            measured tr of the peptides; should correspond to seqs, identifiers,
-            and mods
-        correction_factor : float
-            correction factor that needs to be applied to the supplied measured
-            trs
-        seq_df : object :: pd.DataFrame
-            a pd.DataFrame that contains the sequences, modifications and
-            observed retention times to fit a calibration curve
-        use_median : boolean
-            flag to indicate we need to use the median valuein a window to
-            perform calibration
-        mod_name
-            specify a model to use instead of the model assigned originally to
-            this instance of the object
-
-        Returns
-        -------
-        float
-            the minimum value where a calibration curve was fitted, lower values
-            will be extrapolated from the minimum fit of the calibration curve
-        float
-            the maximum value where a calibration curve was fitted, higher values
-            will be extrapolated from the maximum fit of the calibration curve
-        dict
-            dictionary with keys for rounded tr, and the values concern a linear
-            model that should be applied to do calibration (!!! what is the
-            shape of this?)
-        """
-        if type(seq_df) == pd.core.frame.DataFrame:
-            list_of_psms = []
-            # TODO include charge here
-            if self.predict_ccs:
-                for seq, mod, tr, ident, z in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df["tr"],
-                    seq_df.index,
-                    seq_df["charge"],
-                ):
-                    list_of_psms.append(
-                        PSM(
-                            peptidoform=peprec_to_proforma(seq, mod, charge=z),
-                            spectrum_id=ident,
-                            retention_time=tr,
-                        )
-                    )
-            else:
-                for seq, mod, tr, ident in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df["tr"],
-                    seq_df.index,
-                ):
-                    list_of_psms.append(
-                        PSM(
-                            peptidoform=peprec_to_proforma(seq, mod),
-                            spectrum_id=ident,
-                            retention_time=tr,
-                        )
-                    )
-            psm_list = PSMList(psm_list=list_of_psms)
-
-        measured_tr = [psm.retention_time for psm in psm_list]
-
-        predicted_tr = self.make_preds(psm_list, calibrate=False, mod_name=mod_name)
-
+        measured_tr: np.ndarray,
+        predicted_tr: np.ndarray,
+        use_median: bool = True,
+    ) -> tuple[float, float, dict[str, tuple[float]]]:
+        """Make calibration curve for predictions."""
         # sort two lists, predicted and observed based on measured tr
         tr_sort = [
             (mtr, ptr)
-            for mtr, ptr in sorted(zip(measured_tr, predicted_tr), key=lambda pair: pair[1])
+            for mtr, ptr in sorted(
+                zip(measured_tr, predicted_tr, strict=False), key=lambda pair: pair[1]
+            )
         ]
         measured_tr = np.array([mtr for mtr, ptr in tr_sort])
         predicted_tr = np.array([ptr for mtr, ptr in tr_sort])
@@ -916,10 +646,9 @@ class DeepLC:
         calibrate_min = float("inf")
         calibrate_max = 0
 
-        if self.verbose:
-            logger.debug(
-                "Selecting the data points for calibration (used to fit the linear models between)"
-            )
+        logger.debug(
+            "Selecting the data points for calibration (used to fit the linear models between)"
+        )
         # smooth between observed and predicted
         split_val = predicted_tr[-1] / self.split_cal
 
@@ -948,14 +677,13 @@ class DeepLC:
                 mtr_mean.append(sum(mtr) / len(mtr))
                 ptr_mean.append(sum(ptr) / len(ptr))
 
-        if self.verbose:
-            logger.debug("Fitting the linear models between the points")
+        logger.debug("Fitting the linear models between the points")
 
         if self.split_cal >= len(measured_tr):
             raise CalibrationError(
-                "Not enough measured tr ({}) for the chosen number of splits ({}). "
-                "Choose a smaller split_cal parameter or provide more peptides for "
-                "fitting the calibration curve.".format(len(measured_tr), self.split_cal)
+                f"Not enough measured tr ({len(measured_tr)}) for the chosen number of splits "
+                f"({self.split_cal}). Choose a smaller split_cal parameter or provide more "
+                "peptides for fitting the calibration curve."
             )
         if len(mtr_mean) == 0:
             raise CalibrationError("The measured tr list is empty, not able to calibrate")
@@ -975,118 +703,84 @@ class DeepLC:
             # optimized predictions using a dict to find calibration curve very
             # fast
             for v in np.arange(
-                round(ptr_mean[i], self.bin_dist),
-                round(ptr_mean[i + 1], self.bin_dist),
-                1 / ((self.bin_dist) * self.dict_cal_divider),
+                round(ptr_mean[i], self.bin_distance),
+                round(ptr_mean[i + 1], self.bin_distance),
+                1 / ((self.bin_distance) * self.dict_cal_divider),
             ):
                 if v < calibrate_min:
                     calibrate_min = v
                 if v > calibrate_max:
                     calibrate_max = v
-                calibrate_dict[str(round(v, self.bin_dist))] = [
-                    slope,
-                    intercept,
-                ]
+                calibrate_dict[str(round(v, self.bin_distance))] = (slope, intercept)
 
         return calibrate_min, calibrate_max, calibrate_dict
 
     def calibrate_preds(
         self,
-        psm_list=None,
-        infile="",
-        measured_tr=[],
-        correction_factor=1.0,
-        location_retraining_models="",
-        psm_utils_obj=None,
-        sample_for_calibration_curve=None,
-        seq_df=None,
-        use_median=True,
+        psm_list: PSMList | None = None,
+        infile: str | Path | None = None,
+        seq_df: pd.DataFrame | None = None,
+        measured_tr: np.ndarray | None = None,
+        location_retraining_models: str = "",
+        sample_for_calibration_curve: int | None = None,
+        use_median: bool = True,
         return_plotly_report=False,
-    ):
+    ) -> dict | None:
         """
         Find best model and calibrate.
 
         Parameters
         ----------
-        seqs : list
-            peptide sequence list; should correspond to mods and identifiers
-        mods : list
-            naming of the mods; should correspond to seqs and identifiers
-        identifiers : list
-            identifiers of the peptides; should correspond to seqs and mods
+        psm_list
+            PSMList object containing the peptidoforms to predict for.
+        infile
+            Path to a file containing the peptidoforms to predict for.
+        seq_df
+            DataFrame containing the sequences (column:seq), modifications (column:modifications),
+            naming (column:index), and optionally charge (column:charge) and measured retention
+            time (column:tr).
         measured_tr : list
-            measured tr of the peptides; should correspond to seqs, identifiers,
-            and mods
+            Measured retention time used for calibration. Should correspond to the PSMs in the
+            provided PSMs. If None, the measured retention time is taken from the PSMs.
         correction_factor : float
-            correction factor that needs to be applied to the supplied measured
-            trs
-        seq_df : object :: pd.DataFrame
-            a pd.DataFrame that contains the sequences, modifications and
-            observed retention times to fit a calibration curve
-        use_median : boolean
-            flag to indicate we need to use the median valuein a window to
-            perform calibration
+            correction factor that needs to be applied to the supplied measured tr's
+        location_retraining_models
+            Location to save the retraining models; if None, a temporary directory is used.
+        sample_for_calibration_curve
+            Number of PSMs to sample for calibration curve; if None, all provided PSMs are used.
+        use_median
+            Whether to use the median value in a window to perform calibration; only applies to
+            piecewise linear calibration, not to PyGAM calibration.
+        return_plotly_report
+            Whether to return a plotly report with the calibration results.
 
         Returns
         -------
+        dict | None
+            Dictionary with plotly report information or None.
 
         """
-        if type(seq_df) == pd.core.frame.DataFrame:
-            list_of_psms = []
-            if self.predict_ccs:
-                for seq, mod, ident, tr, z in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df.index,
-                    seq_df["tr"],
-                    seq_df["charge"],
-                ):
-                    list_of_psms.append(
-                        PSM(
-                            peptidoform=peprec_to_proforma(seq, mod, charge=z),
-                            spectrum_id=ident,
-                            retention_time=tr,
-                        )
-                    )
+        # Getting PSMs either from psm_list, seq_df, or infile
+        if psm_list is None:
+            if seq_df is not None:
+                psm_list = _dataframe_to_psm_list(seq_df)
+            elif infile is not None:
+                psm_list = _file_to_psm_list(infile)
             else:
-                for seq, mod, ident, tr in zip(
-                    seq_df["seq"],
-                    seq_df["modifications"],
-                    seq_df.index,
-                    seq_df["tr"],
-                ):
-                    list_of_psms.append(
-                        PSM(
-                            peptidoform=peprec_to_proforma(seq, mod),
-                            spectrum_id=ident,
-                            retention_time=tr,
-                        )
-                    )
-            psm_list = PSMList(psm_list=list_of_psms)
-        elif psm_utils_obj:
-            psm_list = psm_utils_obj
+                raise ValueError("Either `psm_list` or `seq_df` or `infile` must be provided.")
 
+        # Getting measured retention time either from measured_tr or provided PSMs
+        if not measured_tr:
+            measured_tr = [psm.retention_time for psm in psm_list]
+            if None in measured_tr:
+                raise ValueError("Not all PSMs have an observed retention time.")
+
+        # Ensuring self.model is list of strings
         if isinstance(self.model, str):
             self.model = [self.model]
 
-        if len(infile) > 0:
-            psm_list = read_file(infile)
-            if "msms" in infile and ".txt" in infile:
-                mapper = pd.read_csv(
-                    os.path.join(
-                        os.path.dirname(os.path.realpath(__file__)),
-                        "unimod/map_mq_file.csv",
-                    ),
-                    index_col=0,
-                )["value"].to_dict()
-                psm_list.rename_modifications(mapper)
-
-        measured_tr = [psm.retention_time for psm in psm_list]
-
-        if self.verbose:
-            logger.debug("Start to calibrate predictions ...")
-        if self.verbose:
-            logger.debug("Ready to find the best model out of: %s" % (self.model))
+        logger.debug("Start to calibrate predictions ...")
+        logger.debug(f"Ready to find the best model out of: {self.model}")
 
         best_perf = float("inf")
         best_calibrate_min = 0.0
@@ -1101,7 +795,8 @@ class DeepLC:
         temp_pred = []
 
         if self.deeplc_retrain:
-            # The following code is not required in most cases, but here it is used to clear variables that might cause problems
+            # The following code is not required in most cases, but here it is used to clear
+            # variables that might cause problems
             _ = tf.Variable([1])
 
             context._context = None
@@ -1109,17 +804,14 @@ class DeepLC:
 
             tf.config.threading.set_inter_op_parallelism_threads(1)
 
-            if len(location_retraining_models) > 0:
+            if location_retraining_models:
+                os.makedirs(location_retraining_models, exist_ok=True)
+            else:
                 t_dir_models = TemporaryDirectory().name
                 os.mkdir(t_dir_models)
-            else:
-                t_dir_models = location_retraining_models
-                try:
-                    os.mkdir(t_dir_models)
-                except:
-                    pass
 
-            # Here we will apply transfer learning we specify previously trained models in the 'mods_transfer_learning'
+            # Here we will apply transfer learning we specify previously trained models in the
+            # 'mods_transfer_learning'
             models = deeplcretrainer.retrain(
                 {"deeplc_transferlearn": psm_list},
                 outpath=t_dir_models,
@@ -1132,50 +824,37 @@ class DeepLC:
 
             self.model = models
 
-        if isinstance(sample_for_calibration_curve, int):
+        # Limit calibration to a subset of PSMs if specified
+        if sample_for_calibration_curve:
             psm_list = random.sample(list(psm_list), sample_for_calibration_curve)
             measured_tr = [psm.retention_time for psm in psm_list]
 
-        for m in self.model:
-            if self.verbose:
-                logger.debug("Trying out the following model: %s" % (m))
+        for model_name in self.model:
+            logger.debug(f"Trying out the following model: {model_name}")
+            predicted_tr = self.make_preds(psm_list, calibrate=False, mod_name=model_name)
+
             if self.pygam_calibration:
-                calibrate_output = self.calibrate_preds_func_pygam(
-                    psm_list,
-                    measured_tr=measured_tr,
-                    correction_factor=correction_factor,
-                    seq_df=seq_df,
-                    use_median=use_median,
-                    mod_name=m,
-                )
+                calibrate_output = self._calibrate_preds_pygam(measured_tr, predicted_tr)
             else:
-                calibrate_output = self.calibrate_preds_func(
-                    psm_list,
-                    correction_factor=correction_factor,
-                    seq_df=seq_df,
-                    use_median=use_median,
-                    mod_name=m,
+                calibrate_output = self._calibrate_preds_piecewise_linear(
+                    measured_tr, predicted_tr, use_median=use_median
                 )
+            self.calibrate_min, self.calibrate_max, self.calibrate_dict = calibrate_output
+            # TODO: Currently, calibration dict can be both a dict (linear) or a list of models
+            # (PyGAM)... This should be handled better in the future.
 
-            (
-                self.calibrate_min,
-                self.calibrate_max,
-                self.calibrate_dict,
-            ) = calibrate_output
+            # Skip this model if calibrate_dict is empty
+            # TODO: Should this do something when using PyGAM and calibrate_dict is a list?
+            if isinstance(self.calibrate_dict, dict) and len(self.calibrate_dict.keys()) == 0:
+                continue
 
-            if type(self.calibrate_dict) == dict:
-                if len(self.calibrate_dict.keys()) == 0:
-                    continue
+            m_name = model_name.split("/")[-1]
 
-            m_name = m.split("/")[-1]
+            # Get new predictions with calibration
+            preds = self.make_preds(psm_list, calibrate=True, seq_df=seq_df, mod_name=model_name)
 
-            preds = self.make_preds(psm_list, calibrate=True, seq_df=seq_df, mod_name=m)
-
-            if self.deepcallc_mod:
-                m_group_name = "deepcallc"
-            else:
-                m_group_name = "_".join(m_name.split("_")[:-1])
-
+            m_group_name = "deepcallc" if self.deepcallc_mod else "_".join(m_name.split("_")[:-1])
+            m = model_name
             try:
                 pred_dict[m_group_name][m] = preds
                 mod_dict[m_group_name][m] = m
@@ -1195,23 +874,19 @@ class DeepLC:
                 mod_calibrate_min_dict[m_group_name][m] = self.calibrate_min
                 mod_calibrate_max_dict[m_group_name][m] = self.calibrate_max
 
-        for m_name in pred_dict.keys():
-            preds = [sum(a) / len(a) for a in zip(*list(pred_dict[m_name].values()))]
+        for m_name in pred_dict:
+            preds = [sum(a) / len(a) for a in zip(*list(pred_dict[m_name].values()), strict=True)]
             if len(measured_tr) == 0:
                 perf = sum(abs(seq_df["tr"] - preds))
             else:
                 perf = sum(abs(np.array(measured_tr) - np.array(preds)))
 
-            if self.verbose:
-                logger.debug("For %s model got a performance of: %s" % (m_name, perf / len(preds)))
+            logger.debug(f"For {m_name} model got a performance of: {perf / len(preds)}")
 
             if perf < best_perf:
-                if self.deepcallc_mod:
-                    m_group_name = "deepcallc"
-                else:
-                    m_group_name = m_name
-                    # TODO is deepcopy really required?
+                m_group_name = "deepcallc" if self.deepcallc_mod else m_name
 
+                # TODO is deepcopy really required?
                 best_calibrate_dict = copy.deepcopy(mod_calibrate_dict[m_group_name])
                 best_calibrate_min = copy.deepcopy(mod_calibrate_min_dict[m_group_name])
                 best_calibrate_max = copy.deepcopy(mod_calibrate_max_dict[m_group_name])
@@ -1228,18 +903,18 @@ class DeepLC:
         self.model = best_model
 
         if self.deepcallc_mod:
-            self.deepcallc_model = train_en(pd.DataFrame(pred_dict["deepcallc"]), seq_df["tr"])
+            self.deepcallc_model = train_elastic_net(
+                pd.DataFrame(pred_dict["deepcallc"]), seq_df["tr"]
+            )
 
-        # self.n_jobs = 1
-
-        logger.debug("Model with the best performance got selected: %s" % (best_model))
+        logger.debug(f"Model with the best performance got selected: {best_model}")
 
         if return_plotly_report:
             import deeplc.plot
 
             plotly_return_dict = {}
             plotly_df = pd.DataFrame(
-                list(zip(temp_obs, temp_pred)),
+                list(zip(temp_obs, temp_pred, strict=True)),
                 columns=[
                     "Observed retention time",
                     "Predicted retention time",
@@ -1249,32 +924,10 @@ class DeepLC:
             plotly_return_dict["baseline_dist"] = deeplc.plot.distribution_baseline(plotly_df)
             return plotly_return_dict
 
-        return {}
-
-    def split_seq(self, a, n):
-        """
-        Split a list (a) into multiple chunks (n)
-
-        Parameters
-        ----------
-        a : list
-            list to split
-        n : list
-            number of chunks
-
-        Returns
-        -------
-        list
-            chunked list
-        """
-
-        # since chunking is not alway possible do the modulo of residues
-        k, m = divmod(len(a), n)
-        result = (a[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n))
-        return result
+        return None
 
 
-def _get_pool(n_jobs: int) -> multiprocessing.pool.Pool | multiprocessing.dummy.Pool:
+def _get_pool(n_jobs: int) -> multiprocessing.Pool | multiprocessing.dummy.Pool:  # type: ignore
     """Get a Pool object for parallel processing."""
     if multiprocessing.current_process().daemon:
         logger.warning(
@@ -1301,22 +954,29 @@ def _lists_to_psm_list(
     modifications: list[str | None],
     identifiers: list[str],
     charges: list[int] | None,
+    retention_times: list[float] | None = None,
     n_jobs: int = 1,
 ) -> PSMList:
-    """Convert lists of sequences, modifications, identifiers, and charges into a PSMList."""
+    """Convert lists into a PSMList using Dask for parallel processing."""
     if not charges:
         charges = [None] * len(sequences)
 
+    if not retention_times:
+        retention_times = [None] * len(sequences)
+
     def create_psm(args):
-        sequence, modifications, identifier, charge = args
+        sequence, modifications, identifier, charge, retention_time = args
         return PSM(
             peptidoform=peprec_to_proforma(sequence, modifications, charge=charge),
             spectrum_id=identifier,
+            retention_time=retention_time,
         )
 
-    args_list = list(zip(sequences, modifications, identifiers, charges, strict=True))
-    with _get_pool(n_jobs) as pool:
-        list_of_psms = pool.map(create_psm, args_list)
+    args_list = list(
+        zip(sequences, modifications, identifiers, charges, retention_times, strict=True)
+    )
+    tasks = [delayed(create_psm)(args) for args in args_list]
+    list_of_psms = list(compute(*tasks, scheduler="processes"))
     return PSMList(psm_list=list_of_psms)
 
 
@@ -1332,11 +992,27 @@ def _dataframe_to_psm_list(
     sequences = dataframe["seq"]
     modifications = dataframe["modifications"]
     identifiers = dataframe.index
+    retention_times = dataframe["tr"] if "tr" in dataframe.columns else None
 
-    if not charges:
-        if "charge" in dataframe.columns:
-            charges = dataframe["charge"]
-        else:
-            charges = list(None) * len(sequences)
+    if not charges and "charge" in dataframe.columns:
+        charges = dataframe["charge"]
 
-    return _lists_to_psm_list(sequences, modifications, identifiers, charges, n_jobs=n_jobs)
+    return _lists_to_psm_list(
+        sequences, modifications, identifiers, charges, retention_times, n_jobs=n_jobs
+    )
+
+
+def _file_to_psm_list(input_file: str | Path) -> PSMList:
+    """Read a file into a PSMList, optionally mapping MaxQuant modifications labels."""
+    psm_list = read_file(input_file)
+    if "msms" in input_file and ".txt" in input_file:
+        mapper = pd.read_csv(
+            os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                "unimod/map_mq_file.csv",
+            ),
+            index_col=0,
+        )["value"].to_dict()
+        psm_list.rename_modifications(mapper)
+
+    return psm_list

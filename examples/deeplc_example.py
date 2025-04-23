@@ -1,6 +1,7 @@
 # Imports
 import pandas as pd
 from matplotlib import pyplot as plt
+
 from deeplc import DeepLC, FeatExtractor
 
 if __name__ == "__main__":
@@ -59,11 +60,11 @@ if __name__ == "__main__":
     print("a")
 
     # Make predictions; calibrated and uncalibrated
-    preds_cal = dlc.make_preds(seq_df=df)
+    preds_cal = dlc._make_preds(seq_df=df)
 
     print("b")
 
-    preds_uncal = dlc.make_preds(seq_df=df, calibrate=False)
+    preds_uncal = dlc._make_preds(seq_df=df, calibrate=False)
 
     print("c")
 

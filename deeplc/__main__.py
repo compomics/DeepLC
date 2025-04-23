@@ -17,12 +17,12 @@ import sys
 import warnings
 
 import pandas as pd
+from psm_utils.io import read_file
 from psm_utils.io.peptide_record import peprec_to_proforma
 from psm_utils.psm import PSM
 from psm_utils.psm_list import PSMList
-from psm_utils.io import read_file
 
-from deeplc import __version__, DeepLC, FeatExtractor
+from deeplc import DeepLC, __version__
 from deeplc._argument_parser import parse_arguments
 from deeplc._exceptions import DeepLCError
 
@@ -182,16 +182,10 @@ def run(
                 index_col=0,
             )["value"].to_dict()
             psm_list_cal.rename_modifications(mapper)
-    # Make a feature extraction object; you can skip this if you do not want to
-    # use the default settings for DeepLC. Here we want to use a model that does
-    # not use RDKit features so we skip the chemical descriptor making
-    # procedure.
-    f_extractor = FeatExtractor(cnn_feats=True, verbose=verbose)
 
     # Make the DeepLC object that will handle making predictions and calibration
     dlc = DeepLC(
         path_model=file_model,
-        f_extractor=f_extractor,
         cnn_model=True,
         split_cal=split_cal,
         dict_cal_divider=dict_divider,
@@ -212,9 +206,9 @@ def run(
     # Make predictions; calibrated or uncalibrated
     logger.info("Making predictions using model: %s", dlc.model)
     if len(psm_list_cal) > 0:
-        preds = dlc.make_preds(seq_df=df_pred, infile=file_pred, psm_list=psm_list_pred)
+        preds = dlc._make_preds(seq_df=df_pred, infile=file_pred, psm_list=psm_list_pred)
     else:
-        preds = dlc.make_preds(
+        preds = dlc._make_preds(
             seq_df=df_pred,
             infile=file_pred,
             psm_list=psm_list_pred,

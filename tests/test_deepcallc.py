@@ -1,6 +1,7 @@
 import pandas as pd
-from deeplc import DeepLC
 from matplotlib import pyplot as plt
+
+from deeplc import DeepLC
 
 
 def main():
@@ -73,7 +74,7 @@ def main():
     )
 
     dlc.calibrate_preds(seq_df=cal_df)
-    preds = dlc.make_preds(seq_df=cal_df)
+    preds = dlc._make_preds(seq_df=cal_df)
 
     plt.scatter(cal_df["tr"], preds)
     plt.show()

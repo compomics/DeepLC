@@ -28,7 +28,7 @@ else:
     _has_sklearn = True
 
 
-def train_en(X, y, n_jobs=16, cv=None):
+def train_elastic_net(X, y, n_jobs=16, cv=None):
     """
     Function that trains Layer 3 of CALLC (elastic net)
 
