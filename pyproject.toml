@@ -32,6 +32,7 @@ keywords = [
 ]
 
 dependencies = [
+    "dask>2023"
     "torch>=2.6.0,<3",
     "onnx2torch>=0.1.5",
     "numpy>=1.17",
