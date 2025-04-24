@@ -112,7 +112,9 @@ class DeepLCDataset(Dataset):
         self.X_hc = torch.from_numpy(X_hc).float()
 
         if target is not None:
-            self.target = torch.from_numpy(target).float()  # Add target values if provided
+            self.target = torch.from_numpy(
+                target
+            ).float()  # Add target values if provided
         else:
             self.target = None  # If no target is provided, set it to None
 
@@ -212,7 +214,8 @@ class DeepLCFineTuner:
         val_loader = self.prepare_data(val_dataset, shuffle=False)
 
         optimizer = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, self.model.parameters()), lr=self.learning_rate
+            filter(lambda p: p.requires_grad, self.model.parameters()),
+            lr=self.learning_rate,
         )
         loss_fn = torch.nn.L1Loss()
         best_model_wts = copy.deepcopy(self.model.state_dict())
@@ -241,7 +244,9 @@ class DeepLCFineTuner:
                 for batch in val_loader:
                     batch_X, batch_X_sum, batch_X_global, batch_X_hc, target = batch
                     target = target.view(-1, 1)
-                    outputs = self.model(batch_X, batch_X_sum, batch_X_global, batch_X_hc)
+                    outputs = self.model(
+                        batch_X, batch_X_sum, batch_X_global, batch_X_hc
+                    )
                     val_loss += loss_fn(outputs, target).item()
             avg_val_loss = val_loss / len(val_loader)
 
@@ -415,7 +420,9 @@ class DeepLC:
               """
 
     @staticmethod
-    def _get_model_paths(passed_model_path: str | None, single_model_mode: bool) -> list[str]:
+    def _get_model_paths(
+        passed_model_path: str | None, single_model_mode: bool
+    ) -> list[str]:
         """Get the model paths based on the passed model path and the single model mode."""
         if passed_model_path:
             return [passed_model_path]
@@ -424,6 +431,35 @@ class DeepLC:
             return [DEFAULT_MODELS[0]]
 
         return DEFAULT_MODELS
+
+    def _prepare_feature_matrices(self, psm_list):
+        """
+        Extract features in parallel and assemble the four input matrices.
+
+        Parameters
+        ----------
+        psm_list : list of PSM
+            List of peptide‐spectrum matches for which to extract features.
+
+        Returns
+        -------
+        X : ndarray, shape (n_peptides, n_features)
+        X_sum : ndarray, shape (n_peptides, n_sum_features)
+        X_global : ndarray, shape (n_peptides, n_global_features * 2)
+        X_hc : ndarray, shape (n_peptides, n_hc_features)
+        """
+        feats = self.do_f_extraction_psm_list_parallel(psm_list)
+        X = np.stack(list(feats["matrix"].values()))
+        X_sum = np.stack(list(feats["matrix_sum"].values()))
+        X_global = np.concatenate(
+            (
+                np.stack(list(feats["matrix_all"].values())),
+                np.stack(list(feats["pos_matrix"].values())),
+            ),
+            axis=1,
+        )
+        X_hc = np.stack(list(feats["matrix_hc"].values()))
+        return X, X_sum, X_global, X_hc
 
     def _extract_features(
         self,
@@ -437,16 +473,21 @@ class DeepLC:
         logger.debug("Running feature extraction in single-threaded mode...")
         if self.n_jobs <= 1:
             encodings = [
-                encode_peptidoform(pf, predict_ccs=self.predict_ccs) for pf in peptidoforms
+                encode_peptidoform(pf, predict_ccs=self.predict_ccs)
+                for pf in peptidoforms
             ]
 
         else:
             logger.debug("Preparing feature extraction with Dask")
             # Process peptidoforms in larger chunks to reduce task overhead.
-            peptidoform_strings = [str(pep) for pep in peptidoforms]  # Faster pickling of strings
+            peptidoform_strings = [
+                str(pep) for pep in peptidoforms
+            ]  # Faster pickling of strings
 
             def chunked_encode(chunk):
-                return [encode_peptidoform(pf, predict_ccs=self.predict_ccs) for pf in chunk]
+                return [
+                    encode_peptidoform(pf, predict_ccs=self.predict_ccs) for pf in chunk
+                ]
 
             tasks = [
                 delayed(chunked_encode)(peptidoform_strings[i : i + chunk_size])
@@ -454,7 +495,9 @@ class DeepLC:
             ]
 
             logger.debug("Starting feature extraction with Dask")
-            chunks_encodings = compute(*tasks, scheduler="processes", workers=self.n_jobs)
+            chunks_encodings = compute(
+                *tasks, scheduler="processes", workers=self.n_jobs
+            )
 
             # Flatten the list of lists.
             encodings = [enc for chunk in chunks_encodings for enc in chunk]
@@ -486,7 +529,9 @@ class DeepLC:
 
             # Use spline model within the range of X
             within_range = (uncal_preds >= cal_min) & (uncal_preds <= cal_max)
-            within_range = within_range.ravel()  # Ensure this is a 1D array for proper indexing
+            within_range = (
+                within_range.ravel()
+            )  # Ensure this is a 1D array for proper indexing
 
             # Create a prediction array initialized with spline predictions
             cal_preds = np.copy(y_pred_spline)
@@ -501,19 +546,27 @@ class DeepLC:
         else:
             for uncal_pred in uncal_preds:
                 try:
-                    slope, intercept = cal_dict[str(round(uncal_pred, self.bin_distance))]
+                    slope, intercept = cal_dict[
+                        str(round(uncal_pred, self.bin_distance))
+                    ]
                     cal_preds.append(slope * (uncal_pred) + intercept)
                 except KeyError:
                     # outside of the prediction range ... use the last
                     # calibration curve
                     if uncal_pred <= cal_min:
-                        slope, intercept = cal_dict[str(round(cal_min, self.bin_distance))]
+                        slope, intercept = cal_dict[
+                            str(round(cal_min, self.bin_distance))
+                        ]
                         cal_preds.append(slope * (uncal_pred) + intercept)
                     elif uncal_pred >= cal_max:
-                        slope, intercept = cal_dict[str(round(cal_max, self.bin_distance))]
+                        slope, intercept = cal_dict[
+                            str(round(cal_max, self.bin_distance))
+                        ]
                         cal_preds.append(slope * (uncal_pred) + intercept)
                     else:
-                        slope, intercept = cal_dict[str(round(cal_max, self.bin_distance))]
+                        slope, intercept = cal_dict[
+                            str(round(cal_max, self.bin_distance))
+                        ]
                         cal_preds.append(slope * (uncal_pred) + intercept)
 
         return np.array(cal_preds)
@@ -648,7 +701,9 @@ class DeepLC:
             elif infile is not None:
                 psm_list = _file_to_psm_list(infile)
             else:
-                raise ValueError("Either `psm_list` or `seq_df` or `infile` must be provided.")
+                raise ValueError(
+                    "Either `psm_list` or `seq_df` or `infile` must be provided."
+                )
 
         if len(psm_list) == 0:
             logger.warning("No PSMs to predict for.")
@@ -692,7 +747,9 @@ class DeepLC:
                         )
                     )
                 # Average the predictions from all models
-                ret_preds = np.array([sum(a) / len(a) for a in zip(*ret_preds, strict=True)])
+                ret_preds = np.array(
+                    [sum(a) / len(a) for a in zip(*ret_preds, strict=True)]
+                )
                 # ret_preds = np.mean(model_predictions, axis=0)
 
             else:
@@ -740,7 +797,9 @@ class DeepLC:
             spline_model = linear_model
             linear_model_right = linear_model
         else:
-            spline = SplineTransformer(degree=4, n_knots=int(len(measured_tr) / 500) + 5)
+            spline = SplineTransformer(
+                degree=4, n_knots=int(len(measured_tr) / 500) + 5
+            )
             spline_model = make_pipeline(spline, LinearRegression())
             spline_model.fit(predicted_tr.reshape(-1, 1), measured_tr)
 
@@ -832,9 +891,13 @@ class DeepLC:
                 "peptides for fitting the calibration curve."
             )
         if len(mtr_mean) == 0:
-            raise CalibrationError("The measured tr list is empty, not able to calibrate")
+            raise CalibrationError(
+                "The measured tr list is empty, not able to calibrate"
+            )
         if len(ptr_mean) == 0:
-            raise CalibrationError("The predicted tr list is empty, not able to calibrate")
+            raise CalibrationError(
+                "The predicted tr list is empty, not able to calibrate"
+            )
 
         # calculate calibration curves
         for i in range(0, len(ptr_mean)):
@@ -913,7 +976,9 @@ class DeepLC:
             elif infile is not None:
                 psm_list = _file_to_psm_list(infile)
             else:
-                raise ValueError("Either `psm_list` or `seq_df` or `infile` must be provided.")
+                raise ValueError(
+                    "Either `psm_list` or `seq_df` or `infile` must be provided."
+                )
 
         # Getting measured retention time either from measured_tr or provided PSMs
         if not measured_tr:
@@ -946,7 +1011,9 @@ class DeepLC:
             X, X_sum, X_global, X_hc = self._prepare_feature_matrices(psm_list)
             dataset = DeepLCDataset(X, X_sum, X_global, X_hc, np.array(measured_tr))
 
-            base_model_path = self.model[0] if isinstance(self.model, list) else self.model
+            base_model_path = (
+                self.model[0] if isinstance(self.model, list) else self.model
+            )
             base_model = torch.load(
                 base_model_path, weights_only=False, map_location=torch.device("cpu")
             )
@@ -982,29 +1049,42 @@ class DeepLC:
 
         for model_name in self.model:
             logger.debug(f"Trying out the following model: {model_name}")
-            predicted_tr = self.make_preds(psm_list, calibrate=False, mod_name=model_name)
+            predicted_tr = self.make_preds(
+                psm_list, calibrate=False, mod_name=model_name
+            )
 
             if self.pygam_calibration:
-                calibrate_output = self._calibrate_preds_pygam(measured_tr, predicted_tr)
+                calibrate_output = self._calibrate_preds_pygam(
+                    measured_tr, predicted_tr
+                )
             else:
                 calibrate_output = self._calibrate_preds_piecewise_linear(
                     measured_tr, predicted_tr, use_median=use_median
                 )
-            self.calibrate_min, self.calibrate_max, self.calibrate_dict = calibrate_output
+            self.calibrate_min, self.calibrate_max, self.calibrate_dict = (
+                calibrate_output
+            )
             # TODO: Currently, calibration dict can be both a dict (linear) or a list of models
             # (PyGAM)... This should be handled better in the future.
 
             # Skip this model if calibrate_dict is empty
             # TODO: Should this do something when using PyGAM and calibrate_dict is a list?
-            if isinstance(self.calibrate_dict, dict) and len(self.calibrate_dict.keys()) == 0:
+            if (
+                isinstance(self.calibrate_dict, dict)
+                and len(self.calibrate_dict.keys()) == 0
+            ):
                 continue
 
             m_name = model_name.split("/")[-1]
 
             # Get new predictions with calibration
-            preds = self.make_preds(psm_list, calibrate=True, seq_df=seq_df, mod_name=model_name)
+            preds = self.make_preds(
+                psm_list, calibrate=True, seq_df=seq_df, mod_name=model_name
+            )
 
-            m_group_name = "deepcallc" if self.deepcallc_mod else "_".join(m_name.split("_")[:-1])
+            m_group_name = (
+                "deepcallc" if self.deepcallc_mod else "_".join(m_name.split("_")[:-1])
+            )
             m = model_name
             try:
                 pred_dict[m_group_name][m] = preds
@@ -1026,13 +1106,18 @@ class DeepLC:
                 mod_calibrate_max_dict[m_group_name][m] = self.calibrate_max
 
         for m_name in pred_dict:
-            preds = [sum(a) / len(a) for a in zip(*list(pred_dict[m_name].values()), strict=True)]
+            preds = [
+                sum(a) / len(a)
+                for a in zip(*list(pred_dict[m_name].values()), strict=True)
+            ]
             if len(measured_tr) == 0:
                 perf = sum(abs(seq_df["tr"] - preds))
             else:
                 perf = sum(abs(np.array(measured_tr) - np.array(preds)))
 
-            logger.debug(f"For {m_name} model got a performance of: {perf / len(preds)}")
+            logger.debug(
+                f"For {m_name} model got a performance of: {perf / len(preds)}"
+            )
 
             if perf < best_perf:
                 m_group_name = "deepcallc" if self.deepcallc_mod else m_name
@@ -1072,7 +1157,9 @@ class DeepLC:
                 ],
             )
             plotly_return_dict["scatter"] = deeplc.plot.scatter(plotly_df)
-            plotly_return_dict["baseline_dist"] = deeplc.plot.distribution_baseline(plotly_df)
+            plotly_return_dict["baseline_dist"] = deeplc.plot.distribution_baseline(
+                plotly_df
+            )
             return plotly_return_dict
 
         return None
@@ -1124,7 +1211,9 @@ def _lists_to_psm_list(
         )
 
     args_list = list(
-        zip(sequences, modifications, identifiers, charges, retention_times, strict=True)
+        zip(
+            sequences, modifications, identifiers, charges, retention_times, strict=True
+        )
     )
     tasks = [delayed(create_psm)(args) for args in args_list]
     list_of_psms = list(compute(*tasks, scheduler="processes"))
