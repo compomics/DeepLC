@@ -22,9 +22,9 @@ def _r2_score(y_true, y_pred):
 
 def test_cli_basic():
     """Test command line interface help message."""
-    assert (
-        subprocess.getstatusoutput("deeplc -h")[0] == 0
-    ), "`deeplc -h` returned non-zero status code"
+    assert subprocess.getstatusoutput("deeplc -h")[0] == 0, (
+        "`deeplc -h` returned non-zero status code"
+    )
 
 
 def test_cli_full():
@@ -48,8 +48,10 @@ def test_cli_full():
     train_df = pd.read_csv(file_path_pred)
     model_r2 = _r2_score(train_df["tr"], preds_df["predicted retention time"])
     logging.info("DeepLC R2 score on %s: %f", file_path_pred, model_r2)
-    assert model_r2 > 0.90, f"DeepLC R2 score on {file_path_pred} below 0.9 \
+    assert model_r2 > 0.90, (
+        f"DeepLC R2 score on {file_path_pred} below 0.9 \
 (was {model_r2})"
+    )
 
 
 if __name__ == "__main__":

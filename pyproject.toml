@@ -1,6 +1,6 @@
 [project]
 name = "deeplc"
-version = "3.1.8"
+version = "4.0.0-dev1"
 description = "DeepLC: Retention time prediction for (modified) peptides using Deep Learning."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -32,6 +32,7 @@ keywords = [
 ]
 
 dependencies = [
+    "dask>2023",
     "torch>=2.6.0,<3",
     "onnx2torch>=0.1.5",
     "numpy>=1.17",
@@ -62,3 +63,13 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["deeplc"]
 include-package-data = true
+
+[tool.ruff]
+line-length = 99
+target-version = 'py311'
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I"]
+
+[tool.ruff.format]
+docstring-code-format = true

@@ -1,14 +1,8 @@
-import sys
+__all__ = ["DeepLC"]
 
+from importlib.metadata import version
 
-if sys.version_info >= (3,8):
-    from importlib.metadata import version
-    __version__ = version('deeplc')
-else:
-    import pkg_resources
-    __version__ = pkg_resources.require("deeplc")[0].version
+__version__ = version("deeplc")
 
 
 from deeplc.deeplc import DeepLC
-from deeplc.feat_extractor import FeatExtractor
-
