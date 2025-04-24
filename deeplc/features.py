@@ -7,7 +7,7 @@ import warnings
 from re import sub
 
 import numpy as np
-from psm_utils.psm import Peptidoform
+from psm_utils import Peptidoform, PSMList
 from pyteomics import mass
 
 logger = logging.getLogger(__name__)
@@ -206,6 +206,20 @@ def encode_peptidoform(
         "pos_matrix": pos_matrix.flatten(),
         "matrix_hc": onehot_matrix,
     }
+
+
+def extract_features(
+    peptidoforms: list[str | Peptidoform] | PSMList,
+    predict_ccs: bool = False,
+) -> dict[str, dict[int, np.ndarray]]:
+    """Extract features for all peptidoforms."""
+    if isinstance(peptidoforms, PSMList):
+        peptidoforms = [psm.peptidoform for psm in peptidoforms]
+
+    encodings = [encode_peptidoform(pf, predict_ccs=predict_ccs) for pf in peptidoforms]
+    aggregated_encodings = aggregate_encodings(encodings)
+
+    return aggregated_encodings
 
 
 def aggregate_encodings(

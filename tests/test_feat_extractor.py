@@ -1,7 +1,7 @@
 import numpy as np
 from psm_utils.psm import Peptidoform
 
-from deeplc.feat_extractor import encode_peptidoform
+from deeplc.features import encode_peptidoform
 
 
 def _check_result_structure(result: dict[str, np.ndarray]) -> None:
