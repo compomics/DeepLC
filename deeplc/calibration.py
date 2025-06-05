@@ -15,8 +15,8 @@ from deeplc._exceptions import CalibrationError
 LOGGER = logging.getLogger(__name__)
 
 
-class Calibrator(ABC):
-    """Abstract base class for retention time calibrators."""
+class Calibration(ABC):
+    """Abstract base class for retention time calibration."""
 
     @abstractmethod
     def __init__(self, *args, **kwargs):
@@ -27,9 +27,33 @@ class Calibrator(ABC):
 
     @abstractmethod
     def transform(tr: np.ndarray) -> np.ndarray: ...
+    
+
+class IdentityCalibration(Calibration):
+    """No calibration, just returns the predicted retention times."""
+
+    def fit(self, measured_tr: np.ndarray, predicted_tr: np.ndarray) -> None:
+        """No fitting required for NoCalibration."""
+        pass
+
+    def transform(self, tr: np.ndarray) -> np.ndarray:
+        """
+        Transform the predicted retention times without any calibration.
+
+        Parameters
+        ----------
+        tr
+            Retention times to be transformed.
+
+        Returns
+        -------
+        np.ndarray
+            Transformed retention times (same as input).
+        """
+        return tr
 
 
-class PiecewiseLinearCalibrator(Calibrator):
+class PiecewiseLinearCalibration(Calibration):
     def __init__(
         self,
         split_cal: int = 50,
@@ -202,7 +226,7 @@ class PiecewiseLinearCalibrator(Calibrator):
         return np.array(cal_preds)
 
 
-class SplineTransformerCalibrator(Calibrator):
+class SplineTransformerCalibration(Calibration):
     def __init__(self):
         """SplineTransformer calibration for retention time."""
         super().__init__()

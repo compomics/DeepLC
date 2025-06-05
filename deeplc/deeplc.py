@@ -36,10 +36,9 @@ from psm_utils import PSM, Peptidoform, PSMList
 from psm_utils.io import read_file
 from torch.utils.data import DataLoader
 
-from deeplc._calibration import Calibrator, SplineTransformerCalibrator
+from deeplc.calibration import Calibration, SplineTransformerCalibration
 from deeplc._data import DeepLCDataset
 from deeplc._finetune import DeepLCFineTuner
-from deeplc.features import extract_features, unpack_features
 
 # If CLI/GUI/frozen: disable warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
@@ -64,8 +63,8 @@ logger = logging.getLogger(__name__)
 def predict(
     psm_list: PSMList | None = None,
     model_files: str | list[str] | None = None,
-    calibrator: Calibrator | None = None,
-    batch_size: int | None = None,
+    calibrator: Calibration | None = None,
+    batch_size: int = 1024,
     single_model_mode: bool = False,
 ):
     """
@@ -94,10 +93,8 @@ def predict(
     if len(psm_list) == 0:
         return []
 
-    # Extract features
-    features = extract_features(psm_list)
-    X_sum, X_global, X_hc, X_main = unpack_features(features)
-    dataset = DeepLCDataset(X_main, X_sum, X_global, X_hc)
+    # Setup dataset and dataloader
+    dataset = DeepLCDataset(psm_list)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     if model_files is not None:
@@ -114,16 +111,16 @@ def predict(
     model_predictions = []
     for model_f in model_files:
         # Load model
-        mod = torch.load(model_f, weights_only=False, map_location=torch.device("cpu"))
-        mod.eval()
+        model = torch.load(model_f, weights_only=False, map_location=torch.device("cpu"))
+        model.eval()
 
         # Predict
         ret_preds = []
         with torch.no_grad():
-            for batch in loader:
-                batch_X, batch_X_sum, batch_X_global, batch_X_hc = batch
-                batch_preds = mod(batch_X, batch_X_sum, batch_X_global, batch_X_hc)
+            for features, _ in loader:
+                batch_preds = model(*features)
                 ret_preds.append(batch_preds.detach().cpu().numpy())
+                raise Exception()
 
         # Concatenate predictions
         ret_preds = np.concatenate(ret_preds, axis=0)
@@ -144,7 +141,6 @@ def predict(
 # TODO: Split-of transfer learning?
 def calibrate(
     psm_list: PSMList | None = None,
-    measured_tr: np.ndarray | None = None,
     model_files: str | list[str] | None = None,
     location_retraining_models: str = "",
     sample_for_calibration_curve: int | None = None,
@@ -153,7 +149,7 @@ def calibrate(
     batch_size: int = int(1e6),
     fine_tune: bool = False,
     n_epochs: int = 20,
-    calibrator: Calibrator | None = None,
+    calibrator: Calibration | None = None,
 ) -> dict | None:
     """
     Find best model and calibrate.
@@ -162,23 +158,25 @@ def calibrate(
     ----------
     psm_list
         PSMList object containing the peptidoforms to predict for.
-    measured_tr
-        Measured retention time used for calibration. Should correspond to the PSMs in the
-        provided PSMs. If None, the measured retention time is taken from the PSMs.
     model_files
         Path to one or mode models to test and calibrat for. If a list of models is passed,
         the best performing one on the calibration data will be selected.
-    correction_factor
-        correction factor that needs to be applied to the supplied measured tr's
     location_retraining_models
         Location to save the retraining models; if None, a temporary directory is used.
     sample_for_calibration_curve
         Number of PSMs to sample for calibration curve; if None, all provided PSMs are used.
-    use_median
-        Whether to use the median value in a window to perform calibration; only applies to
-        piecewise linear calibration, not to PyGAM calibration.
     return_plotly_report
         Whether to return a plotly report with the calibration results.
+    n_jobs
+        Number of jobs to use for parallel processing; if None, the number of CPU cores is used.
+    batch_size
+        Batch size to use for training and prediction; default is 1e6, which means all data is
+        processed in one batch.
+    fine_tune
+        Whether to fine-tune the model on the provided PSMs. If True, the first model in
+        model_files will be used for fine-tuning.
+    n_epochs
+        Number of epochs to use for fine-tuning the model. Default is 20.
 
     Returns
     -------
@@ -186,16 +184,13 @@ def calibrate(
         Dictionary with plotly report information or None.
 
     """
-    # Getting measured retention time either from measured_tr or provided PSMs
-    if not measured_tr:
-        measured_tr = [psm.retention_time for psm in psm_list]
-        if None in measured_tr:
-            raise ValueError("Not all PSMs have an observed retention time.")
+    if None in psm_list["retention_time"]:
+        raise ValueError("Not all PSMs have an observed retention time.")
 
     n_jobs = multiprocessing.cpu_count() if n_jobs is None else n_jobs
 
     if calibrator is None:
-        calibrator = SplineTransformerCalibrator()
+        calibrator = SplineTransformerCalibration()
 
     # Ensuring self.model is list of strings
     model_files = model_files or DEFAULT_MODELS
@@ -206,12 +201,8 @@ def calibrate(
     logger.debug(f"Ready to find the best model out of: {model_files}")
 
     if fine_tune:
-        logger.debug("Preparing for model fine-tuning...")
-
-        features = extract_features(psm_list)
-        X_sum, X_global, X_hc, X_main = unpack_features(features)
-
-        dataset = DeepLCDataset(X_main, X_sum, X_global, X_hc, np.array(measured_tr))
+        logger.debug("Starting model fine-tuning...")
+        dataset = DeepLCDataset(psm_list)
 
         base_model_path = model_files[0]
         base_model = torch.load(
@@ -251,8 +242,6 @@ def calibrate(
     mod_calibrator = {}
     pred_dict = {}
     mod_dict = {}
-    temp_obs = []
-    temp_pred = []
 
     for model_name in model_files:
         logger.debug(f"Trying out the following model: {model_name}")
@@ -260,7 +249,7 @@ def calibrate(
 
         model_calibrator = copy.deepcopy(calibrator)
 
-        if isinstance(model_calibrator, SplineTransformerCalibrator):
+        if isinstance(model_calibrator, SplineTransformerCalibration):
             model_calibrator.fit(predicted_tr, measured_tr, simplified=fine_tune)
         else:
             model_calibrator.fit(predicted_tr, measured_tr)
@@ -294,29 +283,10 @@ def calibrate(
             best_model = copy.deepcopy(mod_dict[m_group_name])
             best_perf = perf
 
-            temp_obs = np.array(measured_tr)
-            temp_pred = np.array(preds)
-
     logger.debug(f"Model with the best performance got selected: {best_model}")
 
-    # TODO: Move to separate function
-    if return_plotly_report:
-        import deeplc.plot
 
-        plotly_return_dict = {}
-        plotly_df = pd.DataFrame(
-            list(zip(temp_obs, temp_pred, strict=True)),
-            columns=[
-                "Observed retention time",
-                "Predicted retention time",
-            ],
-        )
-        plotly_return_dict["scatter"] = deeplc.plot.scatter(plotly_df)
-        plotly_return_dict["baseline_dist"] = deeplc.plot.distribution_baseline(plotly_df)
-    else:
-        plotly_return_dict = None
-
-    return best_model, best_calibrator, plotly_return_dict
+    return best_model, best_calibrator
 
 
 # TODO: Move to psm_utils?
