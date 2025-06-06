@@ -1,8 +1,8 @@
-__all__ = ["DeepLC"]
+# __all__ = ["DeepLC"]
 
-from importlib.metadata import version
+# from importlib.metadata import version
 
-__version__ = version("deeplc")
+# __version__ = version("deeplc")
 
 
-from deeplc.deeplc import DeepLC
+# from deeplc.deeplc import DeepLC

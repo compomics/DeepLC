@@ -7,7 +7,7 @@ import warnings
 from re import sub
 
 import numpy as np
-from psm_utils.psm import Peptidoform
+from psm_utils import Peptidoform, PSMList
 from pyteomics import mass
 
 logger = logging.getLogger(__name__)
@@ -148,7 +148,7 @@ def _compute_rolling_sum(matrix: np.ndarray, n: int = 2) -> np.ndarray:
 
 def encode_peptidoform(
     peptidoform: Peptidoform | str,
-    predict_ccs: bool = False,
+    add_ccs_features: bool = False,
     padding_length: int = 60,
     positions: set[int] | None = None,
     positions_pos: set[int] | None = None,
@@ -188,7 +188,7 @@ def encode_peptidoform(
 
     matrix_all = np.sum(std_matrix, axis=0)
     matrix_all = np.append(matrix_all, seq_len)
-    if predict_ccs:
+    if add_ccs_features:
         matrix_all = np.append(matrix_all, (seq.count("H")) / seq_len)
         matrix_all = np.append(
             matrix_all, (seq.count("F") + seq.count("W") + seq.count("Y")) / seq_len
@@ -198,36 +198,12 @@ def encode_peptidoform(
         matrix_all = np.append(matrix_all, charge)
 
     matrix_sum = _compute_rolling_sum(std_matrix.T, n=2)[:, ::2].T
+    
+    matrix_global = np.concatenate([matrix_all, pos_matrix.flatten()])
 
     return {
         "matrix": std_matrix,
         "matrix_sum": matrix_sum,
-        "matrix_all": matrix_all,
-        "pos_matrix": pos_matrix.flatten(),
+        "matrix_global": matrix_global,
         "matrix_hc": onehot_matrix,
     }
-
-
-def aggregate_encodings(
-    encodings: list[dict[str, np.ndarray]],
-) -> dict[str, dict[int, np.ndarray]]:
-    """Aggregate list of encodings into single dictionary."""
-    return {key: {i: enc[key] for i, enc in enumerate(encodings)} for key in encodings[0]}
-
-
-def unpack_features(
-    features: dict[str, np.ndarray],
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Unpack dictionary with features to numpy arrays."""
-    X_sum = np.stack(list(features["matrix_sum"].values()))
-    X_global = np.concatenate(
-        (
-            np.stack(list(features["matrix_all"].values())),
-            np.stack(list(features["pos_matrix"].values())),
-        ),
-        axis=1,
-    )
-    X_hc = np.stack(list(features["matrix_hc"].values()))
-    X_main = np.stack(list(features["matrix"].values()))
-
-    return X_sum, X_global, X_hc, X_main
