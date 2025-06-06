@@ -34,11 +34,13 @@ import pandas as pd
 import torch
 from psm_utils import PSM, Peptidoform, PSMList
 from psm_utils.io import read_file
+from rich.progress import track
+from torch.nn import Module
 from torch.utils.data import DataLoader
 
-from deeplc.calibration import Calibration, SplineTransformerCalibration
-from deeplc._data import DeepLCDataset
+from deeplc._data import DeepLCDataset, get_targets
 from deeplc._finetune import DeepLCFineTuner
+from deeplc.calibration import Calibration, SplineTransformerCalibration
 
 # If CLI/GUI/frozen: disable warnings before importing
 IS_CLI_GUI = os.path.basename(sys.argv[0]) in ["deeplc", "deeplc-gui"]
@@ -49,12 +51,8 @@ if IS_CLI_GUI or IS_FROZEN:
 # Default models, will be used if no other is specified. If no best model is
 # selected during calibration, the first model in the list will be used.
 DEEPLC_DIR = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_MODELS = [
-    "mods/full_hc_PXD005573_pub_1fd8363d9af9dcad3be7553c39396960.pt",
-    "mods/full_hc_PXD005573_pub_8c22d89667368f2f02ad996469ba157e.pt",
-    "mods/full_hc_PXD005573_pub_cb975cfdd4105f97efa0b3afffe075cc.pt",
-]
-DEFAULT_MODELS = [os.path.join(DEEPLC_DIR, m) for m in DEFAULT_MODELS]
+DEFAULT_MODEL = "mods/full_hc_PXD005573_pub_1fd8363d9af9dcad3be7553c39396960.pt"
+DEFAULT_MODEL = os.path.join(DEEPLC_DIR, DEFAULT_MODEL)
 
 
 logger = logging.getLogger(__name__)
@@ -62,10 +60,9 @@ logger = logging.getLogger(__name__)
 
 def predict(
     psm_list: PSMList | None = None,
-    model_files: str | list[str] | None = None,
-    calibrator: Calibration | None = None,
+    model: str | list[str] | None = None,
+    num_workers: int = 4,
     batch_size: int = 1024,
-    single_model_mode: bool = False,
 ):
     """
     Make predictions for sequences, in batches if required.
@@ -74,15 +71,10 @@ def predict(
     ----------
     psm_list
         PSMList object containing the peptidoforms to predict for.
-    model_files
-        Model file (or files) to use for prediction. If None, the default model is used.
-    calibrator
-        Calibrator object to use for calibration. If None, no calibration is performed.
+    model_file
+        Model file to use for prediction. If None, the default model is used.
     batch_size
-        How many samples per batch to load (default: 1).
-    single_model_mode
-        Whether to use a single model instead of multiple default models. Only applies if
-        model_file is None.
+        How many samples per batch to load (default: 1024).
 
     Returns
     -------
@@ -90,52 +82,38 @@ def predict(
         predictions
 
     """
-    if len(psm_list) == 0:
-        return []
+    # Shortcut if empty PSMList is provided
+    if not psm_list:
+        return np.array([])
+
+    # Avoid predicting repeated PSMs
+    unique_peptidoforms, inverse_indices = _get_unique_peptidoforms(psm_list)
 
     # Setup dataset and dataloader
-    dataset = DeepLCDataset(psm_list)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    dataset = DeepLCDataset(unique_peptidoforms, target_retention_times=None)
+    loader = DataLoader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=False)
 
-    if model_files is not None:
-        if isinstance(model_files, str):
-            model_files = [model_files]
-        elif isinstance(model_files, list):
-            model_files = model_files
-        else:
-            raise ValueError("Invalid model name provided.")
-    else:
-        model_files = [DEFAULT_MODELS[0]] if single_model_mode else DEFAULT_MODELS
+    # Get model files
+    model = model or DEFAULT_MODEL
 
-    # Get predictions; iterate over models if multiple were selected
-    model_predictions = []
-    for model_f in model_files:
-        # Load model
-        model = torch.load(model_f, weights_only=False, map_location=torch.device("cpu"))
-        model.eval()
+    # Check device availability
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Predict
-        ret_preds = []
-        with torch.no_grad():
-            for features, _ in loader:
-                batch_preds = model(*features)
-                ret_preds.append(batch_preds.detach().cpu().numpy())
-                raise Exception()
+    # Load model on specified device
+    model = _load_model(model=model, device=device, eval=True)
 
-        # Concatenate predictions
-        ret_preds = np.concatenate(ret_preds, axis=0)
+    # Predict
+    predictions = []
+    with torch.no_grad():
+        for features, _ in track(loader):
+            features = [feature_tensor.to(device) for feature_tensor in features]
+            batch_preds = model(*features)
+            predictions.append(batch_preds.detach().cpu().numpy())
 
-        # TODO: Bring outside of model loop?
-        # Calibrate
-        if calibrator is not None:
-            ret_preds = calibrator.transform(ret_preds)
+    # Concatenate predictions and reorder to match original PSMList order
+    predictions = np.concatenate(predictions, axis=0)[inverse_indices]
 
-        model_predictions.append(ret_preds)
-
-    # Average the predictions from all models
-    averaged_predictions = np.mean(model_predictions, axis=0)
-
-    return averaged_predictions
+    return predictions
 
 
 # TODO: Split-of transfer learning?
@@ -144,13 +122,12 @@ def calibrate(
     model_files: str | list[str] | None = None,
     location_retraining_models: str = "",
     sample_for_calibration_curve: int | None = None,
-    return_plotly_report=False,
     n_jobs: int | None = None,
     batch_size: int = int(1e6),
     fine_tune: bool = False,
     n_epochs: int = 20,
     calibrator: Calibration | None = None,
-) -> dict | None:
+) -> tuple[str, dict[str, Calibration]]:
     """
     Find best model and calibrate.
 
@@ -159,14 +136,12 @@ def calibrate(
     psm_list
         PSMList object containing the peptidoforms to predict for.
     model_files
-        Path to one or mode models to test and calibrat for. If a list of models is passed,
+        Path to one or mode models to test and calibrate for. If a list of models is passed,
         the best performing one on the calibration data will be selected.
     location_retraining_models
         Location to save the retraining models; if None, a temporary directory is used.
     sample_for_calibration_curve
         Number of PSMs to sample for calibration curve; if None, all provided PSMs are used.
-    return_plotly_report
-        Whether to return a plotly report with the calibration results.
     n_jobs
         Number of jobs to use for parallel processing; if None, the number of CPU cores is used.
     batch_size
@@ -180,8 +155,6 @@ def calibrate(
 
     Returns
     -------
-    dict | None
-        Dictionary with plotly report information or None.
 
     """
     if None in psm_list["retention_time"]:
@@ -193,7 +166,7 @@ def calibrate(
         calibrator = SplineTransformerCalibration()
 
     # Ensuring self.model is list of strings
-    model_files = model_files or DEFAULT_MODELS
+    model_files = model_files or DEFAULT_MODEL
     if isinstance(model_files, str):
         model_files = [model_files]
 
@@ -239,13 +212,13 @@ def calibrate(
 
     best_perf = float("inf")
     best_calibrator = {}
-    mod_calibrator = {}
+    model_calibrators = {}
     pred_dict = {}
     mod_dict = {}
 
     for model_name in model_files:
         logger.debug(f"Trying out the following model: {model_name}")
-        predicted_tr = predict(psm_list, calibrate=False, model_name=model_name)
+        predicted_tr = predict(psm_list, calibrator=calibrator, model_name=model_name)
 
         model_calibrator = copy.deepcopy(calibrator)
 
@@ -265,7 +238,7 @@ def calibrate(
         m_group_name = "_".join(m_name.split("_")[:-1])
         pred_dict.setdefault(m_group_name, {})[model_name] = preds
         mod_dict.setdefault(m_group_name, {})[model_name] = model_name
-        mod_calibrator.setdefault(m_group_name, {})[model_name] = model_calibrator
+        model_calibrators.setdefault(m_group_name, {})[model_name] = model_calibrator
 
     # Find best-performing model, including each model's calibration
     for m_name in pred_dict:
@@ -279,12 +252,11 @@ def calibrate(
             m_group_name = m_name
 
             # TODO is deepcopy really required?
-            best_calibrator = copy.deepcopy(mod_calibrator[m_group_name])
+            best_calibrator = copy.deepcopy(model_calibrators[m_group_name])
             best_model = copy.deepcopy(mod_dict[m_group_name])
             best_perf = perf
 
     logger.debug(f"Model with the best performance got selected: {best_model}")
-
 
     return best_model, best_calibrator
 
@@ -304,3 +276,42 @@ def _file_to_psm_list(input_file: str | Path) -> PSMList:
         psm_list.rename_modifications(mapper)
 
     return psm_list
+
+
+def _get_unique_peptidoforms(psm_list: PSMList) -> tuple[PSMList, np.ndarray]:
+    """Get PSMs with unique peptidoforms and their inverse indices."""
+    peptidoform_strings = np.array([str(psm.peptidoform) for psm in psm_list])
+    unique_peptidoforms, inverse_indices = np.unique(peptidoform_strings, return_inverse=True)
+    return unique_peptidoforms, inverse_indices
+
+
+def _load_model(
+    model: Module | Path | str | None = None,
+    device: str | None = None,
+    eval: bool = False,
+) -> Module:
+    """Load a model from a file or return the default model if none is provided."""
+    # If no model is provided, use the default model
+    model = model or DEFAULT_MODEL
+
+    # If device is not specified, use the default device (GPU if available, else CPU)
+    device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Load model from file if a path is provided
+    if isinstance(model, str | Path):
+        model = torch.load(model, weights_only=False, map_location=device)
+    elif not isinstance(model, Module):
+        raise TypeError(f"Expected a PyTorch Module or a file path, got {type(model)} instead.")
+
+    # Ensure the model is on the specified device
+    model.to(device)
+
+    # Set the model to evaluation or training mode based on the eval flag
+    if eval:
+        model.eval()
+    else:
+        model.train()
+
+    return model
+
+
